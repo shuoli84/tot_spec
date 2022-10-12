@@ -133,15 +133,7 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
         writeln!(&mut result, "\n    # {}", field.name)?;
 
         match &field.type_ {
-            Type::Bytes => {
-                // todo, base64?
-                writeln!(
-                    &mut result,
-                    "    result[\"{field_name}\"] = self.{field_name}",
-                    field_name = field.name,
-                )?;
-            }
-            Type::I64 | Type::I8 | Type::Bool | Type::F64 | Type::String => {
+            Type::Bytes | Type::I64 | Type::I8 | Type::Bool | Type::F64 | Type::String => {
                 writeln!(
                     &mut result,
                     "    result[\"{field_name}\"] = self.{field_name}",
@@ -149,46 +141,27 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
                 )?;
             }
 
-            Type::List { item_type } => {
+            ty => {
+                // for List, Map, Reference
+                let field_name = &field.name;
                 let tmp_var_name = format!("{}_tmp", field.name);
-                let field_name = &field.name;
+                let to_dict =
+                    to_dict_for_one_field(&ty, &format!("self.{field_name}"), &tmp_var_name, def)?;
 
-                writeln!(&mut result, "    {tmp_var_name} = []")?;
-                writeln!(&mut result, "    for item in self.{field_name} or []:",)?;
-                let field_to_dict = to_dict_for_one_field(item_type, "item", "item_tmp", &def)?;
-                writeln!(&mut result, "{}", indent(&field_to_dict, 2))?;
-                writeln!(&mut result, "        {tmp_var_name}.append(item_tmp)")?;
-                writeln!(&mut result, "    result[\"{field_name}\"] = {tmp_var_name}")?;
-            }
-            Type::Map {
-                key_type: _,
-                value_type,
-            } => {
-                let tmp_var_name = format!("{}_tmp", field.name);
-                let field_name = &field.name;
+                if field.required {
+                    writeln!(&mut result, "{}", indent(&to_dict, 1))?;
+                    writeln!(&mut result, "    result[\"{field_name}\"] = {tmp_var_name}")?;
+                } else {
+                    writeln!(&mut result, "    if self.{field_name} is None:")?;
+                    writeln!(&mut result, "        result['{field_name}'] = None")?;
+                    writeln!(&mut result, "    else:")?;
 
-                writeln!(&mut result, "    {tmp_var_name} = {{}}")?;
-                writeln!(
-                    &mut result,
-                    "    for key, item in (self.{field_name} or {{}}).items():",
-                )?;
-                let field_to_dict = to_dict_for_one_field(value_type, "item", "item_tmp", &def)?;
-                writeln!(&mut result, "{}", indent(&field_to_dict, 2))?;
-                writeln!(&mut result, "        {tmp_var_name}[key] = item_tmp")?;
-                writeln!(&mut result, "    result[\"{field_name}\"] = {tmp_var_name}")?;
-            }
-            ty @ Type::Reference { .. } => {
-                let field_name = &field.name;
-                let tmp_var_name = format!("{}_tmp", field_name);
-                writeln!(&mut result, "    {tmp_var_name} = {{}}")?;
-                let to_dict = to_dict_for_one_field(
-                    &ty,
-                    &format!("self.{}", field_name),
-                    &tmp_var_name,
-                    def,
-                )?;
-                writeln!(&mut result, "{to_dict}", to_dict = indent(&to_dict, 1))?;
-                writeln!(&mut result, "    result[\"{field_name}\"] = {tmp_var_name}")?;
+                    writeln!(&mut result, "{}", indent(&to_dict, 2))?;
+                    writeln!(
+                        &mut result,
+                        "        result[\"{field_name}\"] = {tmp_var_name}"
+                    )?;
+                }
             }
         }
     }
@@ -200,17 +173,18 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
 
 fn to_dict_for_one_field(
     ty: &Type,
-    in_var: &str,
+    in_expr: &str,
     out_var: &str,
     def: &Definition,
 ) -> anyhow::Result<String> {
     Ok(match ty {
         Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::Bytes | Type::String => {
-            format!("{out_var} = {in_var}")
+            format!("{out_var} = {in_expr}")
         }
         Type::List { item_type } => {
             let mut result = "".to_string();
-            writeln!(&mut result, "for item in {in_var}:",)?;
+            writeln!(&mut result, "{out_var} = []",)?;
+            writeln!(&mut result, "for item in {in_expr}:",)?;
             let field_to_dict = to_dict_for_one_field(item_type, "item", "item_tmp", &def)?;
             writeln!(&mut result, "{}", indent(&field_to_dict, 1))?;
             writeln!(&mut result, "    {out_var}.append(item_tmp)")?;
@@ -221,7 +195,8 @@ fn to_dict_for_one_field(
             value_type,
         } => {
             let mut result = "".to_string();
-            writeln!(&mut result, "for key, item in {in_var}.items():")?;
+            writeln!(&mut result, "{out_var} = {{}}",)?;
+            writeln!(&mut result, "for key, item in {in_expr}.items():")?;
             let field_to_dict = to_dict_for_one_field(value_type, "item", "item_tmp", &def)?;
             writeln!(&mut result, "{}", indent(&field_to_dict, 1))?;
             writeln!(&mut result, "    {out_var}[key] = item_tmp")?;
@@ -231,10 +206,10 @@ fn to_dict_for_one_field(
             let target_model = def.get_model(target).unwrap();
             match &target_model.type_ {
                 crate::ModelType::NewType { inner_type } => {
-                    to_dict_for_one_field(&inner_type, in_var, out_var, def)?
+                    to_dict_for_one_field(&inner_type, in_expr, out_var, def)?
                 }
                 _ => {
-                    format!("{out_var} = {in_var}.to_dict()")
+                    format!("{out_var} = {in_expr}.to_dict()")
                 }
             }
         }

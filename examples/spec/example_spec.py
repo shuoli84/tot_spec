@@ -34,34 +34,48 @@ class SimpleStruct:
         result["bytes_value"] = self.bytes_value
     
         # i8_to_string
-        i8_to_string_tmp = {}
-        for key, item in (self.i8_to_string or {}).items():
-            item_tmp = item
-            i8_to_string_tmp[key] = item_tmp
-        result["i8_to_string"] = i8_to_string_tmp
+        if self.i8_to_string is None:
+            result['i8_to_string'] = None
+        else:
+            i8_to_string_tmp = {}
+            for key, item in self.i8_to_string.items():
+                item_tmp = item
+                i8_to_string_tmp[key] = item_tmp
+            
+            result["i8_to_string"] = i8_to_string_tmp
     
         # key_values
-        key_values_tmp = {}
-        for key, item in self.key_values.items():
-            item_tmp = item
-            key_values_tmp[key] = item_tmp
-        
-        result["key_values"] = key_values_tmp
+        if self.key_values is None:
+            result['key_values'] = None
+        else:
+            key_values_tmp = {}
+            for key, item in self.key_values.items():
+                item_tmp = item
+                key_values_tmp[key] = item_tmp
+            
+            result["key_values"] = key_values_tmp
     
         # children_container
-        children_container_tmp = {}
-        for item in self.children_container:
-            item_tmp = item.to_dict()
-            children_container_tmp.append(item_tmp)
-        
-        result["children_container"] = children_container_tmp
+        if self.children_container is None:
+            result['children_container'] = None
+        else:
+            children_container_tmp = []
+            for item in self.children_container:
+                item_tmp = item.to_dict()
+                children_container_tmp.append(item_tmp)
+            
+            result["children_container"] = children_container_tmp
     
         # children
-        children_tmp = []
-        for item in self.children or []:
-            item_tmp = item.to_dict()
-            children_tmp.append(item_tmp)
-        result["children"] = children_tmp
+        if self.children is None:
+            result['children'] = None
+        else:
+            children_tmp = []
+            for item in self.children:
+                item_tmp = item.to_dict()
+                children_tmp.append(item_tmp)
+            
+            result["children"] = children_tmp
         return result
     
 
@@ -108,11 +122,15 @@ class AddRequest(Base):
         result = {}
     
         # numbers
-        numbers_tmp = []
-        for item in self.numbers or []:
-            item_tmp = item.to_dict()
-            numbers_tmp.append(item_tmp)
-        result["numbers"] = numbers_tmp
+        if self.numbers is None:
+            result['numbers'] = None
+        else:
+            numbers_tmp = []
+            for item in self.numbers:
+                item_tmp = item.to_dict()
+                numbers_tmp.append(item_tmp)
+            
+            result["numbers"] = numbers_tmp
         return result
     
 
