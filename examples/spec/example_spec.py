@@ -79,6 +79,47 @@ class SimpleStruct:
         return result
     
 
+    @staticmethod
+    def from_dict(d):
+        bool_value = d['bool_value']
+        i8_value = d['i8_value']
+        i64_value = d.get('i64_value', None)
+        string_value = d.get('string_value', None)
+        bytes_value = d.get('bytes_value', None)
+        i8_to_string = {}
+        for key, item in d['i8_to_string'].items():
+            item_tmp = item
+            i8_to_string[key] = item_tmp
+        
+        key_values = {}
+        for key, item in d['key_values'].items():
+            item_tmp = item
+            key_values[key] = item_tmp
+        
+        children_container = []
+        for item in d['children_container']:
+            item_tmp = SimpleStruct.from_dict(item)
+            children_container.append(item_tmp)
+        
+        children = []
+        for item in d['children']:
+            item_tmp = SimpleStruct.from_dict(item)
+            children.append(item_tmp)
+        
+        SimpleStruct(
+            bool_value = bool_value,
+            i8_value = i8_value,
+            i64_value = i64_value,
+            string_value = string_value,
+            bytes_value = bytes_value,
+            i8_to_string = i8_to_string,
+            key_values = key_values,
+            children_container = children_container,
+            children = children,
+        )
+        
+    
+
 # KeyValue
 KeyValue = typing.Type[typing.Dict[str, bytes]]
 
@@ -96,6 +137,15 @@ class Base:
         # request_id
         result["request_id"] = self.request_id
         return result
+    
+
+    @staticmethod
+    def from_dict(d):
+        request_id = d.get('request_id', None)
+        Base(
+            request_id = request_id,
+        )
+        
     
 
 # Number
@@ -134,6 +184,19 @@ class AddRequest(Base):
         return result
     
 
+    @staticmethod
+    def from_dict(d):
+        numbers = []
+        for item in d['numbers']:
+            item_tmp = Number.from_dict(item)
+            numbers.append(item_tmp)
+        
+        AddRequest(
+            numbers = numbers,
+        )
+        
+    
+
 # ResetRequest
 @dataclass
 class ResetRequest(Base):
@@ -142,4 +205,11 @@ class ResetRequest(Base):
     def to_dict(self):
         result = {}
         return result
+    
+
+    @staticmethod
+    def from_dict(d):
+        ResetRequest(
+        )
+        
     

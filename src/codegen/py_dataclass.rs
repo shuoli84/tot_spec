@@ -76,6 +76,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 writeln!(&mut result, "")?;
                 let to_dict = generate_to_dict(&struct_def.fields, &def)?;
                 writeln!(&mut result, "{}", utils::indent(&to_dict, 1))?;
+
+                writeln!(&mut result, "")?;
+                let from_dict = generate_from_dict(&model.name, &struct_def.fields, &def)?;
+                writeln!(&mut result, "{}", utils::indent(&from_dict, 1))?;
             }
 
             crate::ModelType::NewType { inner_type } => {
@@ -211,6 +215,96 @@ fn to_dict_for_one_field(
                 _ => {
                     format!("{out_var} = {in_expr}.to_dict()")
                 }
+            }
+        }
+    })
+}
+
+fn generate_from_dict(
+    model_name: &str,
+    fields: &[FieldDef],
+    def: &Definition,
+) -> anyhow::Result<String> {
+    let mut code_block = "".to_string();
+
+    let mut fields_init_codes = vec![];
+
+    for field in fields {
+        let field_name = &field.name;
+
+        fields_init_codes.push(format!("{field_name} = {field_name},"));
+
+        match &field.type_ {
+            Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String | Type::Bytes => {
+                if field.required {
+                    writeln!(&mut code_block, "{field_name} = d['{field_name}']")?;
+                } else {
+                    writeln!(
+                        &mut code_block,
+                        "{field_name} = d.get('{field_name}', None)"
+                    )?;
+                }
+            }
+            ty => {
+                let from_dict_code_block =
+                    from_dict_for_one_field(ty, &format!("d['{field_name}']"), field_name, def)?;
+                writeln!(&mut code_block, "{}", from_dict_code_block)?;
+            }
+        }
+    }
+
+    writeln!(&mut code_block, "{model_name}(")?;
+    for field_init_code in fields_init_codes {
+        writeln!(&mut code_block, "{}", indent(&field_init_code, 1))?;
+    }
+    writeln!(&mut code_block, ")")?;
+
+    let mut result = "".to_string();
+    writeln!(&mut result, "@staticmethod")?;
+    writeln!(&mut result, "def from_dict(d):")?;
+    writeln!(&mut result, "{}", indent(&code_block, 1))?;
+
+    Ok(result)
+}
+
+fn from_dict_for_one_field(
+    ty: &Type,
+    in_expr: &str,
+    out_var: &str,
+    def: &Definition,
+) -> anyhow::Result<String> {
+    Ok(match ty {
+        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::Bytes | Type::String => {
+            format!("{out_var} = {in_expr}")
+        }
+        Type::List { item_type } => {
+            let mut result = "".to_string();
+            writeln!(&mut result, "{out_var} = []")?;
+            writeln!(&mut result, "for item in {in_expr}:")?;
+            let from_dict_for_item = from_dict_for_one_field(item_type, "item", "item_tmp", def)?;
+            writeln!(&mut result, "{}", indent(&from_dict_for_item, 1))?;
+            writeln!(&mut result, "    {out_var}.append(item_tmp)")?;
+            result
+        }
+        Type::Map {
+            key_type: _,
+            value_type,
+        } => {
+            let mut result = "".to_string();
+            writeln!(&mut result, "{out_var} = {{}}")?;
+            writeln!(&mut result, "for key, item in {in_expr}.items():")?;
+            let from_dict_for_item = from_dict_for_one_field(value_type, "item", "item_tmp", def)?;
+            writeln!(&mut result, "{}", indent(&from_dict_for_item, 1))?;
+            writeln!(&mut result, "    {out_var}[key] = item_tmp")?;
+            result
+        }
+        Type::Reference { target } => {
+            let target_model = def.get_model(target).unwrap();
+            match &target_model.type_ {
+                crate::ModelType::NewType { inner_type } => {
+                    from_dict_for_one_field(&inner_type, in_expr, out_var, def)?
+                }
+                _ => format!("{out_var} = {target}.from_dict({in_expr})"),
             }
         }
     })

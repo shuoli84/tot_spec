@@ -31,4 +31,7 @@ if __name__ == "__main__":
 
     import json
 
-    print(json.dumps(simple_struct.to_dict()))
+    dict_value = simple_struct.to_dict()
+    print(json.dumps(dict_value))
+    value_back = SimpleStruct.from_dict(dict_value)
+    print(value_back)
