@@ -8,6 +8,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
     writeln!(&mut result, "from dataclasses import dataclass")?;
     writeln!(&mut result, "import typing")?;
+    writeln!(&mut result, "import base64")?;
+
     writeln!(&mut result, "")?;
 
     for model in def.models.iter() {
@@ -182,8 +184,11 @@ fn to_dict_for_one_field(
     def: &Definition,
 ) -> anyhow::Result<String> {
     Ok(match ty {
-        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::Bytes | Type::String => {
+        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
             format!("{out_var} = {in_expr}")
+        }
+        Type::Bytes => {
+            format!("{out_var} = base64.b64encode({in_expr}).decode('ascii')")
         }
         Type::List { item_type } => {
             let mut result = "".to_string();
@@ -237,7 +242,7 @@ fn generate_from_dict(
         writeln!(&mut code_block, "\n# {field_name}")?;
 
         match &field.type_ {
-            Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String | Type::Bytes => {
+            Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
                 if field.required {
                     writeln!(&mut code_block, "{field_name} = d['{field_name}']")?;
                 } else {
@@ -245,6 +250,22 @@ fn generate_from_dict(
                         &mut code_block,
                         "{field_name} = d.get('{field_name}', None)"
                     )?;
+                }
+            }
+            ty @ Type::Bytes => {
+                if field.required {
+                    writeln!(
+                        &mut code_block,
+                        "{field_name} = base64.b64decode(d['{field_name}'])"
+                    )?;
+                } else {
+                    writeln!(&mut code_block, "{field_name} = None")?;
+                    writeln!(&mut code_block, "if item := d.get('{field_name}'):")?;
+
+                    let from_dict_code_block =
+                        from_dict_for_one_field(ty, "item", field_name, def)?;
+
+                    writeln!(&mut code_block, "{}", indent(&from_dict_code_block, 1))?;
                 }
             }
             ty => {
@@ -291,8 +312,11 @@ fn from_dict_for_one_field(
     def: &Definition,
 ) -> anyhow::Result<String> {
     Ok(match ty {
-        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::Bytes | Type::String => {
+        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
             format!("{out_var} = {in_expr}")
+        }
+        Type::Bytes => {
+            format!("{out_var} = base64.b64decode({in_expr})")
         }
         Type::List { item_type } => {
             let mut result = "".to_string();

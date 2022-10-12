@@ -25,6 +25,10 @@ if __name__ == "__main__":
             1: "hello_1",
             2: "hello_2",
         },
+        key_values={
+            "foo_key": b"foo_value",
+            "bar_key": b"bar_value",
+        },
     )
     print(simple_struct)
     print(simple_struct.to_dict())
