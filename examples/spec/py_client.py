@@ -27,3 +27,8 @@ if __name__ == "__main__":
         },
     )
     print(simple_struct)
+    print(simple_struct.to_dict())
+
+    import json
+
+    print(json.dumps(simple_struct.to_dict()))

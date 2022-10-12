@@ -1,6 +1,8 @@
 use crate::{Definition, FieldDef, Type};
 use std::fmt::Write;
 
+use super::utils;
+
 pub fn render(def: &Definition) -> anyhow::Result<String> {
     let mut result = String::new();
 
@@ -70,6 +72,9 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         }
                     }
                 }
+
+                let to_dict = generate_to_dict(&struct_def.fields)?;
+                writeln!(&mut result, "{}", utils::indent(&to_dict, 1))?;
             }
 
             crate::ModelType::NewType { inner_type } => {
@@ -117,4 +122,69 @@ fn py_type(ty: &Type) -> String {
         ),
         Type::Reference { target } => format!("'{}'", target),
     }
+}
+
+fn generate_to_dict(fields: &[FieldDef]) -> anyhow::Result<String> {
+    let mut result = "".to_string();
+    writeln!(&mut result, "def to_dict(self):")?;
+    writeln!(&mut result, "    result = {{}}")?;
+
+    for field in fields {
+        match &field.type_ {
+            Type::Unit => {
+                // pass
+            }
+            Type::Bytes => {
+                // todo, base64?
+                writeln!(
+                    &mut result,
+                    "    result[\"{field_name}\"] = self.{field_name}",
+                    field_name = field.name,
+                )?;
+            }
+            Type::I64 | Type::I8 | Type::Bool | Type::F64 | Type::String => {
+                writeln!(
+                    &mut result,
+                    "    result[\"{field_name}\"] = self.{field_name}",
+                    field_name = field.name,
+                )?;
+            }
+
+            Type::List { item_type } => {
+                let tmp_var_name = format!("{}_tmp", field.name);
+                let field_name = &field.name;
+
+                writeln!(&mut result, "    {tmp_var_name} = []")?;
+                writeln!(&mut result, "    for item in self.{field_name} or []:",)?;
+                writeln!(&mut result, "        {tmp_var_name}.append(item.to_dict())")?;
+                writeln!(&mut result, "    result[\"{field_name}\"] = {tmp_var_name}")?;
+            }
+            Type::Map {
+                key_type,
+                value_type,
+            } => {
+                let tmp_var_name = format!("{}_tmp", field.name);
+                let field_name = &field.name;
+
+                writeln!(&mut result, "    {tmp_var_name} = {{}}")?;
+                writeln!(
+                    &mut result,
+                    "    for key, item in (self.{field_name} or {{}}).items():",
+                )?;
+                writeln!(&mut result, "        {tmp_var_name}[key] = item.to_dict()")?;
+                writeln!(&mut result, "    result[\"{field_name}\"] = {tmp_var_name}")?;
+            }
+            Type::Reference { target } => {
+                let field_name = &field.name;
+                writeln!(
+                    &mut result,
+                    "    result[\"{field_name}\"] = self.{field_name}.to_dict()"
+                )?;
+            }
+        }
+    }
+
+    writeln!(&mut result, "    return result")?;
+
+    Ok(result)
 }
