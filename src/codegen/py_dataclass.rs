@@ -1,5 +1,5 @@
 use crate::{Definition, FieldDef, Type};
-use std::fmt::Write;
+use std::{borrow::Cow, fmt::Write};
 
 use super::utils::{self, indent};
 
@@ -304,7 +304,7 @@ fn from_dict_for_one_field(
             result
         }
         Type::Map {
-            key_type: _,
+            key_type,
             value_type,
         } => {
             let mut result = "".to_string();
@@ -312,7 +312,13 @@ fn from_dict_for_one_field(
             writeln!(&mut result, "for key, item in {in_expr}.items():")?;
             let from_dict_for_item = from_dict_for_one_field(value_type, "item", "item_tmp", def)?;
             writeln!(&mut result, "{}", indent(&from_dict_for_item, 1))?;
-            writeln!(&mut result, "    {out_var}[key] = item_tmp")?;
+            let key = if let Some(key_transform) = dict_key_transform(&key_type, "key") {
+                Cow::Owned(key_transform)
+            } else {
+                Cow::Borrowed("key")
+            };
+
+            writeln!(&mut result, "    {out_var}[{key}] = item_tmp")?;
             result
         }
         Type::Reference { target } => {
@@ -325,4 +331,13 @@ fn from_dict_for_one_field(
             }
         }
     })
+}
+
+/// for json, key must be str, json.dumps converts int to str automatically
+/// so we need to convert it back
+fn dict_key_transform(ty: &Type, op: &str) -> Option<String> {
+    match ty {
+        Type::I8 | Type::I64 => format!("int({})", op).into(),
+        _ => None,
+    }
 }

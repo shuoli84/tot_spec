@@ -32,6 +32,8 @@ if __name__ == "__main__":
     import json
 
     dict_value = simple_struct.to_dict()
-    print(json.dumps(dict_value))
-    value_back = SimpleStruct.from_dict(dict_value)
+    print(f"json: {json.dumps(dict_value)}")
+    dict_value_back = json.loads(json.dumps(dict_value))
+    value_back = SimpleStruct.from_dict(dict_value_back)
     print(value_back)
+    assert 1 in value_back.i8_to_string

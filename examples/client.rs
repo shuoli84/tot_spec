@@ -25,8 +25,8 @@ fn main() {
         "yaml output:\n{}",
         serde_yaml::to_string(&simple_struct).unwrap()
     );
-    println!(
-        "json output:\n{}",
-        serde_json::to_string_pretty(&simple_struct).unwrap()
-    );
+    let json_output = serde_json::to_string_pretty(&simple_struct).unwrap();
+    println!("json output:\n{json_output}",);
+    let value_back = serde_json::from_str::<SimpleStruct>(&json_output).unwrap();
+    println!("value back: {:?}", value_back);
 }

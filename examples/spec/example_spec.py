@@ -103,7 +103,7 @@ class SimpleStruct:
             i8_to_string = {}
             for key, item in item.items():
                 item_tmp = item
-                i8_to_string[key] = item_tmp
+                i8_to_string[int(key)] = item_tmp
             
         
         # key_values
