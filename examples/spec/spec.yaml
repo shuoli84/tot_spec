@@ -103,16 +103,7 @@ models:
           target: Number
       attributes: {}
       required: false
-- name: DeleteRequest
+- name: ResetRequest
   type:
     name: struct
     extend: Base
-    fields:
-    - name: numbers
-      type:
-        name: list
-        item_type:
-          name: ref
-          target: Number
-      attributes: {}
-      required: false

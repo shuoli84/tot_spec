@@ -50,6 +50,7 @@ impl ModelType {
 pub struct StructDef {
     #[serde(default)]
     pub extend: Option<String>,
+    #[serde(default)]
     pub fields: Vec<FieldDef>,
 }
 
