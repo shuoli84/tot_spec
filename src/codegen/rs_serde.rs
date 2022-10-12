@@ -205,6 +205,13 @@ mod tests {
                         )],
                     }),
                 },
+                ModelDef {
+                    name: "ResetRequest".into(),
+                    type_: ModelType::Struct(StructDef {
+                        extend: Some("Base".into()),
+                        fields: vec![],
+                    }),
+                },
             ],
             include_str!("fixtures/rs_serde/extend.rs"),
         );

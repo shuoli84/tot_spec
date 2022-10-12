@@ -15,3 +15,15 @@ impl Base for AddRequest {
         &self.request_id
     }
 }
+
+/// ResetRequest
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ResetRequest {
+    pub request_id: std::option::Option<std::string::String>,
+}
+
+impl Base for ResetRequest {
+    fn request_id(&self) -> &std::option::Option<std::string::String> {
+        &self.request_id
+    }
+}
