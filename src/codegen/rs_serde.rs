@@ -105,7 +105,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 )?;
                 writeln!(
                     &mut result,
-                    "pub struct {}({});",
+                    "pub struct {}(pub {});",
                     &model.name,
                     inner_type.rs_type()
                 )?;
