@@ -1,0 +1,99 @@
+models:
+  - name: SimpleStruct
+    type: struct
+    fields:
+      - name: i8_value
+        type: 
+          name: i8
+      - name: i64_value
+        type: 
+          name: i64
+      - name: f64_value
+        type: 
+          name: f64
+      - name: bytes_value
+        type: 
+          name: bytes # raw buffer
+      - name: string_value
+        type: 
+          name: string # utf8 string
+      - name: i8_list
+        type: 
+          name: list
+          item_type: i8
+      - name: i8_to_string
+        type: 
+          name: map
+          key_type: i8
+          value_type: string
+      - name: children
+        type: 
+          name: list
+          item_type: SimpleStruct
+
+  - name: Container
+    type: new_type
+    desc: equals to `struct Container(Vec<SimpleStruct>)`
+    alias:
+      type: list
+      item_type: SimpleStruct
+
+  - name: Base
+    # base type is virtual
+    type: base
+    fields:
+      - name: request_id
+        type: i64
+
+  - name: AddRequest
+    extends: Base
+    fields:
+      - name: numbers
+        type: list<i64>
+
+  - name: AddResponse
+    fields:
+      - name: result
+        type: i64
+
+  - name: Operator
+    type: enum
+    variants:
+      - Add
+      - Substract
+      - Multiply
+      - Divide
+
+  - name: Number
+    type: enum
+    variants:
+      - name: I8
+        payload: i8
+      - name: I64
+        payload: i64
+      - name: F64
+        payload: f64
+
+  - name: CalculateRequest
+    extends: Base
+    fields:
+      - name: oprant_1
+        type: Number
+      - name: oprant_2
+        type: Number
+      - name: op
+        type: Operator
+    
+  - name: CalculateResponse
+    fields:
+      - name: result
+        type: Number
+
+  - name: KeyValueType
+    desc: alias to map<string, bytes>, in rust it is `struct KeyValueType(Map<String, Vec<u8>>)`
+    type: new_type
+    alias:
+      type: map
+      rs_type: std::collections::BTreeMap
+      key_type: string
+      value_type: bytes
