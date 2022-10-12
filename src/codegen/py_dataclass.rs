@@ -234,6 +234,8 @@ fn generate_from_dict(
 
         fields_init_codes.push(format!("{field_name} = {field_name},"));
 
+        writeln!(&mut code_block, "\n# {field_name}")?;
+
         match &field.type_ {
             Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String | Type::Bytes => {
                 if field.required {
@@ -246,14 +248,29 @@ fn generate_from_dict(
                 }
             }
             ty => {
-                let from_dict_code_block =
-                    from_dict_for_one_field(ty, &format!("d['{field_name}']"), field_name, def)?;
-                writeln!(&mut code_block, "{}", from_dict_code_block)?;
+                if field.required {
+                    let from_dict_code_block = from_dict_for_one_field(
+                        ty,
+                        &format!("d['{field_name}']"),
+                        field_name,
+                        def,
+                    )?;
+
+                    writeln!(&mut code_block, "{}", from_dict_code_block)?;
+                } else {
+                    writeln!(&mut code_block, "{field_name} = None")?;
+                    writeln!(&mut code_block, "if item := d.get('{field_name}'):")?;
+
+                    let from_dict_code_block =
+                        from_dict_for_one_field(ty, "item", field_name, def)?;
+
+                    writeln!(&mut code_block, "{}", indent(&from_dict_code_block, 1))?;
+                }
             }
         }
     }
 
-    writeln!(&mut code_block, "{model_name}(")?;
+    writeln!(&mut code_block, "return {model_name}(")?;
     for field_init_code in fields_init_codes {
         writeln!(&mut code_block, "{}", indent(&field_init_code, 1))?;
     }
