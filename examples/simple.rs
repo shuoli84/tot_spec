@@ -1,8 +1,5 @@
-pub mod models;
-pub use models::*;
-
-mod renders;
-use renders::rs_serde::render;
+use tot_spec::codegen::rs_serde;
+use tot_spec::*;
 
 fn main() {
     let def = Definition {
@@ -69,5 +66,5 @@ fn main() {
             },
         ],
     };
-    println!("{}", render(&def).unwrap());
+    println!("{}", rs_serde::render(&def).unwrap());
 }
