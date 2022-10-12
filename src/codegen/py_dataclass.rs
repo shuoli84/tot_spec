@@ -104,7 +104,6 @@ fn py_type_for_field(field: &FieldDef) -> String {
 
 fn py_type(ty: &Type) -> String {
     match ty {
-        Type::Unit => "None".into(),
         Type::Bool => "bool".into(),
         Type::I8 | Type::I64 => "int".into(),
         Type::F64 => "float".into(),
@@ -134,9 +133,6 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
         writeln!(&mut result, "\n    # {}", field.name)?;
 
         match &field.type_ {
-            Type::Unit => {
-                // pass
-            }
             Type::Bytes => {
                 // todo, base64?
                 writeln!(
@@ -209,7 +205,7 @@ fn to_dict_for_one_field(
     def: &Definition,
 ) -> anyhow::Result<String> {
     Ok(match ty {
-        Type::Unit | Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::Bytes | Type::String => {
+        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::Bytes | Type::String => {
             format!("{out_var} = {in_var}")
         }
         Type::List { item_type } => {

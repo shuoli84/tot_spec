@@ -127,8 +127,6 @@ impl FieldDef {
 #[serde(tag = "name")]
 /// All types supported
 pub enum Type {
-    #[serde(rename = "unit")]
-    Unit,
     #[serde(rename = "bool")]
     Bool,
     #[serde(rename = "i8")]
@@ -176,7 +174,6 @@ impl Type {
 impl Type {
     pub fn rs_type(&self) -> String {
         match self {
-            Type::Unit => "()".into(),
             Type::Bool => "bool".into(),
             Type::I8 => "i8".into(),
             Type::I64 => "i64".into(),
