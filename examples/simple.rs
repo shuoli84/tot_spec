@@ -34,7 +34,7 @@ fn main() {
             },
             ModelDef {
                 name: "Base".into(),
-                type_: ModelType::Struct(StructDef {
+                type_: ModelType::Virtual(StructDef {
                     extend: None,
                     fields: vec![FieldDef::new("request_id", Type::String)],
                 }),
@@ -56,6 +56,16 @@ fn main() {
             },
             ModelDef {
                 name: "AddRequest".into(),
+                type_: ModelType::Struct(StructDef {
+                    extend: Some("Base".into()),
+                    fields: vec![FieldDef::new(
+                        "numbers",
+                        Type::list(Type::reference("Number")),
+                    )],
+                }),
+            },
+            ModelDef {
+                name: "DeleteRequest".into(),
                 type_: ModelType::Struct(StructDef {
                     extend: Some("Base".into()),
                     fields: vec![FieldDef::new(

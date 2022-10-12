@@ -39,8 +39,7 @@ models:
       item_type: SimpleStruct
 
   - name: Base
-    # base type is virtual
-    type: base
+    type: virtual
     fields:
       - name: request_id
         type: i64
