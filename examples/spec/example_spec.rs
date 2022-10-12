@@ -9,6 +9,7 @@ pub struct SimpleStruct {
     pub bytes_value: std::option::Option<std::vec::Vec<u8>>,
     pub i8_to_string: std::option::Option<std::collections::BTreeMap::<i8, std::string::String>>,
     pub key_values: std::option::Option<KeyValue>,
+    pub children_container: std::option::Option<Container>,
     pub children: std::option::Option<std::vec::Vec<SimpleStruct>>,
 }
 
@@ -45,14 +46,13 @@ impl Base for AddRequest {
     }
 }
 
-/// DeleteRequest
+/// ResetRequest
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct DeleteRequest {
+pub struct ResetRequest {
     pub request_id: std::option::Option<std::string::String>,
-    pub numbers: std::option::Option<std::vec::Vec<Number>>,
 }
 
-impl Base for DeleteRequest {
+impl Base for ResetRequest {
     fn request_id(&self) -> &std::option::Option<std::string::String> {
         &self.request_id
     }

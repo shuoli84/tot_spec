@@ -27,7 +27,6 @@ models:
     - name: bytes_value
       type:
         name: bytes
-      attributes: {}
       required: false
     - name: i8_to_string
       type:

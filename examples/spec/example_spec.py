@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import typing
-import base64
 
 
 # SimpleStruct
@@ -51,7 +50,7 @@ class SimpleStruct:
         else:
             key_values_tmp = {}
             for key, item in self.key_values.items():
-                item_tmp = base64.b64encode(item).decode('ascii')
+                item_tmp = list(item)
                 key_values_tmp[key] = item_tmp
             
             result["key_values"] = key_values_tmp
@@ -98,7 +97,7 @@ class SimpleStruct:
         # bytes_value
         bytes_value = None
         if item := d.get('bytes_value'):
-            bytes_value = base64.b64decode(item)
+            bytes_value = bytes(item)
         
         # i8_to_string
         i8_to_string = None
@@ -114,7 +113,7 @@ class SimpleStruct:
         if item := d.get('key_values'):
             key_values = {}
             for key, item in item.items():
-                item_tmp = base64.b64decode(item)
+                item_tmp = bytes(item)
                 key_values[key] = item_tmp
             
         

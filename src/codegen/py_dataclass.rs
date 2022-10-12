@@ -8,7 +8,6 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
     writeln!(&mut result, "from dataclasses import dataclass")?;
     writeln!(&mut result, "import typing")?;
-    writeln!(&mut result, "import base64")?;
 
     writeln!(&mut result, "")?;
 
@@ -188,7 +187,7 @@ fn to_dict_for_one_field(
             format!("{out_var} = {in_expr}")
         }
         Type::Bytes => {
-            format!("{out_var} = base64.b64encode({in_expr}).decode('ascii')")
+            format!("{out_var} = list({in_expr})")
         }
         Type::List { item_type } => {
             let mut result = "".to_string();
@@ -254,10 +253,7 @@ fn generate_from_dict(
             }
             ty @ Type::Bytes => {
                 if field.required {
-                    writeln!(
-                        &mut code_block,
-                        "{field_name} = base64.b64decode(d['{field_name}'])"
-                    )?;
+                    writeln!(&mut code_block, "{field_name} = bytes(d['{field_name}'])")?;
                 } else {
                     writeln!(&mut code_block, "{field_name} = None")?;
                     writeln!(&mut code_block, "if item := d.get('{field_name}'):")?;
@@ -316,7 +312,7 @@ fn from_dict_for_one_field(
             format!("{out_var} = {in_expr}")
         }
         Type::Bytes => {
-            format!("{out_var} = base64.b64decode({in_expr})")
+            format!("{out_var} = bytes({in_expr})")
         }
         Type::List { item_type } => {
             let mut result = "".to_string();

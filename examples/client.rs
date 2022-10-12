@@ -9,7 +9,7 @@ fn main() {
         i8_value: 8,
         i64_value: 32.into(),
         string_value: Some("foo".into()),
-        bytes_value: Some(vec![0u8, 1u8]),
+        bytes_value: Some(vec![0u8, 1u8].into()),
         i8_to_string: Some(BTreeMap::from([
             (1i8, "foo".to_string()),
             (2i8, "bar".to_string()),
@@ -19,6 +19,7 @@ fn main() {
             ("bar_key".to_string(), b"bar_value".to_vec()),
         ]))),
         children: Some(vec![]),
+        children_container: None,
     };
     println!("dbg output:\n{:#?}", simple_struct);
     println!(
