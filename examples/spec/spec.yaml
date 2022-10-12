@@ -1,0 +1,109 @@
+models:
+- name: SimpleStruct
+  type:
+    name: struct
+    extend: null
+    fields:
+    - name: bool_value
+      type:
+        name: bool
+      attributes: {}
+      required: true
+    - name: i8_value
+      type:
+        name: i8
+      attributes: {}
+      required: true
+    - name: i64_value
+      type:
+        name: i64
+      attributes: {}
+      required: false
+    - name: string_value
+      type:
+        name: string
+      attributes: {}
+      required: false
+    - name: bytes_value
+      type:
+        name: bytes
+      attributes: {}
+      required: false
+    - name: i8_to_string
+      type:
+        name: map
+        key_type:
+          name: i8
+        value_type:
+          name: string
+      attributes:
+        rs_type: std::collections::BTreeMap::<i8, std::string::String>
+      required: false
+    - name: key_values
+      type:
+        name: ref
+        target: KeyValue
+      attributes: {}
+      required: false
+    - name: children
+      type:
+        name: list
+        item_type:
+          name: ref
+          target: SimpleStruct
+      attributes: {}
+      required: false
+- name: KeyValue
+  type:
+    name: new_type
+    inner_type:
+      name: map
+      key_type:
+        name: string
+      value_type:
+        name: bytes
+- name: Container
+  type:
+    name: new_type
+    inner_type:
+      name: list
+      item_type:
+        name: ref
+        target: SimpleStruct
+- name: Base
+  type:
+    name: virtual
+    extend: null
+    fields:
+    - name: request_id
+      type:
+        name: string
+      attributes: {}
+      required: false
+- name: Number
+  type:
+    name: enum
+    variants:
+    - name: I64
+      playload_type:
+        name: i64
+    - name: F64
+      playload_type:
+        name: f64
+- name: AddRequest
+  type:
+    name: struct
+    extend: Base
+    fields:
+    - name: numbers
+      type:
+        name: list
+        item_type:
+          name: ref
+          target: Number
+      attributes: {}
+      required: false
+- name: ResetRequest
+  type:
+    name: struct
+    extend: Base
