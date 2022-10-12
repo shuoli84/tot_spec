@@ -7,6 +7,17 @@ pub struct Definition {
     pub models: Vec<ModelDef>,
 }
 
+impl Definition {
+    pub fn get_model(&self, name: &str) -> Option<&ModelDef> {
+        for model in self.models.iter() {
+            if model.name.eq(name) {
+                return Some(model);
+            }
+        }
+        None
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelDef {
     pub name: String,
@@ -21,6 +32,8 @@ pub enum ModelType {
     Enum { variants: Vec<VariantDef> },
     #[serde(rename = "struct")]
     Struct(StructDef),
+    #[serde(rename = "virtual")]
+    Virtual(StructDef),
     #[serde(rename = "new_type")]
     NewType { inner_type: Box<Type> },
 }
@@ -100,7 +113,7 @@ impl FieldDef {
         if self.required {
             ty
         } else {
-            format!("std::option::Option::<{}>", ty)
+            format!("std::option::Option<{}>", ty)
         }
     }
 }
@@ -163,15 +176,15 @@ impl Type {
             Type::I8 => "i8".into(),
             Type::I64 => "i64".into(),
             Type::F64 => "f64".into(),
-            Type::Bytes => "std::vec::Vec::<u8>".into(),
+            Type::Bytes => "std::vec::Vec<u8>".into(),
             Type::String => "std::string::String".into(),
-            Type::List { item_type } => format!("std::vec::Vec::<{}>", item_type.rs_type()),
+            Type::List { item_type } => format!("std::vec::Vec<{}>", item_type.rs_type()),
             Type::Map {
                 key_type,
                 value_type,
             } => {
                 format!(
-                    "std::collections::HashMap::<{}, {}>",
+                    "std::collections::HashMap<{}, {}>",
                     key_type.rs_type(),
                     value_type.rs_type()
                 )
