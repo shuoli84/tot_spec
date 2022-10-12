@@ -82,7 +82,7 @@ impl FieldDef {
     /// # Examples
     ///
     /// ```rust
-    /// use dummy_spec::{FieldDef, Type};
+    /// use tot_spec::{FieldDef, Type};
     ///
     /// let field = FieldDef::new("test_field", Type::I8)
     ///     .with_attribute("test_attr", "attr_value");
