@@ -1,8 +1,17 @@
 # Introduction
 
-tot_spec is a language argonostic model definition util. It is mainly used to define json models cross boundaries, e.g, api server and client, sdk rust and swift etc.
+tot_spec is a language agonostic model definition util. It is mainly used to define json models cross boundaries, e.g, api server and client, sdk rust and swift etc.
 
 # Examples
+
+## Run examples
+```bash
+# generate rust client code
+cargo run --example codegen
+
+# generate python client code
+cargo run --example codegen -- -c "py_dataclass" -o examples/spec/example_spec.py
+```
 
 ## A nested struct
 
@@ -104,7 +113,33 @@ Use virtual type to define common part cross models.
 In rust code, Base will be mapped to a trait as:
 
 ```rust
+/// Base
 pub trait Base {
-    fn request_id(&self) -> &std::string::String;
+    fn request_id(&self) -> &std::option::Option<std::string::String>;
+}
+
+/// AddRequest
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct AddRequest {
+    pub request_id: std::option::Option<std::string::String>,
+    pub numbers: std::option::Option<std::vec::Vec<Number>>,
+}
+
+impl Base for AddRequest {
+    fn request_id(&self) -> &std::option::Option<std::string::String> {
+        &self.request_id
+    }
+}
+
+/// ResetRequest
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ResetRequest {
+    pub request_id: std::option::Option<std::string::String>,
+}
+
+impl Base for ResetRequest {
+    fn request_id(&self) -> &std::option::Option<std::string::String> {
+        &self.request_id
+    }
 }
 ```
