@@ -1,6 +1,5 @@
+use crate::models::Definition;
 use std::fmt::Write;
-
-use crate::Definition;
 
 pub fn render(def: &Definition) -> anyhow::Result<String> {
     let mut result = String::new();
