@@ -57,10 +57,14 @@ pub struct StructDef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldDef {
     pub name: String,
+
     #[serde(rename = "type")]
     pub type_: Type,
+
+    #[serde(default)]
     pub attributes: BTreeMap<String, String>,
 
+    #[serde(default)]
     /// whether this field is required
     pub required: bool,
 }

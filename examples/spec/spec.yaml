@@ -45,6 +45,10 @@ models:
         target: KeyValue
       attributes: {}
       required: false
+    - name: children_container
+      type:
+        name: ref
+        target: Container
     - name: children
       type:
         name: list
