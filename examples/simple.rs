@@ -1,4 +1,3 @@
-use tot_spec::codegen::rs_serde;
 use tot_spec::*;
 
 fn main() {
@@ -76,5 +75,5 @@ fn main() {
             },
         ],
     };
-    println!("{}", rs_serde::render(&def).unwrap());
+    println!("{}", serde_yaml::to_string(&def).unwrap());
 }
