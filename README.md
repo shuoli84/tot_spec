@@ -1,8 +1,17 @@
 # Introduction
 
-tot_spec is a language argonostic model definition util. It is mainly used to define json models cross boundaries, e.g, api server and client, sdk rust and swift etc.
+tot_spec is a language agonostic model definition util. It is mainly used to define json models cross boundaries, e.g, api server and client, sdk rust and swift etc.
 
 # Examples
+
+## Run examples
+```bash
+# generate rust client code
+cargo run --example codegen
+
+# generate python client code
+cargo run --example codegen -- -c "py_dataclass" -o examples/spec/example_spec.py
+```
 
 ## A nested struct
 
