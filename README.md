@@ -104,7 +104,33 @@ Use virtual type to define common part cross models.
 In rust code, Base will be mapped to a trait as:
 
 ```rust
+/// Base
 pub trait Base {
-    fn request_id(&self) -> &std::string::String;
+    fn request_id(&self) -> &std::option::Option<std::string::String>;
+}
+
+/// AddRequest
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct AddRequest {
+    pub request_id: std::option::Option<std::string::String>,
+    pub numbers: std::option::Option<std::vec::Vec<Number>>,
+}
+
+impl Base for AddRequest {
+    fn request_id(&self) -> &std::option::Option<std::string::String> {
+        &self.request_id
+    }
+}
+
+/// ResetRequest
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ResetRequest {
+    pub request_id: std::option::Option<std::string::String>,
+}
+
+impl Base for ResetRequest {
+    fn request_id(&self) -> &std::option::Option<std::string::String> {
+        &self.request_id
+    }
 }
 ```
