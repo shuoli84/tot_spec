@@ -26,6 +26,8 @@ fn main() {
         codegen::rs_serde::render(&def).unwrap()
     } else if args.codegen.eq("py_dataclass") {
         codegen::py_dataclass::render(&def).unwrap()
+    } else if args.codegen.eq("swift_codable") {
+        codegen::swift_codable::render(&def).unwrap()
     } else {
         unimplemented!()
     };

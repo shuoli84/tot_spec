@@ -43,11 +43,11 @@ fn main() {
                     variants: vec![
                         VariantDef {
                             name: "I64".into(),
-                            playload_type: Type::I64,
+                            payload_type: Type::I64.into(),
                         },
                         VariantDef {
                             name: "F64".into(),
-                            playload_type: Type::F64,
+                            payload_type: Type::F64.into(),
                         },
                     ],
                 },

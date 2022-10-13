@@ -1,5 +1,5 @@
 use crate::{Definition, FieldDef, Type};
-use std::{borrow::Cow, fmt::Write};
+use std::fmt::Write;
 
 use super::utils::{self, indent};
 
@@ -35,11 +35,11 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         enum_name = model.name,
                         variant_name = variant.name
                     )?;
-                    writeln!(
-                        &mut result,
-                        "    payload: {}",
-                        py_type(&variant.playload_type),
-                    )?;
+                    if let Some(payload_type) = &variant.payload_type {
+                        writeln!(&mut result, "    payload: {}", py_type(&payload_type))?;
+                    } else {
+                        writeln!(&mut result, "    pass")?;
+                    }
                 }
             }
             crate::ModelType::Struct(struct_def) | crate::ModelType::Virtual(struct_def) => {
@@ -332,13 +332,4 @@ fn from_dict_for_one_field(
             }
         }
     })
-}
-
-/// for json, key must be str, json.dumps converts int to str automatically
-/// so we need to convert it back
-fn dict_key_transform(ty: &Type, op: &str) -> Option<String> {
-    match ty {
-        Type::I8 | Type::I64 => format!("int({})", op).into(),
-        _ => None,
-    }
 }

@@ -16,12 +16,16 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 writeln!(&mut result, "pub enum {} {{", &model.name)?;
 
                 for variant in variants {
-                    writeln!(
-                        &mut result,
-                        "    {}({}),",
-                        variant.name,
-                        variant.playload_type.rs_type()
-                    )?;
+                    if let Some(payload_type) = &variant.payload_type {
+                        writeln!(
+                            &mut result,
+                            "    {}({}),",
+                            variant.name,
+                            payload_type.rs_type()
+                        )?;
+                    } else {
+                        writeln!(&mut result, "    {},", variant.name,)?;
+                    }
                 }
 
                 writeln!(&mut result, "}}")?;
@@ -179,11 +183,11 @@ mod tests {
                     variants: vec![
                         VariantDef {
                             name: "I64".into(),
-                            playload_type: Type::I64,
+                            payload_type: Type::I64.into(),
                         },
                         VariantDef {
                             name: "F64".into(),
-                            playload_type: Type::F64,
+                            payload_type: Type::F64.into(),
                         },
                     ],
                 },

@@ -86,10 +86,10 @@ models:
     name: enum
     variants:
     - name: I64
-      playload_type:
+      payload_type:
         name: i64
     - name: F64
-      playload_type:
+      payload_type:
         name: f64
 - name: AddRequest
   type:

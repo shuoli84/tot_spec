@@ -191,5 +191,5 @@ impl Type {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantDef {
     pub name: String,
-    pub playload_type: Type,
+    pub payload_type: Option<Type>,
 }
