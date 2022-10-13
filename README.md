@@ -7,10 +7,10 @@ tot_spec is a language agonostic model definition util. It is mainly used to def
 ## Run examples
 ```bash
 # generate rust client code
-cargo run --example codegen
+cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "rs_serde" -o "examples/spec/example_spec.rs
 
 # generate python client code
-cargo run --example codegen -- -c "py_dataclass" -o examples/spec/example_spec.py
+cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "py_dataclass" -o examples/spec/example_spec.py
 ```
 
 ## A nested struct
@@ -41,6 +41,7 @@ models:
         name: bytes
 
     # also container types including Map and List
+    # now map keytype is restricted to string only
     - name: string_to_string
       type:
         name: map
