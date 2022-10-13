@@ -10,7 +10,7 @@ class SimpleStruct:
     i64_value: typing.Optional[int] = None
     string_value: typing.Optional[str] = None
     bytes_value: typing.Optional[bytes] = None
-    i8_to_string: typing.Optional[typing.Dict[int, str]] = None
+    string_to_string: typing.Optional[typing.Dict[str, str]] = None
     key_values: typing.Optional['KeyValue'] = None
     children_container: typing.Optional['Container'] = None
     children: typing.Optional[typing.List['SimpleStruct']] = None
@@ -33,16 +33,16 @@ class SimpleStruct:
         # bytes_value
         result["bytes_value"] = self.bytes_value
     
-        # i8_to_string
-        if self.i8_to_string is None:
-            result['i8_to_string'] = None
+        # string_to_string
+        if self.string_to_string is None:
+            result['string_to_string'] = None
         else:
-            i8_to_string_tmp = {}
-            for key, item in self.i8_to_string.items():
+            string_to_string_tmp = {}
+            for key, item in self.string_to_string.items():
                 item_tmp = item
-                i8_to_string_tmp[key] = item_tmp
+                string_to_string_tmp[key] = item_tmp
             
-            result["i8_to_string"] = i8_to_string_tmp
+            result["string_to_string"] = string_to_string_tmp
     
         # key_values
         if self.key_values is None:
@@ -99,13 +99,13 @@ class SimpleStruct:
         if item := d.get('bytes_value'):
             bytes_value = bytes(item)
         
-        # i8_to_string
-        i8_to_string = None
-        if item := d.get('i8_to_string'):
-            i8_to_string = {}
+        # string_to_string
+        string_to_string = None
+        if item := d.get('string_to_string'):
+            string_to_string = {}
             for key, item in item.items():
                 item_tmp = item
-                i8_to_string[int(key)] = item_tmp
+                string_to_string[key] = item_tmp
             
         
         # key_values
@@ -140,7 +140,7 @@ class SimpleStruct:
             i64_value = i64_value,
             string_value = string_value,
             bytes_value = bytes_value,
-            i8_to_string = i8_to_string,
+            string_to_string = string_to_string,
             key_values = key_values,
             children_container = children_container,
             children = children,

@@ -21,9 +21,9 @@ if __name__ == "__main__":
     simple_struct = SimpleStruct(
         True,
         1,
-        i8_to_string={
-            1: "hello_1",
-            2: "hello_2",
+        string_to_string={
+            "1": "hello_1",
+            "2": "hello_2",
         },
         key_values={
             "foo_key": b"foo_value",
@@ -40,4 +40,4 @@ if __name__ == "__main__":
     dict_value_back = json.loads(json.dumps(dict_value))
     value_back = SimpleStruct.from_dict(dict_value_back)
     print(value_back)
-    assert 1 in value_back.i8_to_string
+    assert "1" in value_back.string_to_string

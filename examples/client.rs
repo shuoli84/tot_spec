@@ -10,9 +10,9 @@ fn main() {
         i64_value: 32.into(),
         string_value: Some("foo".into()),
         bytes_value: Some(vec![0u8, 1u8].into()),
-        i8_to_string: Some(BTreeMap::from([
-            (1i8, "foo".to_string()),
-            (2i8, "bar".to_string()),
+        string_to_string: Some(BTreeMap::from([
+            ("1".into(), "foo".to_string()),
+            ("2".into(), "bar".to_string()),
         ])),
         key_values: Some(KeyValue(HashMap::from([
             ("foo_key".to_string(), b"foo_value".to_vec()),

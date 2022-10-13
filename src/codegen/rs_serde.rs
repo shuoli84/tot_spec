@@ -147,11 +147,10 @@ mod tests {
                         FieldDef::new("i64_value", Type::I64),
                         FieldDef::new("string_value", Type::String),
                         FieldDef::new("bytes_value", Type::Bytes),
-                        FieldDef::new("i8_to_string", Type::map(Type::I8, Type::String))
-                            .with_attribute(
-                                "rs_type",
-                                "std::collections::BTreeMap<i8, std::string::String>",
-                            ),
+                        FieldDef::new("i8_to_string", Type::map(Type::String)).with_attribute(
+                            "rs_type",
+                            "std::collections::BTreeMap<std::string::String, std::string::String>",
+                        ),
                         FieldDef::new("key_values", Type::reference("KeyValue")),
                         FieldDef::new("children", Type::list(Type::reference("SimpleStruct"))),
                     ],
@@ -162,7 +161,7 @@ mod tests {
         test_model_codegen(
             ModelDef {
                 name: "KeyValue".into(),
-                type_: ModelType::new_type(Type::map(Type::String, Type::Bytes)),
+                type_: ModelType::new_type(Type::map(Type::Bytes)),
             },
             include_str!("fixtures/rs_serde/key_value.rs"),
         );

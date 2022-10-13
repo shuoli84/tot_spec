@@ -117,14 +117,7 @@ fn py_type(ty: &Type) -> String {
         Type::List { item_type } => {
             format!("typing.List[{}]", py_type(item_type))
         }
-        Type::Map {
-            key_type,
-            value_type,
-        } => format!(
-            "typing.Dict[{}, {}]",
-            py_type(key_type),
-            py_type(value_type)
-        ),
+        Type::Map { value_type } => format!("typing.Dict[str, {}]", py_type(value_type)),
         Type::Reference { target } => format!("'{}'", target),
     }
 }
@@ -198,10 +191,7 @@ fn to_dict_for_one_field(
             writeln!(&mut result, "    {out_var}.append(item_tmp)")?;
             result
         }
-        Type::Map {
-            key_type: _,
-            value_type,
-        } => {
+        Type::Map { value_type } => {
             let mut result = "".to_string();
             writeln!(&mut result, "{out_var} = {{}}",)?;
             writeln!(&mut result, "for key, item in {in_expr}.items():")?;
@@ -323,22 +313,13 @@ fn from_dict_for_one_field(
             writeln!(&mut result, "    {out_var}.append(item_tmp)")?;
             result
         }
-        Type::Map {
-            key_type,
-            value_type,
-        } => {
+        Type::Map { value_type } => {
             let mut result = "".to_string();
             writeln!(&mut result, "{out_var} = {{}}")?;
             writeln!(&mut result, "for key, item in {in_expr}.items():")?;
             let from_dict_for_item = from_dict_for_one_field(value_type, "item", "item_tmp", def)?;
             writeln!(&mut result, "{}", indent(&from_dict_for_item, 1))?;
-            let key = if let Some(key_transform) = dict_key_transform(&key_type, "key") {
-                Cow::Owned(key_transform)
-            } else {
-                Cow::Borrowed("key")
-            };
-
-            writeln!(&mut result, "    {out_var}[{key}] = item_tmp")?;
+            writeln!(&mut result, "    {out_var}[key] = item_tmp")?;
             result
         }
         Type::Reference { target } => {

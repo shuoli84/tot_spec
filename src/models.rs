@@ -142,10 +142,7 @@ pub enum Type {
     #[serde(rename = "list")]
     List { item_type: Box<Type> },
     #[serde(rename = "map")]
-    Map {
-        key_type: Box<Type>,
-        value_type: Box<Type>,
-    },
+    Map { value_type: Box<Type> },
     #[serde(rename = "ref")]
     Reference { target: String },
 }
@@ -157,9 +154,8 @@ impl Type {
         }
     }
 
-    pub fn map(key_type: Type, value_type: Type) -> Self {
+    pub fn map(value_type: Type) -> Self {
         Self::Map {
-            key_type: key_type.into(),
             value_type: value_type.into(),
         }
     }
@@ -181,13 +177,9 @@ impl Type {
             Type::Bytes => "std::vec::Vec<u8>".into(),
             Type::String => "std::string::String".into(),
             Type::List { item_type } => format!("std::vec::Vec<{}>", item_type.rs_type()),
-            Type::Map {
-                key_type,
-                value_type,
-            } => {
+            Type::Map { value_type } => {
                 format!(
-                    "std::collections::HashMap<{}, {}>",
-                    key_type.rs_type(),
+                    "std::collections::HashMap<std::string::String, {}>",
                     value_type.rs_type()
                 )
             }

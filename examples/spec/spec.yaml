@@ -28,15 +28,13 @@ models:
       type:
         name: bytes
       required: false
-    - name: i8_to_string
+    - name: string_to_string
       type:
         name: map
-        key_type:
-          name: i8
         value_type:
           name: string
       attributes:
-        rs_type: std::collections::BTreeMap::<i8, std::string::String>
+        rs_type: std::collections::BTreeMap::<std::string::String, std::string::String>
       required: false
     - name: key_values
       type:

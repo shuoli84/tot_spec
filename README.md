@@ -41,16 +41,14 @@ models:
         name: bytes
 
     # also container types including Map and List
-    - name: i8_to_string
+    - name: string_to_string
       type:
         name: map
-        key_type:
-          name: i8
         value_type:
           name: string
       attributes:
         # use rs_type attibute to mark underlying type as BTreeMap
-        rs_type: std::collections::BTreeMap::<i8, std::string::String>
+        rs_type: std::collections::BTreeMap::<std::string::String, std::string::String>
     - name: key_values
       type:
         # reference other types defined in spec
