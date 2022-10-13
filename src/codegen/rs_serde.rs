@@ -129,7 +129,13 @@ mod tests {
         fn test_models_codegen(models: Vec<ModelDef>, code: &str) {
             let definition = Definition { models };
             let rendered = super::render(&definition).unwrap();
-            if !rendered.as_str().trim().eq(code.trim()) {
+            let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
+            let code_ast = syn::parse_file(&mut code.to_string()).unwrap();
+
+            let rendered_pretty = prettyplease::unparse(&rendered_ast);
+            let code_pretty = prettyplease::unparse(&code_ast);
+
+            if rendered_pretty.ne(&code_pretty) {
                 println!("=== rendered:\n{}", rendered.as_str().trim());
                 println!("=== expected:\n{}", code.trim());
                 assert!(false, "code not match");
@@ -147,7 +153,7 @@ mod tests {
                         FieldDef::new("i64_value", Type::I64),
                         FieldDef::new("string_value", Type::String),
                         FieldDef::new("bytes_value", Type::Bytes),
-                        FieldDef::new("i8_to_string", Type::map(Type::String)).with_attribute(
+                        FieldDef::new("string_map", Type::map(Type::String)).with_attribute(
                             "rs_type",
                             "std::collections::BTreeMap<std::string::String, std::string::String>",
                         ),
