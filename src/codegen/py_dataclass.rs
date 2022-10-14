@@ -15,7 +15,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
     writeln!(&mut result, "")?;
 
     for model in def.models.iter() {
-        writeln!(&mut result, "\n# {}", model.name)?;
+        let model_name = &model.name;
+        writeln!(&mut result, "\n# {model_name}")?;
 
         match &model.type_ {
             // python has no built in enum, so we generate base class
@@ -139,7 +140,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     writeln!(&mut result, "{}", variant_code)?;
                 }
             }
-            crate::ModelType::Struct(struct_def) | crate::ModelType::Virtual(struct_def) => {
+            crate::ModelType::Struct(struct_def) => {
                 writeln!(&mut result, "@dataclass")?;
 
                 if let Some(virtual_name) = &struct_def.extend {
@@ -148,10 +149,24 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     writeln!(&mut result, "class {}:", model.name)?;
                 };
 
-                if struct_def.fields.is_empty() {
+                let mut fields = vec![];
+                if let Some(base) = &struct_def.extend {
+                    let base_model = def.get_model(&base).unwrap();
+                    match &base_model.type_ {
+                        crate::ModelType::Virtual(struct_def) => {
+                            fields.extend(struct_def.fields.clone());
+                        }
+                        _ => {
+                            anyhow::bail!("only extend for virtual");
+                        }
+                    }
+                }
+                fields.extend(struct_def.fields.clone());
+
+                if fields.is_empty() {
                     writeln!(&mut result, "    pass")?;
                 } else {
-                    for field in struct_def.fields.iter() {
+                    for field in fields.iter() {
                         if field.required {
                             writeln!(
                                 &mut result,
@@ -172,12 +187,24 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 }
 
                 writeln!(&mut result, "")?;
-                let to_dict = generate_to_dict(&struct_def.fields, &def)?;
+                let to_dict = generate_to_dict(&fields, &def)?;
                 writeln!(&mut result, "{}", utils::indent(&to_dict, 1))?;
 
                 writeln!(&mut result, "")?;
-                let from_dict = generate_from_dict(&model.name, &struct_def.fields, &def)?;
+                let from_dict = generate_from_dict(&model.name, &fields, &def)?;
                 writeln!(&mut result, "{}", utils::indent(&from_dict, 1))?;
+            }
+
+            crate::ModelType::Virtual(..) => {
+                writeln!(&mut result, "class {model_name}(abc.ABC):")?;
+                writeln!(&mut result, "    pass")?;
+                writeln!(&mut result, "")?;
+                writeln!(&mut result, "    @staticmethod")?;
+                writeln!(&mut result, "    @abc.abstractmethod")?;
+                writeln!(&mut result, "    def from_dict(d): pass")?;
+                writeln!(&mut result, "")?;
+                writeln!(&mut result, "    @abc.abstractmethod")?;
+                writeln!(&mut result, "    def to_dict(self): pass")?;
             }
 
             crate::ModelType::NewType { inner_type } => {

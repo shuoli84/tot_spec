@@ -257,36 +257,27 @@ class Number_RealNumber(Number):
 
 
 # BaseRequest
+class BaseRequest(abc.ABC):
+    pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def from_dict(d): pass
+
+    @abc.abstractmethod
+    def to_dict(self): pass
+
+# AddRequest
 @dataclass
-class BaseRequest:
+class AddRequest(BaseRequest):
     request_id: typing.Optional[str] = None
+    numbers: typing.Optional[typing.List["Number"]] = None
 
     def to_dict(self):
         result = {}
     
         # request_id
         result["request_id"] = self.request_id
-        return result
-    
-
-    @staticmethod
-    def from_dict(d):
-        
-        # request_id
-        request_id = d.get("request_id", None)
-        return BaseRequest(
-            request_id = request_id,
-        )
-        
-    
-
-# AddRequest
-@dataclass
-class AddRequest(BaseRequest):
-    numbers: typing.Optional[typing.List["Number"]] = None
-
-    def to_dict(self):
-        result = {}
     
         # numbers
         if self.numbers is None:
@@ -304,6 +295,9 @@ class AddRequest(BaseRequest):
     @staticmethod
     def from_dict(d):
         
+        # request_id
+        request_id = d.get("request_id", None)
+        
         # numbers
         numbers = None
         if item := d.get("numbers"):
@@ -313,6 +307,7 @@ class AddRequest(BaseRequest):
                 numbers.append(item_tmp)
             
         return AddRequest(
+            request_id = request_id,
             numbers = numbers,
         )
         
@@ -321,16 +316,23 @@ class AddRequest(BaseRequest):
 # ResetRequest
 @dataclass
 class ResetRequest(BaseRequest):
-    pass
+    request_id: typing.Optional[str] = None
 
     def to_dict(self):
         result = {}
+    
+        # request_id
+        result["request_id"] = self.request_id
         return result
     
 
     @staticmethod
     def from_dict(d):
+        
+        # request_id
+        request_id = d.get("request_id", None)
         return ResetRequest(
+            request_id = request_id,
         )
         
     
