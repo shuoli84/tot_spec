@@ -13,6 +13,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     &mut result,
                     "#[derive(Debug, serde::Serialize, serde::Deserialize)]"
                 )?;
+                writeln!(
+                    &mut result,
+                    "#[serde(tag = \"type\", content = \"payload\")]"
+                )?;
                 writeln!(&mut result, "pub enum {} {{", &model.name)?;
 
                 for variant in variants {
