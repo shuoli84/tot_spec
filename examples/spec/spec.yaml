@@ -71,16 +71,17 @@ models:
       item_type:
         name: ref
         target: SimpleStruct
-- name: Base
-  type:
-    name: virtual
-    extend: null
+- name: RealNumber
+  type: 
+    name: struct
     fields:
-    - name: request_id
-      type:
-        name: string
-      attributes: {}
-      required: false
+      - name: real
+        type:
+          name: f64
+      - name: imagine
+        type: 
+          name: f64
+  
 - name: Number
   type:
     name: enum
@@ -91,10 +92,26 @@ models:
     - name: F64
       payload_type:
         name: f64
+    - name: RealNumber
+      payload_type:
+        name: ref
+        target: RealNumber
+
+- name: BaseRequest
+  type:
+    name: virtual
+    extend: null
+    fields:
+    - name: request_id
+      type:
+        name: string
+      attributes: {}
+      required: false
+
 - name: AddRequest
   type:
     name: struct
-    extend: Base
+    extend: BaseRequest
     fields:
     - name: numbers
       type:
@@ -104,7 +121,8 @@ models:
           target: Number
       attributes: {}
       required: false
+
 - name: ResetRequest
   type:
     name: struct
-    extend: Base
+    extend: BaseRequest

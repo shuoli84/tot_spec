@@ -4,9 +4,12 @@ use std::fmt::Write;
 use super::utils::{self, indent};
 
 pub fn render(def: &Definition) -> anyhow::Result<String> {
+    let type_var_name = "type_";
+
     let mut result = String::new();
 
     writeln!(&mut result, "from dataclasses import dataclass")?;
+    writeln!(&mut result, "import abc")?;
     writeln!(&mut result, "import typing")?;
 
     writeln!(&mut result, "")?;
@@ -18,28 +21,122 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             // python has no built in enum, so we generate base class
             // and each variants as a separate class
             crate::ModelType::Enum { variants } => {
-                writeln!(&mut result, "@dataclass")?;
-                writeln!(&mut result, "class {}:", &model.name)?;
+                let enum_name = &model.name;
+                writeln!(&mut result, "class {enum_name}(abc.ABC):")?;
                 writeln!(&mut result, "    pass")?;
 
-                for variant in variants {
+                // to_dict
+                {
+                    writeln!(&mut result, "")?;
+                    writeln!(&mut result, "    @abc.abstractmethod")?;
+                    writeln!(&mut result, "    def to_dict(self):")?;
+                    writeln!(&mut result, "        pass")?;
+                }
+
+                // from_dict is the real impl, no variant sub class should provide
+                // the impl
+                let code_block = {
+                    let mut code_block = "".to_string();
+                    writeln!(&mut code_block, "")?;
+                    writeln!(&mut code_block, "@staticmethod")?;
+                    writeln!(&mut code_block, "def from_dict(d):")?;
+                    writeln!(&mut code_block, "    {type_var_name} = d[\"type\"]")?;
+
+                    for (variant_idx, variant) in variants.iter().enumerate() {
+                        let variant_name = &variant.name;
+                        let type_tag = variant_name.clone();
+                        let variant_cls_name = format!("{enum_name}_{variant_name}");
+
+                        if variant_idx == 0 {
+                            writeln!(&mut code_block, "    if {type_var_name} == \"{type_tag}\":")?;
+                        } else {
+                            writeln!(
+                                &mut code_block,
+                                "    elif {type_var_name} == \"{type_tag}\":"
+                            )?;
+                        }
+
+                        if let Some(payload_type) = &variant.payload_type {
+                            writeln!(&mut code_block, "        payload = d[\"payload\"]")?;
+
+                            let payload_from_dict = from_dict_for_one_field(
+                                payload_type,
+                                "payload",
+                                "payload_tmp",
+                                def,
+                            )?;
+                            writeln!(&mut code_block, "{}", indent(&payload_from_dict, 2))?;
+                            writeln!(
+                                &mut code_block,
+                                "        return {variant_cls_name}(payload=payload_tmp)"
+                            )?;
+                        } else {
+                            writeln!(&mut code_block, "        {variant_cls_name}()")?;
+                        }
+                    }
+
+                    writeln!(&mut code_block, "    else:")?;
                     writeln!(
-                        &mut result,
+                        &mut code_block,
+                        "        raise ValueError(f\"invalid type: {{{type_var_name}}}\")"
+                    )?;
+
+                    code_block
+                };
+                writeln!(&mut result, "{}", indent(&code_block, 1))?;
+
+                // generate sub class for each variant
+                for variant in variants {
+                    let variant_name = &variant.name;
+
+                    let mut variant_code = "".to_string();
+                    writeln!(
+                        &mut variant_code,
                         "\n# variant {} for {}",
                         variant.name, model.name
                     )?;
-                    writeln!(&mut result, "@dataclass")?;
+                    writeln!(&mut variant_code, "@dataclass")?;
                     writeln!(
-                        &mut result,
+                        &mut variant_code,
                         "class {enum_name}_{variant_name}({enum_name}):",
                         enum_name = model.name,
                         variant_name = variant.name
                     )?;
                     if let Some(payload_type) = &variant.payload_type {
-                        writeln!(&mut result, "    payload: {}", py_type(&payload_type))?;
+                        writeln!(&mut variant_code, "    payload: {}", py_type(&payload_type))?;
                     } else {
-                        writeln!(&mut result, "    pass")?;
+                        writeln!(&mut variant_code, "    pass")?;
                     }
+
+                    // to_dict
+                    {
+                        writeln!(&mut variant_code, "")?;
+                        writeln!(&mut variant_code, "    def to_dict(self):")?;
+                        writeln!(
+                            &mut variant_code,
+                            "        {type_var_name} = \"{variant_name}\""
+                        )?;
+
+                        if let Some(payload_type) = &variant.payload_type {
+                            let payload_to_dict = to_dict_for_one_field(
+                                &payload_type,
+                                "self.payload",
+                                "payload_tmp",
+                                def,
+                            )?;
+                            writeln!(&mut variant_code, "{}", indent(&payload_to_dict, 2))?;
+                            writeln!(&mut variant_code, "        return {{")?;
+                            writeln!(&mut variant_code, "            \"type\": {type_var_name},")?;
+                            writeln!(&mut variant_code, "            \"payload\": payload_tmp,")?;
+                            writeln!(&mut variant_code, "        }}")?;
+                        } else {
+                            writeln!(&mut variant_code, "        return {{")?;
+                            writeln!(&mut variant_code, "            \"type\": {type_var_name},")?;
+                            writeln!(&mut variant_code, "        }}")?;
+                        }
+                    }
+
+                    writeln!(&mut result, "{}", variant_code)?;
                 }
             }
             crate::ModelType::Struct(struct_def) | crate::ModelType::Virtual(struct_def) => {
@@ -118,7 +215,7 @@ fn py_type(ty: &Type) -> String {
             format!("typing.List[{}]", py_type(item_type))
         }
         Type::Map { value_type } => format!("typing.Dict[str, {}]", py_type(value_type)),
-        Type::Reference { target } => format!("'{}'", target),
+        Type::Reference { target } => format!("\"{}\"", target),
     }
 }
 
@@ -151,7 +248,7 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
                     writeln!(&mut result, "    result[\"{field_name}\"] = {tmp_var_name}")?;
                 } else {
                     writeln!(&mut result, "    if self.{field_name} is None:")?;
-                    writeln!(&mut result, "        result['{field_name}'] = None")?;
+                    writeln!(&mut result, "        result[\"{field_name}\"] = None")?;
                     writeln!(&mut result, "    else:")?;
 
                     writeln!(&mut result, "{}", indent(&to_dict, 2))?;
@@ -233,20 +330,20 @@ fn generate_from_dict(
         match &field.type_ {
             Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
                 if field.required {
-                    writeln!(&mut code_block, "{field_name} = d['{field_name}']")?;
+                    writeln!(&mut code_block, "{field_name} = d[\"{field_name}\"]")?;
                 } else {
                     writeln!(
                         &mut code_block,
-                        "{field_name} = d.get('{field_name}', None)"
+                        "{field_name} = d.get(\"{field_name}\", None)"
                     )?;
                 }
             }
             ty @ Type::Bytes => {
                 if field.required {
-                    writeln!(&mut code_block, "{field_name} = bytes(d['{field_name}'])")?;
+                    writeln!(&mut code_block, "{field_name} = bytes(d[\"{field_name}\"])")?;
                 } else {
                     writeln!(&mut code_block, "{field_name} = None")?;
-                    writeln!(&mut code_block, "if item := d.get('{field_name}'):")?;
+                    writeln!(&mut code_block, "if item := d.get(\"{field_name}\"):")?;
 
                     let from_dict_code_block =
                         from_dict_for_one_field(ty, "item", field_name, def)?;
@@ -258,7 +355,7 @@ fn generate_from_dict(
                 if field.required {
                     let from_dict_code_block = from_dict_for_one_field(
                         ty,
-                        &format!("d['{field_name}']"),
+                        &format!("d[\"{field_name}\"]"),
                         field_name,
                         def,
                     )?;
@@ -266,7 +363,7 @@ fn generate_from_dict(
                     writeln!(&mut code_block, "{}", from_dict_code_block)?;
                 } else {
                     writeln!(&mut code_block, "{field_name} = None")?;
-                    writeln!(&mut code_block, "if item := d.get('{field_name}'):")?;
+                    writeln!(&mut code_block, "if item := d.get(\"{field_name}\"):")?;
 
                     let from_dict_code_block =
                         from_dict_for_one_field(ty, "item", field_name, def)?;

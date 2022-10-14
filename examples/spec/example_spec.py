@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import abc
 import typing
 
 
@@ -11,9 +12,9 @@ class SimpleStruct:
     string_value: typing.Optional[str] = None
     bytes_value: typing.Optional[bytes] = None
     string_to_string: typing.Optional[typing.Dict[str, str]] = None
-    key_values: typing.Optional['KeyValue'] = None
-    children_container: typing.Optional['Container'] = None
-    children: typing.Optional[typing.List['SimpleStruct']] = None
+    key_values: typing.Optional["KeyValue"] = None
+    children_container: typing.Optional["Container"] = None
+    children: typing.Optional[typing.List["SimpleStruct"]] = None
 
     def to_dict(self):
         result = {}
@@ -35,7 +36,7 @@ class SimpleStruct:
     
         # string_to_string
         if self.string_to_string is None:
-            result['string_to_string'] = None
+            result["string_to_string"] = None
         else:
             string_to_string_tmp = {}
             for key, item in self.string_to_string.items():
@@ -46,7 +47,7 @@ class SimpleStruct:
     
         # key_values
         if self.key_values is None:
-            result['key_values'] = None
+            result["key_values"] = None
         else:
             key_values_tmp = {}
             for key, item in self.key_values.items():
@@ -57,7 +58,7 @@ class SimpleStruct:
     
         # children_container
         if self.children_container is None:
-            result['children_container'] = None
+            result["children_container"] = None
         else:
             children_container_tmp = []
             for item in self.children_container:
@@ -68,7 +69,7 @@ class SimpleStruct:
     
         # children
         if self.children is None:
-            result['children'] = None
+            result["children"] = None
         else:
             children_tmp = []
             for item in self.children:
@@ -83,25 +84,25 @@ class SimpleStruct:
     def from_dict(d):
         
         # bool_value
-        bool_value = d['bool_value']
+        bool_value = d["bool_value"]
         
         # i8_value
-        i8_value = d['i8_value']
+        i8_value = d["i8_value"]
         
         # i64_value
-        i64_value = d.get('i64_value', None)
+        i64_value = d.get("i64_value", None)
         
         # string_value
-        string_value = d.get('string_value', None)
+        string_value = d.get("string_value", None)
         
         # bytes_value
         bytes_value = None
-        if item := d.get('bytes_value'):
+        if item := d.get("bytes_value"):
             bytes_value = bytes(item)
         
         # string_to_string
         string_to_string = None
-        if item := d.get('string_to_string'):
+        if item := d.get("string_to_string"):
             string_to_string = {}
             for key, item in item.items():
                 item_tmp = item
@@ -110,7 +111,7 @@ class SimpleStruct:
         
         # key_values
         key_values = None
-        if item := d.get('key_values'):
+        if item := d.get("key_values"):
             key_values = {}
             for key, item in item.items():
                 item_tmp = bytes(item)
@@ -119,7 +120,7 @@ class SimpleStruct:
         
         # children_container
         children_container = None
-        if item := d.get('children_container'):
+        if item := d.get("children_container"):
             children_container = []
             for item in item:
                 item_tmp = SimpleStruct.from_dict(item)
@@ -128,7 +129,7 @@ class SimpleStruct:
         
         # children
         children = None
-        if item := d.get('children'):
+        if item := d.get("children"):
             children = []
             for item in item:
                 item_tmp = SimpleStruct.from_dict(item)
@@ -152,11 +153,112 @@ class SimpleStruct:
 KeyValue = typing.Type[typing.Dict[str, bytes]]
 
 # Container
-Container = typing.Type[typing.List['SimpleStruct']]
+Container = typing.Type[typing.List["SimpleStruct"]]
 
-# Base
+# RealNumber
 @dataclass
-class Base:
+class RealNumber:
+    real: typing.Optional[float] = None
+    imagine: typing.Optional[float] = None
+
+    def to_dict(self):
+        result = {}
+    
+        # real
+        result["real"] = self.real
+    
+        # imagine
+        result["imagine"] = self.imagine
+        return result
+    
+
+    @staticmethod
+    def from_dict(d):
+        
+        # real
+        real = d.get("real", None)
+        
+        # imagine
+        imagine = d.get("imagine", None)
+        return RealNumber(
+            real = real,
+            imagine = imagine,
+        )
+        
+    
+
+# Number
+class Number(abc.ABC):
+    pass
+
+    @abc.abstractmethod
+    def to_dict(self):
+        pass
+    
+    @staticmethod
+    def from_dict(d):
+        type_ = d["type"]
+        if type_ == "I64":
+            payload = d["payload"]
+            payload_tmp = payload
+            return Number_I64(payload=payload_tmp)
+        elif type_ == "F64":
+            payload = d["payload"]
+            payload_tmp = payload
+            return Number_F64(payload=payload_tmp)
+        elif type_ == "RealNumber":
+            payload = d["payload"]
+            payload_tmp = RealNumber.from_dict(payload)
+            return Number_RealNumber(payload=payload_tmp)
+        else:
+            raise ValueError(f"invalid type: {type_}")
+    
+
+# variant I64 for Number
+@dataclass
+class Number_I64(Number):
+    payload: int
+
+    def to_dict(self):
+        type_ = "I64"
+        payload_tmp = self.payload
+        return {
+            "type": type_,
+            "payload": payload_tmp,
+        }
+
+
+# variant F64 for Number
+@dataclass
+class Number_F64(Number):
+    payload: float
+
+    def to_dict(self):
+        type_ = "F64"
+        payload_tmp = self.payload
+        return {
+            "type": type_,
+            "payload": payload_tmp,
+        }
+
+
+# variant RealNumber for Number
+@dataclass
+class Number_RealNumber(Number):
+    payload: "RealNumber"
+
+    def to_dict(self):
+        type_ = "RealNumber"
+        payload_tmp = self.payload.to_dict()
+        return {
+            "type": type_,
+            "payload": payload_tmp,
+        }
+
+
+# BaseRequest
+@dataclass
+class BaseRequest:
     request_id: typing.Optional[str] = None
 
     def to_dict(self):
@@ -171,39 +273,24 @@ class Base:
     def from_dict(d):
         
         # request_id
-        request_id = d.get('request_id', None)
-        return Base(
+        request_id = d.get("request_id", None)
+        return BaseRequest(
             request_id = request_id,
         )
         
     
 
-# Number
-@dataclass
-class Number:
-    pass
-
-# variant I64 for Number
-@dataclass
-class Number_I64(Number):
-    payload: int
-
-# variant F64 for Number
-@dataclass
-class Number_F64(Number):
-    payload: float
-
 # AddRequest
 @dataclass
-class AddRequest(Base):
-    numbers: typing.Optional[typing.List['Number']] = None
+class AddRequest(BaseRequest):
+    numbers: typing.Optional[typing.List["Number"]] = None
 
     def to_dict(self):
         result = {}
     
         # numbers
         if self.numbers is None:
-            result['numbers'] = None
+            result["numbers"] = None
         else:
             numbers_tmp = []
             for item in self.numbers:
@@ -219,7 +306,7 @@ class AddRequest(Base):
         
         # numbers
         numbers = None
-        if item := d.get('numbers'):
+        if item := d.get("numbers"):
             numbers = []
             for item in item:
                 item_tmp = Number.from_dict(item)
@@ -233,7 +320,7 @@ class AddRequest(Base):
 
 # ResetRequest
 @dataclass
-class ResetRequest(Base):
+class ResetRequest(BaseRequest):
     pass
 
     def to_dict(self):
