@@ -23,18 +23,17 @@ typealias KeyValue = [String:Data]
  // Container
 typealias Container = [SimpleStruct]
 
- // Base
-protocol Base {
-    var request_id: String? {
-        get
-        set
-    }
+ // RealNumber
+struct RealNumber: Codable {
+    var real: Float64?
+    var imagine: Float64?
 }
 
  // Number
 enum Number: Codable {
     case I64(Int64)
     case F64(Float64)
+    case RealNumber(RealNumber)
 
     // coding keys
     enum CodingKeys: String, CodingKey {
@@ -53,6 +52,10 @@ enum Number: Codable {
             case "F64":
                 let payload = try container.decode(Float64.self, forKey:.payload)
                 self = .F64(payload)
+            
+            case "RealNumber":
+                let payload = try container.decode(RealNumber.self, forKey:.payload)
+                self = .RealNumber(payload)
             
             default:
                 throw ModelError.Error
@@ -73,19 +76,31 @@ enum Number: Codable {
                 try container.encode("F64", forKey: .type)
                 try container.encode(payload, forKey: .payload)
             
+            case let .RealNumber(payload):
+                try container.encode("RealNumber", forKey: .type)
+                try container.encode(payload, forKey: .payload)
+            
         }
         
     }
     
 }
 
+ // BaseRequest
+protocol BaseRequest {
+    var request_id: String? {
+        get
+        set
+    }
+}
+
  // AddRequest
-struct AddRequest: Codable, Base {
+struct AddRequest: Codable, BaseRequest {
     var request_id: String?
     var numbers: [Number]?
 }
 
  // ResetRequest
-struct ResetRequest: Codable, Base {
+struct ResetRequest: Codable, BaseRequest {
     var request_id: String?
 }
