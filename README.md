@@ -12,7 +12,7 @@ cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "rs_serde" -o "ex
 # generate python client code
 cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "py_dataclass" -o examples/spec/example_spec.py
 
-# generate python client code
+# generate swift client code
 cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "swift_codable" -o examples/spec/example_spec.swift
 ```
 
