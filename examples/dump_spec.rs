@@ -73,6 +73,7 @@ fn main() {
                 }),
             },
         ],
+        meta: Default::default(),
     };
     println!("{}", serde_yaml::to_string(&def).unwrap());
 }

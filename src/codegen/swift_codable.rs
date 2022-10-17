@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::Write;
 
 use crate::{Definition, FieldDef, Type};
@@ -6,11 +7,18 @@ use super::utils::indent;
 
 /// render the definition to a swift file
 pub fn render(def: &Definition) -> anyhow::Result<String> {
+    let meta = def.get_meta("swift_codable");
+
+    let package_name = meta
+        .get("package_name")
+        .map(|s| Cow::Borrowed(s))
+        .unwrap_or(Cow::Owned("PACKAGE".to_string()));
+
     let mut result = "".to_string();
     writeln!(&mut result, "import Foundation")?;
 
     writeln!(&mut result, "")?;
-    writeln!(&mut result, "enum ModelError: Error {{")?;
+    writeln!(&mut result, "public enum ModelError: Error {{")?;
     writeln!(&mut result, "    case Error")?;
     writeln!(&mut result, "}}")?;
 
@@ -20,7 +28,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
         writeln!(&mut result, "\n // {model_name}")?;
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
-                writeln!(&mut result, "enum {}: Codable {{", model.name)?;
+                writeln!(&mut result, "public enum {}: Codable {{", model.name)?;
 
                 for variant in variants {
                     if let Some(payload) = &variant.payload_type {
@@ -28,7 +36,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                             &mut result,
                             "    case {}({})",
                             variant.name,
-                            swift_type(&payload)
+                            swift_type(&payload, &package_name)
                         )?;
                     } else {
                         writeln!(&mut result, "    case {}", variant.name,)?;
@@ -44,7 +52,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 let decoder_code = {
                     let mut code_block = "".to_string();
                     writeln!(&mut code_block, "\n// decoder")?;
-                    writeln!(&mut code_block, "init(from decoder: Decoder) throws {{")?;
+                    writeln!(
+                        &mut code_block,
+                        "public init(from decoder: Decoder) throws {{"
+                    )?;
                     writeln!(
                         &mut code_block,
                         "    let container = try decoder.container(keyedBy: CodingKeys.self)"
@@ -65,7 +76,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
                         writeln!(&mut case_block, "case \"{variant_name}\":")?;
                         if let Some(payload_type) = &variant.payload_type {
-                            let payload_type = swift_type(&payload_type);
+                            let payload_type = swift_type(&payload_type, &package_name);
                             writeln!(&mut case_block, "    let payload = try container.decode({payload_type}.self, forKey:.payload)")?;
                             writeln!(&mut case_block, "    self = .{variant_name}(payload)")?;
                         } else {
@@ -98,7 +109,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     writeln!(&mut code_block, "\n// encoder")?;
                     writeln!(
                         &mut code_block,
-                        "func encode(to encoder: Encoder) throws {{"
+                        "public func encode(to encoder: Encoder) throws {{"
                     )?;
 
                     let func_body = {
@@ -153,40 +164,49 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 let mut fields: Vec<FieldDef> = vec![];
 
                 if let Some(base) = &struct_def.extend {
-                    writeln!(&mut result, "struct {}: Codable, {base} {{", model.name)?;
+                    writeln!(
+                        &mut result,
+                        "public struct {}: Codable, {base} {{",
+                        model.name
+                    )?;
                     let base_model = def.get_model(&base).unwrap();
                     match &base_model.type_ {
                         crate::ModelType::Virtual(struct_def) => {
                             fields = struct_def.fields.clone();
                         }
                         _ => {
-                            anyhow::bail!("extends only support struct");
+                            anyhow::bail!("extends only support virtual base");
                         }
                     }
                 } else {
-                    writeln!(&mut result, "struct {}: Codable {{", model.name)?;
+                    writeln!(&mut result, "public struct {}: Codable {{", model.name)?;
                 }
 
                 fields.extend(struct_def.fields.clone());
 
                 for field in fields.iter() {
                     let field_name = &field.name;
-                    let mut field_type = swift_type(&field.type_);
+                    let mut field_type = swift_type(&field.type_, &package_name);
                     if !field.required {
                         field_type = format!("{field_type}?");
                     }
 
-                    writeln!(&mut result, "    var {field_name}: {field_type}")?;
+                    writeln!(&mut result, "    public var {field_name}: {field_type}")?;
                 }
+
+                // generate member intializer, the default initializer is internal
+                // we need to generate a public one
+                let code_block = generate_memberwise_init(&fields, &package_name)?;
+                writeln!(&mut result, "{}", indent(&code_block, 1))?;
 
                 writeln!(&mut result, "}}")?;
             }
             crate::ModelType::Virtual(struct_def) => {
-                writeln!(&mut result, "protocol {} {{", model.name)?;
+                writeln!(&mut result, "public protocol {} {{", model.name)?;
 
                 for field in struct_def.fields.iter() {
                     let field_name = &field.name;
-                    let mut field_type = swift_type(&field.type_);
+                    let mut field_type = swift_type(&field.type_, &package_name);
                     if !field.required {
                         field_type = format!("{field_type}?");
                     }
@@ -202,9 +222,9 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             crate::ModelType::NewType { inner_type } => {
                 writeln!(
                     &mut result,
-                    "typealias {} = {}",
+                    "public typealias {} = {}",
                     model.name,
-                    swift_type(inner_type)
+                    swift_type(inner_type, &package_name)
                 )?;
             }
         }
@@ -213,7 +233,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
     Ok(result)
 }
 
-fn swift_type(ty: &Type) -> String {
+fn swift_type(ty: &Type, package_name: &str) -> String {
     match ty {
         Type::Bool => "Bool".into(),
         Type::I8 => "Int8".into(),
@@ -222,11 +242,48 @@ fn swift_type(ty: &Type) -> String {
         Type::Bytes => "Data".into(),
         Type::String => "String".into(),
         Type::List { item_type } => {
-            format!("[{}]", swift_type(item_type))
+            format!("[{}]", swift_type(item_type, package_name))
         }
         Type::Map { value_type } => {
-            format!("[String:{}]", swift_type(value_type))
+            format!("[String:{}]", swift_type(value_type, package_name))
         }
-        Type::Reference { target } => target.clone(),
+        Type::Reference { target } => {
+            format!("{}.{}", package_name, target)
+        }
     }
+}
+
+fn generate_memberwise_init(fields: &[FieldDef], package_name: &str) -> anyhow::Result<String> {
+    let mut code = "".to_string();
+
+    let field_params = {
+        let mut field_params = vec![];
+        for field in fields.iter() {
+            let field_name = &field.name;
+            if field.required {
+                field_params.push(format!(
+                    "{field_name}: {}",
+                    swift_type(&field.type_, package_name)
+                ));
+            } else {
+                field_params.push(format!(
+                    "{field_name}: {}? = nil",
+                    swift_type(&field.type_, package_name)
+                ));
+            }
+        }
+
+        field_params.join(", ")
+    };
+
+    writeln!(&mut code, "public init({field_params}) {{")?;
+
+    for field in fields.iter() {
+        let field_name = &field.name;
+        writeln!(&mut code, "    self.{field_name} = {field_name}",)?;
+    }
+
+    writeln!(&mut code, "}}")?;
+
+    Ok(code)
 }

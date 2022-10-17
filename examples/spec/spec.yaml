@@ -1,3 +1,7 @@
+meta:
+  swift_codable:
+    package_name: SpecModel
+
 models:
 - name: SimpleStruct
   type:

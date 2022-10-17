@@ -135,7 +135,10 @@ mod tests {
         }
 
         fn test_models_codegen(models: Vec<ModelDef>, code: &str) {
-            let definition = Definition { models };
+            let definition = Definition {
+                models,
+                meta: Default::default(),
+            };
             let rendered = super::render(&definition).unwrap();
             let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
             let code_ast = syn::parse_file(&mut code.to_string()).unwrap();

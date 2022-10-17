@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Definition {
+    /// meta can provide keyvalue metadata for codegen
+    pub meta: BTreeMap<String, BTreeMap<String, String>>,
     pub models: Vec<ModelDef>,
 }
 
@@ -15,6 +17,14 @@ impl Definition {
             }
         }
         None
+    }
+
+    /// get the attached key value for codegen
+    pub fn get_meta(&self, codegen: &str) -> std::borrow::Cow<BTreeMap<String, String>> {
+        match self.meta.get(codegen) {
+            Some(key_value) => std::borrow::Cow::Borrowed(key_value),
+            None => std::borrow::Cow::Owned(Default::default()),
+        }
     }
 }
 
