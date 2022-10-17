@@ -51,7 +51,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 // decoder
                 let decoder_code = {
                     let mut code_block = "".to_string();
-                    writeln!(&mut code_block, "\n// decoder")?;
+                    writeln!(&mut code_block, "// decoder")?;
                     writeln!(
                         &mut code_block,
                         "public init(from decoder: Decoder) throws {{"
@@ -94,19 +94,20 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     }
 
                     for case_block in case_blocks.into_iter() {
-                        writeln!(&mut code_block, "{}", indent(&case_block, 2))?;
+                        writeln!(&mut code_block, "{}", indent(case_block.trim(), 2))?;
                     }
 
                     writeln!(&mut code_block, "    }}")?;
                     writeln!(&mut code_block, "}}")?;
                     code_block
                 };
-                writeln!(&mut result, "{}", indent(&decoder_code, 1))?;
+                writeln!(&mut result, "")?;
+                writeln!(&mut result, "{}", indent(decoder_code.trim(), 1))?;
 
                 // encoder
                 let encoder_code = {
                     let mut code_block = "".to_string();
-                    writeln!(&mut code_block, "\n// encoder")?;
+                    writeln!(&mut code_block, "// encoder")?;
                     writeln!(
                         &mut code_block,
                         "public func encode(to encoder: Encoder) throws {{"
@@ -144,7 +145,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                                 )?;
                             }
 
-                            writeln!(&mut func_body, "{}", indent(&case_code, 1))?;
+                            writeln!(&mut func_body, "{}", indent(case_code.trim(), 1))?;
                         }
 
                         writeln!(&mut func_body, "}}")?;
@@ -152,11 +153,12 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         func_body
                     };
 
-                    writeln!(&mut code_block, "{}", indent(&func_body, 1))?;
+                    writeln!(&mut code_block, "{}", indent(&func_body.trim(), 1))?;
                     writeln!(&mut code_block, "}}")?;
                     code_block
                 };
-                writeln!(&mut result, "{}", indent(&encoder_code, 1))?;
+                writeln!(&mut result, "")?;
+                writeln!(&mut result, "{}", indent(&encoder_code.trim(), 1))?;
 
                 writeln!(&mut result, "}}")?;
             }
@@ -197,7 +199,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 // generate member intializer, the default initializer is internal
                 // we need to generate a public one
                 let code_block = generate_memberwise_init(&fields, &package_name)?;
-                writeln!(&mut result, "{}", indent(&code_block, 1))?;
+                writeln!(&mut result, "")?;
+                writeln!(&mut result, "{}", indent(code_block.trim(), 1))?;
 
                 writeln!(&mut result, "}}")?;
             }
