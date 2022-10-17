@@ -20,7 +20,7 @@ fn main() {
     let spec_content = std::fs::read_to_string(args.spec).unwrap();
     let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
 
-    println!("{:#?}", def);
+    println!("{} models loaded", def.models.len());
 
     let output = if args.codegen.eq("rs_serde") {
         codegen::rs_serde::render(&def).unwrap()
