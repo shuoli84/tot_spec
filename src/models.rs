@@ -1,8 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Definition {
     /// meta can provide keyvalue metadata for codegen
     pub meta: BTreeMap<String, BTreeMap<String, String>>,
@@ -48,13 +48,24 @@ pub enum ModelType {
     #[serde(rename = "virtual")]
     Virtual(StructDef),
     #[serde(rename = "new_type")]
-    NewType { inner_type: Box<Type> },
+    NewType {
+        #[serde(deserialize_with = "string_or_struct::string_or_struct")]
+        inner_type: Box<Type>,
+    },
 }
 
 impl ModelType {
     pub fn new_type(inner_type: Type) -> Self {
         Self::NewType {
             inner_type: inner_type.into(),
+        }
+    }
+
+    /// extract struct_def
+    pub fn struct_def(&self) -> Option<&StructDef> {
+        match self {
+            Self::Struct(ref struct_def) => Some(struct_def),
+            _ => None,
         }
     }
 }
@@ -67,11 +78,21 @@ pub struct StructDef {
     pub fields: Vec<FieldDef>,
 }
 
+impl StructDef {
+    /// get field for name
+    pub fn field(&self, name: &str) -> Option<&FieldDef> {
+        self.fields.iter().filter(|f| f.name.eq(name)).nth(0)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldDef {
     pub name: String,
 
-    #[serde(rename = "type")]
+    #[serde(
+        rename = "type",
+        deserialize_with = "string_or_struct::string_or_struct"
+    )]
     pub type_: Type,
 
     #[serde(default)]
@@ -163,7 +184,10 @@ pub enum Type {
     #[serde(rename = "string")]
     String,
     #[serde(rename = "list")]
-    List { item_type: Box<Type> },
+    List {
+        #[serde(deserialize_with = "string_or_struct::string_or_struct")]
+        item_type: Box<Type>,
+    },
     #[serde(rename = "map")]
     Map { value_type: Box<Type> },
     #[serde(rename = "ref")]
@@ -214,7 +238,223 @@ impl Type {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantDef {
     pub name: String,
+    #[serde(deserialize_with = "string_or_struct::string_or_struct")]
     pub payload_type: Option<Type>,
     #[serde(default)]
     pub desc: Option<String>,
+}
+
+// code copied from: https://serde.rs/string-or-struct.html
+mod string_or_struct {
+    use super::*;
+    use anyhow::bail;
+    use serde::{de::Visitor, Deserialize, Deserializer};
+    use std::{fmt, marker::PhantomData};
+
+    #[derive(Debug)]
+    pub struct Void {}
+
+    pub trait FromStr: Sized {
+        fn from_str(s: &str) -> anyhow::Result<Self>;
+    }
+
+    /// parse type, and return rest of str
+    fn parse_type(s: &str) -> anyhow::Result<(Type, &str)> {
+        let s = s.trim();
+        if let Some(rest) = s.strip_prefix("bool") {
+            Ok((Type::Bool, rest))
+        } else if let Some(rest) = s.strip_prefix("i8") {
+            Ok((Type::I8, rest))
+        } else if let Some(rest) = s.strip_prefix("i64") {
+            Ok((Type::I64, rest))
+        } else if let Some(rest) = s.strip_prefix("f64") {
+            Ok((Type::F64, rest))
+        } else if let Some(rest) = s.strip_prefix("string") {
+            Ok((Type::String, rest))
+        } else if let Some(rest) = s.strip_prefix("bytes") {
+            Ok((Type::Bytes, rest))
+        } else if let Some(rest) = s.strip_prefix("list") {
+            // for list,
+            let rest_trimmed = rest.trim();
+            if let Some(item_type_s) = rest_trimmed.strip_prefix("[") {
+                let (item_type, rest) = parse_type(item_type_s)?;
+                let rest = rest.trim();
+                if let Some(rest) = rest.strip_prefix("]") {
+                    Ok((
+                        Type::List {
+                            item_type: Box::new(item_type),
+                        },
+                        rest,
+                    ))
+                } else {
+                    bail!(format!("invalid type: {}", s));
+                }
+            } else {
+                bail!(format!("invalid type: {}", s));
+            }
+        } else if let Some(rest) = s.strip_prefix("map") {
+            if let Some(rest) = rest.trim().strip_prefix("[") {
+                let (value_type, rest) = parse_type(rest)?;
+
+                if let Some(rest) = rest.strip_prefix("]") {
+                    Ok((
+                        Type::Map {
+                            value_type: Box::new(value_type),
+                        },
+                        rest,
+                    ))
+                } else {
+                    bail!(format!("invalid type: {}", s));
+                }
+            } else {
+                bail!(format!("invalid type: {}", s));
+            }
+        } else if let Some((identifier, rest)) = if_identifier(s) {
+            Ok((
+                Type::Reference {
+                    target: identifier.to_string(),
+                },
+                rest,
+            ))
+        } else {
+            bail!("unable to parse: {}", s);
+        }
+    }
+
+    fn if_identifier(s: &str) -> Option<(&str, &str)> {
+        let s = s.trim();
+        let mut index: Option<usize> = None;
+        for (idx, c) in s.chars().enumerate() {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                index = Some(idx);
+            } else {
+                break;
+            }
+        }
+
+        if let Some(index) = index {
+            // index is the last valid index, split_at index should increase by 1
+            let index = index + 1;
+            Some(s.split_at(index))
+        } else {
+            None
+        }
+    }
+
+    impl FromStr for Type {
+        fn from_str(s: &str) -> anyhow::Result<Self> {
+            let (type_, rest) = parse_type(s)?;
+            if !rest.trim().is_empty() {
+                bail!("invalid type: {}", s);
+            } else {
+                Ok(type_)
+            }
+        }
+    }
+
+    impl FromStr for Box<Type> {
+        fn from_str(s: &str) -> anyhow::Result<Self> {
+            match Type::from_str(s) {
+                Ok(r) => Ok(Box::new(r)),
+                Err(e) => Err(e),
+            }
+        }
+    }
+
+    impl FromStr for Option<Type> {
+        fn from_str(s: &str) -> anyhow::Result<Self> {
+            match Type::from_str(s) {
+                Ok(r) => Ok(Some(r)),
+                Err(e) => Err(e),
+            }
+        }
+    }
+
+    pub fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        T: Deserialize<'de> + FromStr,
+        D: Deserializer<'de>,
+    {
+        struct StringOrStruct<T>(PhantomData<fn() -> T>);
+
+        impl<'de, T> Visitor<'de> for StringOrStruct<T>
+        where
+            T: Deserialize<'de> + FromStr,
+        {
+            type Value = T;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string or map")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<T, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(FromStr::from_str(value).unwrap())
+            }
+
+            fn visit_map<M>(self, map: M) -> Result<T, M::Error>
+            where
+                M: serde::de::MapAccess<'de>,
+            {
+                Deserialize::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+            }
+        }
+
+        deserializer.deserialize_any(StringOrStruct(PhantomData))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        let spec_content = r#"
+models:
+  - name: TestStruct
+    desc: description
+    type:
+      name: struct
+      fields:
+        - name: i8_val
+          type: i8
+
+        - name: bool_val
+          type:
+            name: bool
+
+        - name: children
+          type:
+            name: list
+            item_type: TestStruct
+
+        - name: children_2
+          type: list[TestStruct]
+
+        - name: children_map
+          type: map[TestStruct]
+
+        - name: map_of_list
+          type: map[list[TestStruct]]
+
+  - name: TestStructNewType
+    type:
+      name: new_type
+      inner_type: TestStruct
+        "#;
+
+        let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
+        assert!(def.meta.is_empty());
+        assert_eq!(def.models.len(), 2);
+        let model = def.get_model("TestStruct").unwrap();
+        let struct_def = model.type_.struct_def().unwrap();
+        let field_def = struct_def.field("children_map").unwrap();
+        assert!(matches!(field_def.type_, Type::Map { value_type: _ }));
+
+        let field_def = struct_def.field("map_of_list").unwrap();
+        assert!(matches!(field_def.type_, Type::Map { value_type: _ }));
+    }
 }
