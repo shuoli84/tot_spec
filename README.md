@@ -17,7 +17,7 @@ cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "swift_codable" -
 cd examples/swift_package && swift test
 ```
 
-## A nested struct
+## Nested struct
 
 ```yaml
 models:
@@ -27,45 +27,39 @@ models:
     fields:
     # basic types including bool, i8, i64, f64 and string
     - name: bool_value
-      type:
-        name: bool
+      type: bool
       required: true
     - name: i8_value
-      type:
-        name: i8
+      type: i8
       required: true
     - name: i64_value
-      type:
-        name: i64
+      type: i64
     - name: string_value
-      type:
-        name: string
+      type: string
     - name: bytes_value
-      type:
-        name: bytes
+      type: bytes
 
     # also container types including Map and List
     # now map keytype is restricted to string only
     - name: string_to_string
-      type:
-        name: map
-        value_type:
-          name: string
+      type: map[string]
       attributes:
         # use rs_type attibute to mark underlying type as BTreeMap
         rs_type: std::collections::BTreeMap::<std::string::String, std::string::String>
-    - name: key_values
-      type:
-        # reference other types defined in spec
-        name: ref
-        target: KeyValue
-    - name: children
-      type:
-        name: list
-        item_type:
-          name: ref
-          target: SimpleStruct
 
+    - name: key_values
+      # reference other types defined in spec
+      type: KeyValue
+
+    # container list
+    - name: children
+      type: 
+        name: list
+        item_type: SimpleStruct
+
+    # same list as above, string version
+    - name: children_2
+      type: list[SimpleStruct]
 ```
 
 ## New type
@@ -76,11 +70,14 @@ models:
     # type name as "new_type", which maps to rust's new type pattern
     # for other languages, this can be a no op
     name: new_type
-    inner_type:
-      name: list
-      item_type:
-        name: ref
-        target: SimpleStruct
+    inner_type: list[SimpleStruct]
+
+- name: UserId
+  type:
+    name: new_type
+    inner_type: i64
+  attributes:
+    rs_extra_derive: Hash
 ```
 
 ## Virtual type
@@ -94,8 +91,7 @@ Use virtual type to define common part cross models.
     name: virtual
     fields:
     - name: request_id
-      type:
-        name: string
+      type: string
 
 - name: AddRequest
   type:
