@@ -33,6 +33,9 @@ pub struct ModelDef {
     pub name: String,
     #[serde(rename = "type")]
     pub type_: ModelType,
+    /// description of this model
+    #[serde(default)]
+    pub desc: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +75,9 @@ pub struct FieldDef {
     pub type_: Type,
 
     #[serde(default)]
+    pub desc: Option<String>,
+
+    #[serde(default)]
     pub attributes: BTreeMap<String, String>,
 
     #[serde(default)]
@@ -84,10 +90,17 @@ impl FieldDef {
     pub fn new(name: impl Into<String>, type_: Type) -> Self {
         Self {
             name: name.into(),
+            desc: None,
             type_,
             attributes: Default::default(),
             required: false,
         }
+    }
+
+    /// set field's desc
+    pub fn with_desc(mut self, desc: impl Into<String>) -> Self {
+        self.desc = Some(desc.into());
+        self
     }
 
     pub fn with_required(mut self, required: bool) -> Self {
@@ -202,4 +215,6 @@ impl Type {
 pub struct VariantDef {
     pub name: String,
     pub payload_type: Option<Type>,
+    #[serde(default)]
+    pub desc: Option<String>,
 }

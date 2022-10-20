@@ -5,7 +5,15 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
     let mut result = String::new();
 
     for model in def.models.iter() {
-        writeln!(&mut result, "\n/// {}", model.name)?;
+        writeln!(
+            &mut result,
+            "\n/// {}",
+            model
+                .desc
+                .as_ref()
+                .map(|s| s.as_str())
+                .unwrap_or(model.name.as_str())
+        )?;
 
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
@@ -20,6 +28,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 writeln!(&mut result, "pub enum {} {{", &model.name)?;
 
                 for variant in variants {
+                    if let Some(desc) = &variant.desc {
+                        writeln!(&mut result, "    /// {desc}")?;
+                    }
+
                     if let Some(payload_type) = &variant.payload_type {
                         writeln!(
                             &mut result,
@@ -41,18 +53,12 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 )?;
                 writeln!(&mut result, "pub struct {} {{", &model.name)?;
 
+                let mut fields = vec![];
                 if let Some(virtual_name) = &struct_def.extend {
                     match def.get_model(&virtual_name) {
                         Some(model) => match &model.type_ {
                             crate::ModelType::Virtual(struct_def) => {
-                                for field in struct_def.fields.iter() {
-                                    writeln!(
-                                        &mut result,
-                                        "    pub {}: {},",
-                                        field.name,
-                                        field.rs_type()
-                                    )?;
-                                }
+                                fields.extend(struct_def.fields.clone());
                             }
                             _ => {
                                 anyhow::bail!("model is not virtual: {}", virtual_name);
@@ -62,9 +68,16 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     }
                 }
 
-                for field in struct_def.fields.iter() {
+                fields.extend(struct_def.fields.clone());
+
+                for field in fields.iter() {
+                    if let Some(desc) = &field.desc {
+                        writeln!(&mut result, "    /// {desc}")?;
+                    }
+
                     writeln!(&mut result, "    pub {}: {},", field.name, field.rs_type())?;
                 }
+
                 writeln!(&mut result, "}}")?;
 
                 if let Some(virtual_name) = &struct_def.extend {
@@ -96,6 +109,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             crate::ModelType::Virtual(struct_def) => {
                 writeln!(&mut result, "pub trait {} {{", &model.name)?;
                 for field in struct_def.fields.iter() {
+                    if let Some(desc) = &field.desc {
+                        writeln!(&mut result, "    /// {desc}",)?;
+                    }
+
                     writeln!(
                         &mut result,
                         "    fn {}(&self) -> &{};",
@@ -156,18 +173,25 @@ mod tests {
         test_model_codegen(
             ModelDef {
                 name: "SimpleStruct".to_string(),
+                desc: Some("A test struct with different kinds of fields".into()),
                 type_: ModelType::Struct(StructDef {
                     extend: None,
                     fields: vec![
-                        FieldDef::new("bool_value", Type::Bool).with_required(true),
-                        FieldDef::new("i8_value", Type::I8).with_required(true),
+                        FieldDef::new("bool_value", Type::Bool)
+                            .with_required(true)
+                            .with_desc("required bool field"),
+                        FieldDef::new("i8_value", Type::I8)
+                            .with_required(true)
+                            .with_desc("required i8 field"),
                         FieldDef::new("i64_value", Type::I64),
                         FieldDef::new("string_value", Type::String),
                         FieldDef::new("bytes_value", Type::Bytes),
-                        FieldDef::new("string_map", Type::map(Type::String)).with_attribute(
-                            "rs_type",
-                            "std::collections::BTreeMap<std::string::String, std::string::String>",
-                        ),
+                        FieldDef::new("string_map", Type::map(Type::String))
+                            .with_desc("string map with customized Map type")
+                            .with_attribute(
+                                "rs_type",
+                                "std::collections::BTreeMap<std::string::String, std::string::String>",
+                            ),
                         FieldDef::new("key_values", Type::reference("KeyValue")),
                         FieldDef::new("children", Type::list(Type::reference("SimpleStruct"))),
                     ],
@@ -179,6 +203,7 @@ mod tests {
             ModelDef {
                 name: "KeyValue".into(),
                 type_: ModelType::new_type(Type::map(Type::Bytes)),
+                desc: None,
             },
             include_str!("fixtures/rs_serde/key_value.rs"),
         );
@@ -191,13 +216,16 @@ mod tests {
                         VariantDef {
                             name: "I64".into(),
                             payload_type: Type::I64.into(),
+                            desc: Some("Variant I64".into()),
                         },
                         VariantDef {
                             name: "F64".into(),
                             payload_type: Type::F64.into(),
+                            desc: Some("Variant F64".into()),
                         },
                     ],
                 },
+                desc: None,
             },
             include_str!("fixtures/rs_serde/enum.rs"),
         );
@@ -206,6 +234,7 @@ mod tests {
             vec![
                 ModelDef {
                     name: "Base".into(),
+                    desc: None,
                     type_: ModelType::Virtual(StructDef {
                         extend: None,
                         fields: vec![FieldDef::new("request_id", Type::String)],
@@ -213,6 +242,7 @@ mod tests {
                 },
                 ModelDef {
                     name: "AddRequest".into(),
+                    desc: None,
                     type_: ModelType::Struct(StructDef {
                         extend: Some("Base".into()),
                         fields: vec![FieldDef::new(
@@ -223,6 +253,7 @@ mod tests {
                 },
                 ModelDef {
                     name: "ResetRequest".into(),
+                    desc: None,
                     type_: ModelType::Struct(StructDef {
                         extend: Some("Base".into()),
                         fields: vec![],

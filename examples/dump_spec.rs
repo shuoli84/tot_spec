@@ -5,6 +5,7 @@ fn main() {
         models: vec![
             ModelDef {
                 name: "SimpleStruct".to_string(),
+                desc: None,
                 type_: ModelType::Struct(StructDef {
                     extend: None,
                     fields: vec![
@@ -24,14 +25,17 @@ fn main() {
             },
             ModelDef {
                 name: "KeyValue".into(),
+                desc: None,
                 type_: ModelType::new_type(Type::map(Type::Bytes)),
             },
             ModelDef {
                 name: "Container".into(),
+                desc: None,
                 type_: ModelType::new_type(Type::list(Type::reference("SimpleStruct"))),
             },
             ModelDef {
                 name: "Base".into(),
+                desc: None,
                 type_: ModelType::Virtual(StructDef {
                     extend: None,
                     fields: vec![FieldDef::new("request_id", Type::String)],
@@ -39,14 +43,17 @@ fn main() {
             },
             ModelDef {
                 name: "Number".into(),
+                desc: None,
                 type_: ModelType::Enum {
                     variants: vec![
                         VariantDef {
                             name: "I64".into(),
+                            desc: None,
                             payload_type: Type::I64.into(),
                         },
                         VariantDef {
                             name: "F64".into(),
+                            desc: None,
                             payload_type: Type::F64.into(),
                         },
                     ],
@@ -54,6 +61,7 @@ fn main() {
             },
             ModelDef {
                 name: "AddRequest".into(),
+                desc: None,
                 type_: ModelType::Struct(StructDef {
                     extend: Some("Base".into()),
                     fields: vec![FieldDef::new(
@@ -64,6 +72,7 @@ fn main() {
             },
             ModelDef {
                 name: "DeleteRequest".into(),
+                desc: None,
                 type_: ModelType::Struct(StructDef {
                     extend: Some("Base".into()),
                     fields: vec![FieldDef::new(
