@@ -15,12 +15,15 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 .unwrap_or(model.name.as_str())
         )?;
 
+        let mut derived = vec!["Debug", "serde::Serialize", "serde::Deserialize"];
+
+        if let Some(extra_derived) = model.attribute("rs_extra_derive") {
+            derived.extend(extra_derived.split(",").map(|d| d.trim()));
+        }
+
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
-                writeln!(
-                    &mut result,
-                    "#[derive(Debug, serde::Serialize, serde::Deserialize)]"
-                )?;
+                writeln!(&mut result, "#[derive({})]", derived.join(", "))?;
                 writeln!(
                     &mut result,
                     "#[serde(tag = \"type\", content = \"payload\")]"
@@ -47,10 +50,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 writeln!(&mut result, "}}")?;
             }
             crate::ModelType::Struct(struct_def) => {
-                writeln!(
-                    &mut result,
-                    "#[derive(Debug, serde::Serialize, serde::Deserialize)]"
-                )?;
+                writeln!(&mut result, "#[derive({})]", derived.join(", "))?;
                 writeln!(&mut result, "pub struct {} {{", &model.name)?;
 
                 let mut fields = vec![];
@@ -124,10 +124,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             }
 
             crate::ModelType::NewType { inner_type } => {
-                writeln!(
-                    &mut result,
-                    "#[derive(Debug, serde::Serialize, serde::Deserialize)]"
-                )?;
+                writeln!(&mut result, "#[derive({})]", derived.join(", "))?;
                 writeln!(
                     &mut result,
                     "pub struct {}(pub {});",
@@ -196,6 +193,7 @@ mod tests {
                         FieldDef::new("children", Type::list(Type::reference("SimpleStruct"))),
                     ],
                 }),
+                ..Default::default()
             },
             include_str!("fixtures/rs_serde/simple_struct.rs"),
         );
@@ -203,7 +201,7 @@ mod tests {
             ModelDef {
                 name: "KeyValue".into(),
                 type_: ModelType::new_type(Type::map(Type::Bytes)),
-                desc: None,
+                ..Default::default()
             },
             include_str!("fixtures/rs_serde/key_value.rs"),
         );
@@ -225,7 +223,7 @@ mod tests {
                         },
                     ],
                 },
-                desc: None,
+                ..ModelDef::default()
             },
             include_str!("fixtures/rs_serde/enum.rs"),
         );
@@ -234,15 +232,14 @@ mod tests {
             vec![
                 ModelDef {
                     name: "Base".into(),
-                    desc: None,
                     type_: ModelType::Virtual(StructDef {
                         extend: None,
                         fields: vec![FieldDef::new("request_id", Type::String)],
                     }),
+                    ..ModelDef::default()
                 },
                 ModelDef {
                     name: "AddRequest".into(),
-                    desc: None,
                     type_: ModelType::Struct(StructDef {
                         extend: Some("Base".into()),
                         fields: vec![FieldDef::new(
@@ -250,17 +247,29 @@ mod tests {
                             Type::list(Type::reference("Number")),
                         )],
                     }),
+                    ..ModelDef::default()
                 },
                 ModelDef {
                     name: "ResetRequest".into(),
-                    desc: None,
                     type_: ModelType::Struct(StructDef {
                         extend: Some("Base".into()),
                         fields: vec![],
                     }),
+                    ..ModelDef::default()
                 },
             ],
             include_str!("fixtures/rs_serde/extend.rs"),
+        );
+
+        test_model_codegen(
+            ModelDef {
+                name: "Id".into(),
+                type_: ModelType::new_type(Type::reference("i64")),
+                desc: Some("NewType to i64, and derive Ord macros".into()),
+                ..ModelDef::default()
+            }
+            .with_attribute("rs_extra_derive", "PartialEq, Eq, PartialOrd, Ord"),
+            include_str!("fixtures/rs_serde/new_type.rs"),
         );
     }
 }

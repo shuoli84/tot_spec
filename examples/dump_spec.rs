@@ -5,7 +5,6 @@ fn main() {
         models: vec![
             ModelDef {
                 name: "SimpleStruct".to_string(),
-                desc: None,
                 type_: ModelType::Struct(StructDef {
                     extend: None,
                     fields: vec![
@@ -22,28 +21,28 @@ fn main() {
                         FieldDef::new("children", Type::list(Type::reference("SimpleStruct"))),
                     ],
                 }),
+                ..Default::default()
             },
             ModelDef {
                 name: "KeyValue".into(),
-                desc: None,
                 type_: ModelType::new_type(Type::map(Type::Bytes)),
+                ..Default::default()
             },
             ModelDef {
                 name: "Container".into(),
-                desc: None,
                 type_: ModelType::new_type(Type::list(Type::reference("SimpleStruct"))),
+                ..Default::default()
             },
             ModelDef {
                 name: "Base".into(),
-                desc: None,
                 type_: ModelType::Virtual(StructDef {
                     extend: None,
                     fields: vec![FieldDef::new("request_id", Type::String)],
                 }),
+                ..Default::default()
             },
             ModelDef {
                 name: "Number".into(),
-                desc: None,
                 type_: ModelType::Enum {
                     variants: vec![
                         VariantDef {
@@ -58,10 +57,10 @@ fn main() {
                         },
                     ],
                 },
+                ..Default::default()
             },
             ModelDef {
                 name: "AddRequest".into(),
-                desc: None,
                 type_: ModelType::Struct(StructDef {
                     extend: Some("Base".into()),
                     fields: vec![FieldDef::new(
@@ -69,10 +68,10 @@ fn main() {
                         Type::list(Type::reference("Number")),
                     )],
                 }),
+                ..Default::default()
             },
             ModelDef {
                 name: "DeleteRequest".into(),
-                desc: None,
                 type_: ModelType::Struct(StructDef {
                     extend: Some("Base".into()),
                     fields: vec![FieldDef::new(
@@ -80,6 +79,7 @@ fn main() {
                         Type::list(Type::reference("Number")),
                     )],
                 }),
+                ..Default::default()
             },
         ],
         meta: Default::default(),

@@ -28,7 +28,7 @@ impl Definition {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ModelDef {
     pub name: String,
     #[serde(rename = "type")]
@@ -36,6 +36,31 @@ pub struct ModelDef {
     /// description of this model
     #[serde(default)]
     pub desc: Option<String>,
+    /// attributes for model
+    #[serde(default)]
+    pub attributes: BTreeMap<String, String>,
+}
+
+impl ModelDef {
+    /// get attribute
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tot_spec::{ModelDef, Type};
+    ///
+    /// let field = ModelDef::default()
+    ///     .with_attribute("test_attr", "attr_value");
+    /// assert!(field.attribute("test_attr").is_some());
+    /// ```
+    pub fn attribute(&self, name: &str) -> Option<&String> {
+        self.attributes.get(name)
+    }
+
+    pub fn with_attribute(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.attributes.insert(name.into(), value.into());
+        self
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +79,12 @@ pub enum ModelType {
     },
 }
 
+impl Default for ModelType {
+    fn default() -> Self {
+        Self::Struct(StructDef::default())
+    }
+}
+
 impl ModelType {
     pub fn new_type(inner_type: Type) -> Self {
         Self::NewType {
@@ -70,7 +101,7 @@ impl ModelType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct StructDef {
     #[serde(default)]
     pub extend: Option<String>,

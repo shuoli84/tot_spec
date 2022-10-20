@@ -58,6 +58,8 @@ models:
           target: SimpleStruct
       attributes: {}
       required: false
+  attributes:
+    rs_extra_derive: PartialEq, Eq, PartialOrd, Ord
 - name: KeyValue
   type:
     name: new_type
