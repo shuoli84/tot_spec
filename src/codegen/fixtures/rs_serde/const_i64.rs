@@ -1,5 +1,7 @@
 /// Const def
-#[derive(Debug, serde::Serialize, serde::Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Debug, serde::Serialize, serde::Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Copy, Clone,
+)]
 pub struct Reason(pub i64);
 
 impl Reason {

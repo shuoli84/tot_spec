@@ -1,10 +1,12 @@
-use crate::{codegen::utils::indent, models::Definition};
+use crate::{codegen::utils::indent, models::Definition, ConstType, ConstValueDef, Type};
 use std::fmt::Write;
 
 pub fn render(def: &Definition) -> anyhow::Result<String> {
     let mut result = String::new();
 
     for model in def.models.iter() {
+        let model_name = &model.name;
+
         writeln!(
             &mut result,
             "\n/// {}",
@@ -12,7 +14,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 .desc
                 .as_ref()
                 .map(|s| s.as_str())
-                .unwrap_or(model.name.as_str())
+                .unwrap_or(model_name.as_str())
         )?;
 
         let mut derived = vec!["Debug", "serde::Serialize", "serde::Deserialize"];
@@ -23,7 +25,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
-                writeln!(&mut result, "#[derive({})]", derived.join(", "))?;
+                writeln!(&mut result, "{}", render_derived(&derived))?;
                 writeln!(
                     &mut result,
                     "#[serde(tag = \"type\", content = \"payload\")]"
@@ -50,7 +52,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 writeln!(&mut result, "}}")?;
             }
             crate::ModelType::Struct(struct_def) => {
-                writeln!(&mut result, "#[derive({})]", derived.join(", "))?;
+                writeln!(&mut result, "{}", render_derived(&derived))?;
                 writeln!(&mut result, "pub struct {} {{", &model.name)?;
 
                 let mut fields = vec![];
@@ -124,87 +126,166 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             }
 
             crate::ModelType::NewType { inner_type } => {
-                writeln!(&mut result, "#[derive({})]", derived.join(", "))?;
-                writeln!(
-                    &mut result,
-                    "pub struct {}(pub {});",
-                    &model.name,
-                    inner_type.rs_type()
-                )?;
+                let code = render_new_type(model_name, &derived, inner_type)?;
+                writeln!(&mut result, "{}", code.trim())?;
             }
             crate::ModelType::Const { value_type, values } => {
-                let model_name = &model.name;
-                let value_type = value_type.rs_type();
-
-                writeln!(&mut result, "#[derive({})]", derived.join(", "))?;
-                writeln!(&mut result, "pub struct {model_name}(pub {value_type});")?;
-
-                {
-                    // generate from_value and to_value
-                    writeln!(&mut result, "")?;
-                    writeln!(&mut result, "impl {model_name} {{")?;
-
-                    let from_value = {
-                        // from_value
-                        let mut code = "".to_string();
-                        writeln!(
-                            &mut code,
-                            "fn from_value(val: {value_type}) -> Option<Self> {{"
-                        )?;
-                        writeln!(&mut code, "    match val {{")?;
-                        for value in values.iter() {
-                            let value_name = &value.name;
-                            let value_value = &value.value;
-                            writeln!(
-                                &mut code,
-                                "        {value_value} => Some(Self::{value_name}),"
-                            )?;
-                        }
-                        writeln!(&mut code, "        _ => None,")?;
-
-                        writeln!(&mut code, "    }}")?;
-                        writeln!(&mut code, "}}")?;
-                        code
-                    };
-
-                    writeln!(&mut result, "{}", indent(&from_value.trim(), 1))?;
-
-                    let to_value = {
-                        // from_value
-                        let mut code = "".to_string();
-                        writeln!(&mut code, "fn to_value(self) -> {value_type} {{")?;
-                        writeln!(&mut code, "    self.0")?;
-                        writeln!(&mut code, "}}")?;
-                        code
-                    };
-
-                    writeln!(&mut result, "{}", indent(&to_value.trim(), 1))?;
-
-                    writeln!(&mut result, "}}")?;
-                }
-
-                writeln!(&mut result, "")?;
-                writeln!(&mut result, "impl {model_name} {{")?;
-
-                for value in values.iter() {
-                    let value_name = &value.name;
-                    let value_literal = &value.value;
-                    if let Some(desc) = &value.desc {
-                        writeln!(&mut result, "    /// {desc}")?;
-                    }
-
-                    writeln!(
-                        &mut result,
-                        "    pub const {value_name}: {model_name} = {model_name}({value_literal});"
-                    )?;
-                }
-
-                writeln!(&mut result, "}}")?;
+                let code = render_const(&model_name, &derived, value_type, &values)?;
+                writeln!(&mut result, "{}", code.trim())?;
             }
         }
     }
 
+    let ast = syn::parse_file(&mut result)?;
+    let result = prettyplease::unparse(&ast);
+
     Ok(result)
+}
+
+fn render_derived(derived: &[&str]) -> String {
+    format!(
+        "#[derive({})]",
+        derived
+            .iter()
+            .map(|d| format!("{},", d))
+            .collect::<Vec<_>>()
+            .join("")
+    )
+}
+
+fn render_new_type(
+    model_name: &str,
+    derived: &[&str],
+    inner_type: &Type,
+) -> anyhow::Result<String> {
+    let mut result = "".to_string();
+    writeln!(&mut result, "{}", render_derived(derived))?;
+    writeln!(
+        &mut result,
+        "pub struct {model_name}(pub {});",
+        inner_type.rs_type()
+    )?;
+    Ok(result)
+}
+
+fn extend_derived<'a>(derived: &[&'a str], more: &[&'a str]) -> Vec<&'a str> {
+    let mut derived = derived.to_vec();
+
+    for d in more.iter() {
+        if !derived.contains(d) {
+            derived.push(d);
+        }
+    }
+
+    derived
+}
+
+fn render_const(
+    model_name: &str,
+    derived: &[&str],
+    value_type: &ConstType,
+    values: &[ConstValueDef],
+) -> anyhow::Result<String> {
+    let mut code = "".to_string();
+    let value_type_in_struct = value_type.rs_type();
+    let value_type_in_to_value = value_type_in_struct;
+    let value_type_in_from_value = match value_type {
+        ConstType::I8 => "i8",
+        ConstType::I64 => "i64",
+        // from_value able to accept &str for all lifetime
+        ConstType::String => "&str",
+    };
+
+    let value_literal = |value_def: &ConstValueDef| match value_type {
+        ConstType::I8 | ConstType::I64 => value_def.value.clone(),
+        ConstType::String => format!("\"{}\"", value_def.value),
+    };
+
+    // for const, we should always derive, "Copy", "Clone", "Hash", "Ord" like
+    let derived = extend_derived(
+        derived,
+        &[
+            "Copy",
+            "Clone",
+            "Hash",
+            "PartialEq",
+            "Eq",
+            "PartialOrd",
+            "Ord",
+        ],
+    );
+
+    writeln!(&mut code, "{}", render_derived(&derived))?;
+    writeln!(
+        &mut code,
+        "pub struct {model_name}(pub {value_type_in_struct});"
+    )?;
+
+    {
+        // generate from_value and to_value
+        writeln!(&mut code, "")?;
+        writeln!(&mut code, "impl {model_name} {{")?;
+
+        let from_value = {
+            // from_value
+            let mut code = "".to_string();
+            writeln!(
+                &mut code,
+                "fn from_value(val: {value_type_in_from_value}) -> Option<Self> {{"
+            )?;
+            writeln!(&mut code, "    match val {{")?;
+            for value in values.iter() {
+                let value_name = &value.name;
+                let value_literal = value_literal(value);
+                writeln!(
+                    &mut code,
+                    "        {value_literal} => Some(Self::{value_name}),"
+                )?;
+            }
+            writeln!(&mut code, "        _ => None,")?;
+
+            writeln!(&mut code, "    }}")?;
+            writeln!(&mut code, "}}")?;
+            code
+        };
+
+        writeln!(&mut code, "{}", indent(&from_value.trim(), 1))?;
+
+        let to_value = {
+            // from_value
+            let mut code = "".to_string();
+            writeln!(
+                &mut code,
+                "fn to_value(self) -> {value_type_in_to_value} {{"
+            )?;
+            writeln!(&mut code, "    self.0")?;
+            writeln!(&mut code, "}}")?;
+            code
+        };
+
+        writeln!(&mut code, "{}", indent(&to_value.trim(), 1))?;
+
+        writeln!(&mut code, "}}")?;
+    }
+
+    writeln!(&mut code, "")?;
+    writeln!(&mut code, "impl {model_name} {{")?;
+
+    for value in values.iter() {
+        let value_name = &value.name;
+        let value_literal = value_literal(value);
+        if let Some(desc) = &value.desc {
+            writeln!(&mut code, "    /// {desc}")?;
+        }
+
+        writeln!(
+            &mut code,
+            "    pub const {value_name}: {model_name} = {model_name}({value_literal});"
+        )?;
+    }
+
+    writeln!(&mut code, "}}")?;
+    Ok(code)
 }
 
 #[cfg(test)]
@@ -230,8 +311,8 @@ mod tests {
             let code_pretty = prettyplease::unparse(&code_ast);
 
             if rendered_pretty.ne(&code_pretty) {
-                println!("=== rendered:\n{}", rendered.as_str().trim());
-                println!("=== expected:\n{}", code.trim());
+                println!("=== rendered:\n{}", rendered_pretty.as_str().trim());
+                println!("=== expected:\n{}", code_pretty.trim());
                 assert!(false, "code not match");
             }
         }
@@ -345,16 +426,41 @@ mod tests {
             ModelDef {
                 name: "Code".into(),
                 type_: ModelType::Const {
-                    value_type: IntegerType::I8,
+                    value_type: ConstType::String,
                     values: vec![
                         ConstValueDef {
                             name: "Ok".into(),
-                            value: 0,
+                            value: "ok".into(),
                             desc: Some("Everything is ok".into()),
                         },
                         ConstValueDef {
                             name: "Error".into(),
-                            value: 1,
+                            value: "error".into(),
+                            desc: Some("Request is bad".into()),
+                        },
+                    ],
+                },
+                desc: Some("Const def for string".into()),
+                ..ModelDef::default()
+            }
+            .with_attribute("rs_extra_derive", "Hash, PartialEq, Eq, PartialOrd, Ord"),
+            include_str!("fixtures/rs_serde/const_string.rs"),
+        );
+
+        test_model_codegen(
+            ModelDef {
+                name: "Code".into(),
+                type_: ModelType::Const {
+                    value_type: ConstType::I8,
+                    values: vec![
+                        ConstValueDef {
+                            name: "Ok".into(),
+                            value: "0".into(),
+                            desc: Some("Everything is ok".into()),
+                        },
+                        ConstValueDef {
+                            name: "Error".into(),
+                            value: "1".into(),
                             desc: Some("Request is bad".into()),
                         },
                     ],
@@ -370,16 +476,16 @@ mod tests {
             ModelDef {
                 name: "Reason".into(),
                 type_: ModelType::Const {
-                    value_type: IntegerType::I64,
+                    value_type: ConstType::I64,
                     values: vec![
                         ConstValueDef {
                             name: "Ok".into(),
-                            value: 200,
+                            value: 200.to_string(),
                             desc: Some("Everything is ok".into()),
                         },
                         ConstValueDef {
                             name: "BadRequest".into(),
-                            value: 400,
+                            value: 400.to_string(),
                             desc: Some("Request is bad".into()),
                         },
                     ],

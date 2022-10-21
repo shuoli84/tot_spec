@@ -80,7 +80,7 @@ pub enum ModelType {
     Const {
         /// only integer type supported
         #[serde(deserialize_with = "string_or_struct::string_or_struct")]
-        value_type: IntegerType,
+        value_type: ConstType,
         values: Vec<ConstValueDef>,
     },
 }
@@ -207,34 +207,28 @@ impl FieldDef {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ConstValueDef {
     pub name: String,
-    pub value: i64,
+    pub value: String,
     #[serde(default)]
     pub desc: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "name")]
-pub enum IntegerType {
+pub enum ConstType {
     #[serde(rename = "i8")]
     I8,
     #[serde(rename = "i64")]
     I64,
+    #[serde(rename = "string")]
+    String,
 }
 
-impl From<IntegerType> for Type {
-    fn from(value: IntegerType) -> Self {
-        match value {
-            IntegerType::I8 => Type::I8,
-            IntegerType::I64 => Type::I64,
-        }
-    }
-}
-
-impl IntegerType {
+impl ConstType {
     pub fn rs_type(&self) -> &'static str {
         match self {
-            IntegerType::I8 => "i8",
-            IntegerType::I64 => "i64",
+            ConstType::I8 => "i8",
+            ConstType::I64 => "i64",
+            ConstType::String => "&'static str",
         }
     }
 }
@@ -413,15 +407,15 @@ mod string_or_struct {
         }
     }
 
-    impl FromStr for IntegerType {
+    impl FromStr for ConstType {
         fn from_str(s: &str) -> anyhow::Result<Self> {
             let (type_, rest) = parse_type(s)?;
             if !rest.trim().is_empty() {
                 bail!("invalid type: {}", s);
             } else {
                 match type_ {
-                    Type::I8 => Ok(IntegerType::I8),
-                    Type::I64 => Ok(IntegerType::I64),
+                    Type::I8 => Ok(ConstType::I8),
+                    Type::I64 => Ok(ConstType::I64),
                     _ => bail!("only integer type supported"),
                 }
             }
