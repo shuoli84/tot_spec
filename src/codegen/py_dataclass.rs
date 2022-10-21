@@ -215,6 +215,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     py_type(inner_type)
                 )?;
             }
+
+            crate::ModelType::Const { value_type, values } => {
+                todo!()
+            }
         }
     }
 

@@ -132,3 +132,13 @@ models:
   type:
     name: struct
     extend: BaseRequest
+
+- name: TypeWithConstValue
+  type:
+    name: const
+    value_type: i64
+    values:
+      - name: Const1
+        value: 1
+      - name: Const2
+        value: 2

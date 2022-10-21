@@ -230,6 +230,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     swift_type(inner_type, &package_name)
                 )?;
             }
+
+            crate::ModelType::Const { value_type, values } => {
+                todo!()
+            }
         }
     }
 
