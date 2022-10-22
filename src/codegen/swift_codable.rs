@@ -25,7 +25,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
     for model in def.models.iter() {
         let model_name = &model.name;
 
-        writeln!(&mut result, "\n // {model_name}")?;
+        writeln!(&mut result, "")?;
+        if let Some(desc) = &model.desc {
+            writeln!(&mut result, "// {desc}")?;
+        }
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
                 writeln!(&mut result, "public enum {}: Codable {{", model.name)?;
@@ -232,7 +235,27 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             }
 
             crate::ModelType::Const { value_type, values } => {
-                todo!()
+                let swift_ty = match value_type {
+                    crate::ConstType::I8 => "Int8",
+                    crate::ConstType::I64 => "Int64",
+                    crate::ConstType::String => "String",
+                };
+
+                writeln!(&mut result, "public enum {model_name}: {swift_ty} {{",)?;
+                for value in values.iter() {
+                    let value_name = &value.name;
+                    if let Some(desc) = &value.desc {
+                        writeln!(&mut result, "    // {desc}")?;
+                    }
+
+                    let value_literal = match &value.value {
+                        crate::StringOrInteger::String(s) => format!("\"{s}\""),
+                        crate::StringOrInteger::Integer(i) => i.to_string(),
+                    };
+
+                    writeln!(&mut result, "    case {value_name} = {value_literal}",)?;
+                }
+                writeln!(&mut result, "}}",)?;
             }
         }
     }
@@ -293,4 +316,30 @@ fn generate_memberwise_init(fields: &[FieldDef], package_name: &str) -> anyhow::
     writeln!(&mut code, "}}")?;
 
     Ok(code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_swift_codable() {
+        let specs = &[
+            (
+                include_str!("fixtures/specs/const_i8.yaml"),
+                include_str!("fixtures/swift_codable/const_i8.swift"),
+            ),
+            (
+                include_str!("fixtures/specs/const_string.yaml"),
+                include_str!("fixtures/swift_codable/const_string.swift"),
+            ),
+        ];
+
+        for (spec, expected) in specs.iter() {
+            let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
+            let rendered = render(&def).unwrap();
+
+            pretty_assertions::assert_eq!(rendered.as_str().trim(), expected.trim());
+        }
+    }
 }

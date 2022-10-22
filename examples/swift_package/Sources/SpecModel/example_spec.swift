@@ -4,7 +4,6 @@ public enum ModelError: Error {
     case Error
 }
 
- // SimpleStruct
 public struct SimpleStruct: Codable {
     public var bool_value: Bool
     public var i8_value: Int8
@@ -29,13 +28,10 @@ public struct SimpleStruct: Codable {
     }
 }
 
- // KeyValue
 public typealias KeyValue = [String:Data]
 
- // Container
 public typealias Container = [SpecModel.SimpleStruct]
 
- // RealNumber
 public struct RealNumber: Codable {
     public var real: Float64?
     public var imagine: Float64?
@@ -46,7 +42,6 @@ public struct RealNumber: Codable {
     }
 }
 
- // Number
 public enum Number: Codable {
     case I64(Int64)
     case F64(Float64)
@@ -93,7 +88,6 @@ public enum Number: Codable {
     }
 }
 
- // BaseRequest
 public protocol BaseRequest {
     var request_id: String? {
         get
@@ -101,7 +95,6 @@ public protocol BaseRequest {
     }
 }
 
- // AddRequest
 public struct AddRequest: Codable, BaseRequest {
     public var request_id: String?
     public var numbers: [SpecModel.Number]?
@@ -112,11 +105,15 @@ public struct AddRequest: Codable, BaseRequest {
     }
 }
 
- // ResetRequest
 public struct ResetRequest: Codable, BaseRequest {
     public var request_id: String?
 
     public init(request_id: String? = nil) {
         self.request_id = request_id
     }
+}
+
+public enum ConstInteger: Int64 {
+    case Value1 = 1
+    case Value2 = 2
 }

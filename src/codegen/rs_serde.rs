@@ -285,6 +285,13 @@ fn render_const(
     Ok(code)
 }
 
+fn rs_const_literal(val: &StringOrInteger) -> String {
+    match val {
+        StringOrInteger::String(s) => format!("\"{s}\""),
+        StringOrInteger::Integer(i) => i.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::models::*;
@@ -307,11 +314,7 @@ mod tests {
             let rendered_pretty = prettyplease::unparse(&rendered_ast);
             let code_pretty = prettyplease::unparse(&code_ast);
 
-            if rendered_pretty.ne(&code_pretty) {
-                println!("=== rendered:\n{}", rendered_pretty.as_str().trim());
-                println!("=== expected:\n{}", code_pretty.trim());
-                assert!(false, "code not match");
-            }
+            pretty_assertions::assert_eq!(rendered_pretty, code_pretty);
         }
 
         test_model_codegen(
@@ -436,12 +439,5 @@ mod tests {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
             test_models_codegen(def.models, expected);
         }
-    }
-}
-
-fn rs_const_literal(val: &StringOrInteger) -> String {
-    match val {
-        StringOrInteger::String(s) => format!("\"{s}\""),
-        StringOrInteger::Integer(i) => i.to_string(),
     }
 }

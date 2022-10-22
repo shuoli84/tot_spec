@@ -79,8 +79,6 @@ pub enum ModelType {
     },
     #[serde(rename = "const")]
     Const {
-        /// only integer type supported
-        #[serde(deserialize_with = "serde_helper::string_or_struct")]
         value_type: ConstType,
         values: Vec<ConstValueDef>,
     },
@@ -210,14 +208,10 @@ pub struct ConstValueDef {
     pub desc: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "name")]
+#[derive(Debug, Clone)]
 pub enum ConstType {
-    #[serde(rename = "i8")]
     I8,
-    #[serde(rename = "i64")]
     I64,
-    #[serde(rename = "string")]
     String,
 }
 
@@ -411,19 +405,49 @@ mod serde_helper {
         }
     }
 
-    impl FromStr for ConstType {
-        fn from_str(s: &str) -> anyhow::Result<Self> {
-            let (type_, rest) = parse_type(s)?;
-            if !rest.trim().is_empty() {
-                bail!("invalid type: {}", s);
-            } else {
-                match type_ {
-                    Type::I8 => Ok(ConstType::I8),
-                    Type::I64 => Ok(ConstType::I64),
-                    Type::String => Ok(ConstType::String),
-                    _ => bail!("only integer or string type supported"),
+    impl serde::Serialize for ConstType {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let type_str = match self {
+                ConstType::I8 => "i8",
+                ConstType::I64 => "i64",
+                ConstType::String => "string",
+            };
+
+            serializer.serialize_str(type_str)
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for ConstType {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            struct Visit;
+
+            impl<'de> serde::de::Visitor<'de> for Visit {
+                type Value = ConstType;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("expecting string: i8/i64/string")
+                }
+
+                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    match v {
+                        "i8" => Ok(ConstType::I8),
+                        "i64" => Ok(ConstType::I64),
+                        "string" => Ok(ConstType::String),
+                        _ => Err(E::custom(format!("invalid value: {}", v))),
+                    }
                 }
             }
+
+            deserializer.deserialize_str(Visit)
         }
     }
 

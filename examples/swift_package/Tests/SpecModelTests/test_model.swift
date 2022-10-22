@@ -38,5 +38,7 @@ class TestModels: XCTestCase {
             let data_back = try! decoder.decode(ResetRequest.self, from: json_data)
             print("data back \(data_back)")
         }
+
+        print("\(SpecModel.ConstInteger.Value1) = \(SpecModel.ConstInteger.Value1.rawValue)")
     }
 }
