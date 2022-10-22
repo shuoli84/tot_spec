@@ -282,7 +282,7 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
     for field in fields {
         writeln!(&mut result, "\n    # {}", field.name)?;
 
-        match &field.type_ {
+        match &*field.type_ {
             Type::Bytes | Type::I64 | Type::I8 | Type::Bool | Type::F64 | Type::String => {
                 writeln!(
                     &mut result,
@@ -382,7 +382,7 @@ fn generate_from_dict(
 
         writeln!(&mut code_block, "\n# {field_name}")?;
 
-        match &field.type_ {
+        match &*field.type_ {
             Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
                 if field.required {
                     writeln!(&mut code_block, "{field_name} = d[\"{field_name}\"]")?;

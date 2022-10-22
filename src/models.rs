@@ -74,8 +74,7 @@ pub enum ModelType {
     Virtual(StructDef),
     #[serde(rename = "new_type")]
     NewType {
-        #[serde(deserialize_with = "serde_helper::string_or_struct")]
-        inner_type: Box<Type>,
+        inner_type: Box<serde_helper::StringOrStruct<Type>>,
     },
     #[serde(rename = "const")]
     Const {
@@ -93,7 +92,7 @@ impl Default for ModelType {
 impl ModelType {
     pub fn new_type(inner_type: Type) -> Self {
         Self::NewType {
-            inner_type: inner_type.into(),
+            inner_type: Box::new(inner_type.into()),
         }
     }
 
@@ -125,8 +124,8 @@ impl StructDef {
 pub struct FieldDef {
     pub name: String,
 
-    #[serde(rename = "type", deserialize_with = "serde_helper::string_or_struct")]
-    pub type_: Type,
+    #[serde(rename = "type")]
+    pub type_: serde_helper::StringOrStruct<Type>,
 
     #[serde(default)]
     pub desc: Option<String>,
@@ -145,7 +144,7 @@ impl FieldDef {
         Self {
             name: name.into(),
             desc: None,
-            type_,
+            type_: type_.into(),
             attributes: Default::default(),
             required: false,
         }
@@ -243,8 +242,7 @@ pub enum Type {
     String,
     #[serde(rename = "list")]
     List {
-        #[serde(deserialize_with = "serde_helper::string_or_struct")]
-        item_type: Box<Type>,
+        item_type: Box<serde_helper::StringOrStruct<Type>>,
     },
     #[serde(rename = "map")]
     Map { value_type: Box<Type> },
@@ -255,7 +253,7 @@ pub enum Type {
 impl Type {
     pub fn list(item_type: Type) -> Self {
         Self::List {
-            item_type: item_type.into(),
+            item_type: Box::new(item_type.into()),
         }
     }
 
@@ -296,8 +294,7 @@ impl Type {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantDef {
     pub name: String,
-    #[serde(deserialize_with = "serde_helper::string_or_struct")]
-    pub payload_type: Option<Type>,
+    pub payload_type: Option<serde_helper::StringOrStruct<Type>>,
     #[serde(default)]
     pub desc: Option<String>,
 }
@@ -313,7 +310,7 @@ mod serde_helper {
     use super::*;
     use anyhow::bail;
     use serde::{de::Visitor, Deserialize, Deserializer};
-    use std::{fmt, marker::PhantomData};
+    use std::{fmt, marker::PhantomData, ops::Deref};
 
     #[derive(Debug)]
     pub struct Void {}
@@ -346,7 +343,7 @@ mod serde_helper {
                 if let Some(rest) = rest.strip_prefix("]") {
                     Ok((
                         Type::List {
-                            item_type: Box::new(item_type),
+                            item_type: Box::new(item_type.into()),
                         },
                         rest,
                     ))
@@ -462,57 +459,82 @@ mod serde_helper {
         }
     }
 
-    impl FromStr for Box<Type> {
-        fn from_str(s: &str) -> anyhow::Result<Self> {
-            match Type::from_str(s) {
-                Ok(r) => Ok(Box::new(r)),
-                Err(e) => Err(e),
-            }
+    pub struct StringOrStruct<T>(T);
+
+    impl<T: Clone> Clone for StringOrStruct<T> {
+        fn clone(&self) -> Self {
+            Self(self.0.clone())
         }
     }
 
-    impl FromStr for Option<Type> {
-        fn from_str(s: &str) -> anyhow::Result<Self> {
-            match Type::from_str(s) {
-                Ok(r) => Ok(Some(r)),
-                Err(e) => Err(e),
-            }
-        }
-    }
-
-    pub fn string_or_struct<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    impl<T> std::fmt::Debug for StringOrStruct<T>
     where
-        T: Deserialize<'de> + FromStr,
-        D: Deserializer<'de>,
+        T: FromStr + std::fmt::Debug,
     {
-        struct StringOrStruct<T>(PhantomData<fn() -> T>);
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_tuple("StringOrStruct").field(&self.0).finish()
+        }
+    }
 
-        impl<'de, T> Visitor<'de> for StringOrStruct<T>
+    impl<T: FromStr + serde::Serialize> serde::Serialize for StringOrStruct<T> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
-            T: Deserialize<'de> + FromStr,
+            S: serde::Serializer,
         {
-            type Value = T;
+            <T as serde::Serialize>::serialize(&self.0, serializer)
+        }
+    }
+
+    impl<T> Deref for StringOrStruct<T> {
+        type Target = T;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl<T> From<T> for StringOrStruct<T> {
+        fn from(value: T) -> Self {
+            Self(value)
+        }
+    }
+
+    mod string_or_struct {
+        use super::*;
+        pub struct Visit<T>(pub std::marker::PhantomData<fn() -> T>);
+
+        impl<'de, T: FromStr + Deserialize<'de>> Visitor<'de> for Visit<T> {
+            type Value = super::StringOrStruct<T>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("string or map")
             }
 
-            fn visit_str<E>(self, value: &str) -> Result<T, E>
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                Ok(FromStr::from_str(value).unwrap())
+                Ok(StringOrStruct(<T as FromStr>::from_str(value).unwrap()))
             }
 
-            fn visit_map<M>(self, map: M) -> Result<T, M::Error>
+            fn visit_map<M>(self, map: M) -> Result<Self::Value, M::Error>
             where
                 M: serde::de::MapAccess<'de>,
             {
-                Deserialize::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+                Ok(StringOrStruct(<T as Deserialize>::deserialize(
+                    serde::de::value::MapAccessDeserializer::new(map),
+                )?))
             }
         }
+    }
 
-        deserializer.deserialize_any(StringOrStruct(PhantomData))
+    impl<'de, T: FromStr + serde::Deserialize<'de>> serde::Deserialize<'de> for StringOrStruct<T> {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_any(string_or_struct::Visit(PhantomData))
+        }
     }
 
     impl serde::Serialize for StringOrInteger {
@@ -614,9 +636,9 @@ models:
         let model = def.get_model("TestStruct").unwrap();
         let struct_def = model.type_.struct_def().unwrap();
         let field_def = struct_def.field("children_map").unwrap();
-        assert!(matches!(field_def.type_, Type::Map { value_type: _ }));
+        assert!(matches!(*field_def.type_, Type::Map { value_type: _ }));
 
         let field_def = struct_def.field("map_of_list").unwrap();
-        assert!(matches!(field_def.type_, Type::Map { value_type: _ }));
+        assert!(matches!(*field_def.type_, Type::Map { value_type: _ }));
     }
 }

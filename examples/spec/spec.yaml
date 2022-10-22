@@ -97,7 +97,9 @@ models:
     - name: F64
       payload_type: f64
     - name: RealNumber
-      payload_type: RealNumber
+      payload_type: 
+        name: ref
+        target: RealNumber
 
 - name: BaseRequest
   type:

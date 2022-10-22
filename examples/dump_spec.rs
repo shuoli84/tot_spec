@@ -48,12 +48,12 @@ fn main() {
                         VariantDef {
                             name: "I64".into(),
                             desc: None,
-                            payload_type: Type::I64.into(),
+                            payload_type: Some(Type::I64.into()),
                         },
                         VariantDef {
                             name: "F64".into(),
                             desc: None,
-                            payload_type: Type::F64.into(),
+                            payload_type: Some(Type::F64.into()),
                         },
                     ],
                 },

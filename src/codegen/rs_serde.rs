@@ -363,12 +363,12 @@ mod tests {
                     variants: vec![
                         VariantDef {
                             name: "I64".into(),
-                            payload_type: Type::I64.into(),
+                            payload_type: Some(Type::I64.into()),
                             desc: Some("Variant I64".into()),
                         },
                         VariantDef {
                             name: "F64".into(),
-                            payload_type: Type::F64.into(),
+                            payload_type: Some(Type::F64.into()),
                             desc: Some("Variant F64".into()),
                         },
                     ],
