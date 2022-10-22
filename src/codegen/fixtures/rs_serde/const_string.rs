@@ -1,10 +1,10 @@
 /// Const def for string
 #[derive(
-    Debug, serde::Serialize, serde::Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Copy, Clone,
+    Debug, serde::Serialize, serde::Deserialize, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Code(pub &'static str);
+pub struct Reason(pub &'static str);
 
-impl Code {
+impl Reason {
     fn from_value(val: &str) -> Option<Self> {
         match val {
             "ok" => Some(Self::Ok),
@@ -17,9 +17,9 @@ impl Code {
     }
 }
 
-impl Code {
+impl Reason {
     /// Everything is ok
-    pub const Ok: Code = Code("ok");
+    pub const Ok: Reason = Reason("ok");
     /// Request is bad
-    pub const Error: Code = Code("error");
+    pub const Error: Reason = Reason("error");
 }

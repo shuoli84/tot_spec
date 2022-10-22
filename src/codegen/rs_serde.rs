@@ -422,79 +422,22 @@ mod tests {
             include_str!("fixtures/rs_serde/new_type.rs"),
         );
 
-        test_model_codegen(
-            ModelDef {
-                name: "Code".into(),
-                type_: ModelType::Const {
-                    value_type: ConstType::String,
-                    values: vec![
-                        ConstValueDef {
-                            name: "Ok".into(),
-                            value: "ok".into(),
-                            desc: Some("Everything is ok".into()),
-                        },
-                        ConstValueDef {
-                            name: "Error".into(),
-                            value: "error".into(),
-                            desc: Some("Request is bad".into()),
-                        },
-                    ],
-                },
-                desc: Some("Const def for string".into()),
-                ..ModelDef::default()
-            }
-            .with_attribute("rs_extra_derive", "Hash, PartialEq, Eq, PartialOrd, Ord"),
-            include_str!("fixtures/rs_serde/const_string.rs"),
-        );
-
-        test_model_codegen(
-            ModelDef {
-                name: "Code".into(),
-                type_: ModelType::Const {
-                    value_type: ConstType::I8,
-                    values: vec![
-                        ConstValueDef {
-                            name: "Ok".into(),
-                            value: "0".into(),
-                            desc: Some("Everything is ok".into()),
-                        },
-                        ConstValueDef {
-                            name: "Error".into(),
-                            value: "1".into(),
-                            desc: Some("Request is bad".into()),
-                        },
-                    ],
-                },
-                desc: Some("Const def for i8".into()),
-                ..ModelDef::default()
-            }
-            .with_attribute("rs_extra_derive", "Hash, PartialEq, Eq, PartialOrd, Ord"),
-            include_str!("fixtures/rs_serde/const_i8.rs"),
-        );
-
-        test_model_codegen(
-            ModelDef {
-                name: "Reason".into(),
-                type_: ModelType::Const {
-                    value_type: ConstType::I64,
-                    values: vec![
-                        ConstValueDef {
-                            name: "Ok".into(),
-                            value: 200.to_string(),
-                            desc: Some("Everything is ok".into()),
-                        },
-                        ConstValueDef {
-                            name: "BadRequest".into(),
-                            value: 400.to_string(),
-                            desc: Some("Request is bad".into()),
-                        },
-                    ],
-                },
-                desc: Some("Const def".into()),
-                ..ModelDef::default()
-            }
-            .with_attribute("rs_extra_derive", "Hash, PartialEq, Eq, PartialOrd, Ord"),
-            include_str!("fixtures/rs_serde/const_i64.rs"),
-        );
+        for (spec, expected) in &[
+            (
+                include_str!("fixtures/specs/const_i8.yaml"),
+                include_str!("fixtures/rs_serde/const_i8.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/const_i64.yaml"),
+                include_str!("fixtures/rs_serde/const_i64.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/const_string.yaml"),
+                include_str!("fixtures/rs_serde/const_string.rs"),
+            ),
+        ] {
+            let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
+            test_models_codegen(def.models, expected);
+        }
     }
 }

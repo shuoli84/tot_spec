@@ -1,14 +1,14 @@
-/// Const def
+/// Const def for i64
 #[derive(
     Debug, serde::Serialize, serde::Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Copy, Clone,
 )]
-pub struct Reason(pub i64);
+pub struct Code(pub i64);
 
-impl Reason {
+impl Code {
     fn from_value(val: i64) -> Option<Self> {
         match val {
-            200 => Some(Self::Ok),
-            400 => Some(Self::BadRequest),
+            0 => Some(Self::Ok),
+            1 => Some(Self::Error),
             _ => None,
         }
     }
@@ -17,9 +17,9 @@ impl Reason {
     }
 }
 
-impl Reason {
+impl Code {
     /// Everything is ok
-    pub const Ok: Reason = Reason(200);
+    pub const Ok: Code = Code(0);
     /// Request is bad
-    pub const BadRequest: Reason = Reason(400);
+    pub const Error: Code = Code(1);
 }

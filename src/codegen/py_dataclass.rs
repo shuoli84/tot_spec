@@ -16,7 +16,13 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
     for model in def.models.iter() {
         let model_name = &model.name;
-        writeln!(&mut result, "\n# {model_name}")?;
+        let comment = if let Some(desc) = &model.desc {
+            desc
+        } else {
+            model_name
+        };
+
+        writeln!(&mut result, "\n# {comment}")?;
 
         match &model.type_ {
             // python has no built in enum, so we generate base class
@@ -217,7 +223,28 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             }
 
             crate::ModelType::Const { value_type, values } => {
-                todo!()
+                writeln!(&mut result, "class {model_name}(abc.ABC):")?;
+
+                let value_type_py = match value_type {
+                    crate::ConstType::I8 | crate::ConstType::I64 => "int",
+                    crate::ConstType::String => "str",
+                };
+
+                for value in values.iter() {
+                    let value_name = &value.name;
+                    let value_literal = match value_type {
+                        crate::ConstType::I8 | crate::ConstType::I64 => value.value.clone(),
+                        crate::ConstType::String => format!("\"{}\"", value.value),
+                    };
+
+                    if let Some(desc) = &value.desc {
+                        writeln!(&mut result, "    # {}", desc)?;
+                    }
+                    writeln!(
+                        &mut result,
+                        "    {value_name}: {value_type_py} = {value_literal}"
+                    )?;
+                }
             }
         }
     }
@@ -460,4 +487,38 @@ fn from_dict_for_one_field(
             }
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_py_codegen() {
+        let specs = &[
+            (
+                include_str!("fixtures/specs/const_i8.yaml"),
+                include_str!("fixtures/py_dataclass/const_i8.py"),
+            ),
+            (
+                include_str!("fixtures/specs/const_i64.yaml"),
+                include_str!("fixtures/py_dataclass/const_i64.py"),
+            ),
+            (
+                include_str!("fixtures/specs/const_string.yaml"),
+                include_str!("fixtures/py_dataclass/const_string.py"),
+            ),
+        ];
+
+        for (spec, expected) in specs.iter() {
+            let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
+            let rendered = render(&def).unwrap();
+
+            if rendered.ne(expected) {
+                println!("=== rendered:\n{}", rendered.as_str().trim());
+                println!("=== expected:\n{}", expected.trim());
+                assert!(false, "code not match");
+            }
+        }
+    }
 }

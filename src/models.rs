@@ -77,6 +77,7 @@ pub enum ModelType {
         #[serde(deserialize_with = "string_or_struct::string_or_struct")]
         inner_type: Box<Type>,
     },
+    #[serde(rename = "const")]
     Const {
         /// only integer type supported
         #[serde(deserialize_with = "string_or_struct::string_or_struct")]
@@ -416,7 +417,8 @@ mod string_or_struct {
                 match type_ {
                     Type::I8 => Ok(ConstType::I8),
                     Type::I64 => Ok(ConstType::I64),
-                    _ => bail!("only integer type supported"),
+                    Type::String => Ok(ConstType::String),
+                    _ => bail!("only integer or string type supported"),
                 }
             }
         }

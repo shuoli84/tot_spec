@@ -1,0 +1,13 @@
+models:
+  - name: Reason
+    desc: Const def for string
+    type:
+      name: const
+      value_type: string
+      values:
+        - name: Ok
+          desc: Everything is ok
+          value: "ok"
+        - name: Error
+          desc: Request is bad
+          value: "error"
