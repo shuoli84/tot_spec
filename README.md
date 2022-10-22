@@ -142,3 +142,39 @@ impl Base for ResetRequest {
     }
 }
 ```
+
+## Const
+
+Define integer or string consts
+
+```yaml
+models:
+  - name: Code
+    desc: Const def for i8
+    type:
+      name: const
+      value_type: i8
+      values:
+        - name: Ok
+          desc: Everything is ok
+          value: 0
+        - name: Error
+          desc: Request is bad
+          value: 1
+    attributes:
+      rs_extra_derive: Hash, PartialEq, Eq, PartialOrd, Ord
+```
+
+Rust side, will generate a NewType wraps i8, also with each values defined as const variables
+```rust
+pub struct Code(pub i8);
+
+... from_value to_value
+
+impl Code {
+    /// Everything is ok
+    pub const Ok: Code = Code(0);
+    /// Request is bad
+    pub const Error: Code = Code(1);
+}
+```
