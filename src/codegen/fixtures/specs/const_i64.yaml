@@ -7,9 +7,9 @@ models:
       values:
         - name: Ok
           desc: Everything is ok
-          value: "0"
+          value: 0
         - name: Error
           desc: Request is bad
-          value: "1"
+          value: 1
     attributes:
       rs_extra_derive: Hash, PartialEq, Eq, PartialOrd, Ord

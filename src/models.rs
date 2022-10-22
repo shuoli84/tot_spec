@@ -74,13 +74,13 @@ pub enum ModelType {
     Virtual(StructDef),
     #[serde(rename = "new_type")]
     NewType {
-        #[serde(deserialize_with = "string_or_struct::string_or_struct")]
+        #[serde(deserialize_with = "serde_helper::string_or_struct")]
         inner_type: Box<Type>,
     },
     #[serde(rename = "const")]
     Const {
         /// only integer type supported
-        #[serde(deserialize_with = "string_or_struct::string_or_struct")]
+        #[serde(deserialize_with = "serde_helper::string_or_struct")]
         value_type: ConstType,
         values: Vec<ConstValueDef>,
     },
@@ -127,10 +127,7 @@ impl StructDef {
 pub struct FieldDef {
     pub name: String,
 
-    #[serde(
-        rename = "type",
-        deserialize_with = "string_or_struct::string_or_struct"
-    )]
+    #[serde(rename = "type", deserialize_with = "serde_helper::string_or_struct")]
     pub type_: Type,
 
     #[serde(default)]
@@ -205,10 +202,10 @@ impl FieldDef {
     }
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstValueDef {
     pub name: String,
-    pub value: String,
+    pub value: StringOrInteger,
     #[serde(default)]
     pub desc: Option<String>,
 }
@@ -252,7 +249,7 @@ pub enum Type {
     String,
     #[serde(rename = "list")]
     List {
-        #[serde(deserialize_with = "string_or_struct::string_or_struct")]
+        #[serde(deserialize_with = "serde_helper::string_or_struct")]
         item_type: Box<Type>,
     },
     #[serde(rename = "map")]
@@ -305,14 +302,20 @@ impl Type {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantDef {
     pub name: String,
-    #[serde(deserialize_with = "string_or_struct::string_or_struct")]
+    #[serde(deserialize_with = "serde_helper::string_or_struct")]
     pub payload_type: Option<Type>,
     #[serde(default)]
     pub desc: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub enum StringOrInteger {
+    String(String),
+    Integer(i64),
+}
+
 // code copied from: https://serde.rs/string-or-struct.html
-mod string_or_struct {
+mod serde_helper {
     use super::*;
     use anyhow::bail;
     use serde::{de::Visitor, Deserialize, Deserializer};
@@ -486,6 +489,58 @@ mod string_or_struct {
         }
 
         deserializer.deserialize_any(StringOrStruct(PhantomData))
+    }
+
+    impl serde::Serialize for StringOrInteger {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            match self {
+                StringOrInteger::String(str_val) => serializer.serialize_str(str_val),
+                StringOrInteger::Integer(i64_val) => serializer.serialize_i64(*i64_val),
+            }
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for StringOrInteger {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            struct StringOrIntegerVisitor;
+
+            impl<'de> Visitor<'de> for StringOrIntegerVisitor {
+                type Value = StringOrInteger;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("string or integer")
+                }
+
+                fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    Ok(StringOrInteger::String(value.to_string()))
+                }
+
+                fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    Ok(StringOrInteger::Integer(v))
+                }
+
+                fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    Ok(StringOrInteger::Integer(v as i64))
+                }
+            }
+
+            deserializer.deserialize_any(StringOrIntegerVisitor)
+        }
     }
 }
 

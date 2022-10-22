@@ -1,4 +1,4 @@
-use crate::{Definition, FieldDef, Type};
+use crate::{Definition, FieldDef, StringOrInteger, Type};
 use std::fmt::Write;
 
 use super::utils::{self, indent};
@@ -232,10 +232,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
                 for value in values.iter() {
                     let value_name = &value.name;
-                    let value_literal = match value_type {
-                        crate::ConstType::I8 | crate::ConstType::I64 => value.value.clone(),
-                        crate::ConstType::String => format!("\"{}\"", value.value),
-                    };
+                    let value_literal = py_const_literal(&value.value);
 
                     if let Some(desc) = &value.desc {
                         writeln!(&mut result, "    # {}", desc)?;
@@ -487,6 +484,13 @@ fn from_dict_for_one_field(
             }
         }
     })
+}
+
+fn py_const_literal(val: &StringOrInteger) -> String {
+    match val {
+        StringOrInteger::String(s) => format!("\"{s}\""),
+        StringOrInteger::Integer(i) => i.to_string(),
+    }
 }
 
 #[cfg(test)]

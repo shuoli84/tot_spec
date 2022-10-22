@@ -1,4 +1,6 @@
-use crate::{codegen::utils::indent, models::Definition, ConstType, ConstValueDef, Type};
+use crate::{
+    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, StringOrInteger, Type,
+};
 use std::fmt::Write;
 
 pub fn render(def: &Definition) -> anyhow::Result<String> {
@@ -196,11 +198,6 @@ fn render_const(
         ConstType::String => "&str",
     };
 
-    let value_literal = |value_def: &ConstValueDef| match value_type {
-        ConstType::I8 | ConstType::I64 => value_def.value.clone(),
-        ConstType::String => format!("\"{}\"", value_def.value),
-    };
-
     // for const, we should always derive, "Copy", "Clone", "Hash", "Ord" like
     let derived = extend_derived(
         derived,
@@ -236,7 +233,7 @@ fn render_const(
             writeln!(&mut code, "    match val {{")?;
             for value in values.iter() {
                 let value_name = &value.name;
-                let value_literal = value_literal(value);
+                let value_literal = rs_const_literal(&value.value);
                 writeln!(
                     &mut code,
                     "        {value_literal} => Some(Self::{value_name}),"
@@ -273,7 +270,7 @@ fn render_const(
 
     for value in values.iter() {
         let value_name = &value.name;
-        let value_literal = value_literal(value);
+        let value_literal = rs_const_literal(&value.value);
         if let Some(desc) = &value.desc {
             writeln!(&mut code, "    /// {desc}")?;
         }
@@ -439,5 +436,12 @@ mod tests {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
             test_models_codegen(def.models, expected);
         }
+    }
+}
+
+fn rs_const_literal(val: &StringOrInteger) -> String {
+    match val {
+        StringOrInteger::String(s) => format!("\"{s}\""),
+        StringOrInteger::Integer(i) => i.to_string(),
     }
 }
