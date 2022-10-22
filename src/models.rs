@@ -459,6 +459,8 @@ mod serde_helper {
         }
     }
 
+    /// A wrapper struct which enables parse from string or struct behavior
+    /// requires T to impl both FromStr and Deserialize
     pub struct StringOrStruct<T>(T);
 
     impl<T: Clone> Clone for StringOrStruct<T> {
@@ -587,58 +589,5 @@ mod serde_helper {
 
             deserializer.deserialize_any(StringOrIntegerVisitor)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse() {
-        let spec_content = r#"
-models:
-  - name: TestStruct
-    desc: description
-    type:
-      name: struct
-      fields:
-        - name: i8_val
-          type: i8
-
-        - name: bool_val
-          type:
-            name: bool
-
-        - name: children
-          type:
-            name: list
-            item_type: TestStruct
-
-        - name: children_2
-          type: list[TestStruct]
-
-        - name: children_map
-          type: map[TestStruct]
-
-        - name: map_of_list
-          type: map[list[TestStruct]]
-
-  - name: TestStructNewType
-    type:
-      name: new_type
-      inner_type: TestStruct
-        "#;
-
-        let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
-        assert!(def.meta.is_empty());
-        assert_eq!(def.models.len(), 2);
-        let model = def.get_model("TestStruct").unwrap();
-        let struct_def = model.type_.struct_def().unwrap();
-        let field_def = struct_def.field("children_map").unwrap();
-        assert!(matches!(*field_def.type_, Type::Map { value_type: _ }));
-
-        let field_def = struct_def.field("map_of_list").unwrap();
-        assert!(matches!(*field_def.type_, Type::Map { value_type: _ }));
     }
 }
