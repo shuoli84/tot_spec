@@ -1,7 +1,7 @@
 use crate::{Definition, FieldDef, StringOrInteger, Type};
 use std::fmt::Write;
 
-use super::utils::{self, indent};
+use super::utils::{self, indent, multiline_prefix_with};
 
 pub fn render(def: &Definition) -> anyhow::Result<String> {
     let type_var_name = "type_";
@@ -16,13 +16,15 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
     for model in def.models.iter() {
         let model_name = &model.name;
-        let comment = if let Some(desc) = &model.desc {
-            desc
-        } else {
-            model_name
-        };
 
-        writeln!(&mut result, "\n# {comment}")?;
+        writeln!(&mut result, "")?;
+
+        let comment = if let Some(desc) = &model.desc {
+            multiline_prefix_with(desc, "# ")
+        } else {
+            model_name.clone()
+        };
+        writeln!(&mut result, "{comment}")?;
 
         match &model.type_ {
             // python has no built in enum, so we generate base class
@@ -235,7 +237,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     let value_literal = py_const_literal(&value.value);
 
                     if let Some(desc) = &value.desc {
-                        writeln!(&mut result, "    # {}", desc)?;
+                        let comment = indent(multiline_prefix_with(desc, "# "), 1);
+                        writeln!(&mut result, "{comment}")?;
                     }
                     writeln!(
                         &mut result,
@@ -518,11 +521,7 @@ mod tests {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
             let rendered = render(&def).unwrap();
 
-            if rendered.ne(expected) {
-                println!("=== rendered:\n{}", rendered.as_str().trim());
-                println!("=== expected:\n{}", expected.trim());
-                assert!(false, "code not match");
-            }
+            pretty_assertions::assert_eq!(rendered.as_str().trim(), expected.trim());
         }
     }
 }

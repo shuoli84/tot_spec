@@ -1,4 +1,5 @@
 /// Const def for i8
+/// Second line of comment
 #[derive(
     Debug, serde::Serialize, serde::Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Copy, Clone,
 )]

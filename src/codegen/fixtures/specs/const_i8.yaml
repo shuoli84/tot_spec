@@ -1,6 +1,8 @@
 models:
   - name: Code
-    desc: Const def for i8
+    desc: |
+      Const def for i8
+      Second line of comment
     type:
       name: const
       value_type: i8

@@ -3,7 +3,7 @@ use std::fmt::Write;
 
 use crate::{Definition, FieldDef, Type};
 
-use super::utils::indent;
+use super::utils::{indent, multiline_prefix_with};
 
 /// render the definition to a swift file
 pub fn render(def: &Definition) -> anyhow::Result<String> {
@@ -27,7 +27,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
         writeln!(&mut result, "")?;
         if let Some(desc) = &model.desc {
-            writeln!(&mut result, "// {desc}")?;
+            writeln!(&mut result, "{}", multiline_prefix_with(desc, "// "))?;
         }
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
@@ -245,7 +245,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 for value in values.iter() {
                     let value_name = &value.name;
                     if let Some(desc) = &value.desc {
-                        writeln!(&mut result, "    // {desc}")?;
+                        let comment = indent(multiline_prefix_with(desc, "// "), 1);
+                        writeln!(&mut result, "{comment}")?;
                     }
 
                     let value_literal = match &value.value {

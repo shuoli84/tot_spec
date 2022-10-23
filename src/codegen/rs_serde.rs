@@ -3,20 +3,26 @@ use crate::{
 };
 use std::fmt::Write;
 
+use super::utils::multiline_prefix_with;
+
 pub fn render(def: &Definition) -> anyhow::Result<String> {
     let mut result = String::new();
 
     for model in def.models.iter() {
         let model_name = &model.name;
 
+        writeln!(&mut result, "")?;
         writeln!(
             &mut result,
-            "\n/// {}",
-            model
-                .desc
-                .as_ref()
-                .map(|s| s.as_str())
-                .unwrap_or(model_name.as_str())
+            "{}",
+            multiline_prefix_with(
+                model
+                    .desc
+                    .as_ref()
+                    .map(|s| s.as_str())
+                    .unwrap_or(model_name.as_str()),
+                "/// "
+            )
         )?;
 
         let mut derived = vec!["Debug", "serde::Serialize", "serde::Deserialize"];
@@ -36,7 +42,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
                 for variant in variants {
                     if let Some(desc) = &variant.desc {
-                        writeln!(&mut result, "    /// {desc}")?;
+                        let comment = multiline_prefix_with(desc, "/// ");
+                        writeln!(&mut result, "{}", indent(&comment, 1))?;
                     }
 
                     if let Some(payload_type) = &variant.payload_type {
@@ -76,7 +83,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
                 for field in fields.iter() {
                     if let Some(desc) = &field.desc {
-                        writeln!(&mut result, "    /// {desc}")?;
+                        let comment = multiline_prefix_with(desc, "/// ");
+                        writeln!(&mut result, "{}", indent(&comment, 1))?;
                     }
 
                     writeln!(&mut result, "    pub {}: {},", field.name, field.rs_type())?;
@@ -114,7 +122,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 writeln!(&mut result, "pub trait {} {{", &model.name)?;
                 for field in struct_def.fields.iter() {
                     if let Some(desc) = &field.desc {
-                        writeln!(&mut result, "    /// {desc}",)?;
+                        let comment = indent(multiline_prefix_with(desc, "/// "), 1);
+                        writeln!(&mut result, "{comment}",)?;
                     }
 
                     writeln!(
@@ -272,7 +281,8 @@ fn render_const(
         let value_name = rs_const_name(&value.name);
         let value_literal = rs_const_literal(&value.value);
         if let Some(desc) = &value.desc {
-            writeln!(&mut code, "    /// {desc}")?;
+            let comment = indent(multiline_prefix_with(desc, "/// "), 1);
+            writeln!(&mut code, "{comment}")?;
         }
 
         writeln!(

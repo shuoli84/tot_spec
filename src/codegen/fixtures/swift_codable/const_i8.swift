@@ -5,6 +5,7 @@ public enum ModelError: Error {
 }
 
 // Const def for i8
+// Second line of comment
 public enum Code: Int8 {
     // Everything is ok
     case Ok = 0
