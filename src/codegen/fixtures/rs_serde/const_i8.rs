@@ -5,14 +5,14 @@
 pub struct Code(pub i8);
 
 impl Code {
-    fn from_value(val: i8) -> Option<Self> {
+    pub fn from_value(val: i8) -> Option<Self> {
         match val {
             0 => Some(Self::Ok),
             1 => Some(Self::Error),
             _ => None,
         }
     }
-    fn to_value(self) -> i8 {
+    pub fn to_value(self) -> i8 {
         self.0
     }
 }

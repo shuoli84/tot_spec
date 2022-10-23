@@ -228,7 +228,7 @@ fn render_const(
             let mut code = "".to_string();
             writeln!(
                 &mut code,
-                "fn from_value(val: {value_type_in_from_value}) -> Option<Self> {{"
+                "pub fn from_value(val: {value_type_in_from_value}) -> Option<Self> {{"
             )?;
             writeln!(&mut code, "    match val {{")?;
             for value in values.iter() {
@@ -253,7 +253,7 @@ fn render_const(
             let mut code = "".to_string();
             writeln!(
                 &mut code,
-                "fn to_value(self) -> {value_type_in_to_value} {{"
+                "pub fn to_value(self) -> {value_type_in_to_value} {{"
             )?;
             writeln!(&mut code, "    self.0")?;
             writeln!(&mut code, "}}")?;

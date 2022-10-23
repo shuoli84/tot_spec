@@ -5,14 +5,14 @@
 pub struct Reason(pub &'static str);
 
 impl Reason {
-    fn from_value(val: &str) -> Option<Self> {
+    pub fn from_value(val: &str) -> Option<Self> {
         match val {
             "ok" => Some(Self::Ok),
             "error" => Some(Self::Error),
             _ => None,
         }
     }
-    fn to_value(self) -> &'static str {
+    pub fn to_value(self) -> &'static str {
         self.0
     }
 }
