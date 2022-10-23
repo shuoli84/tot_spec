@@ -232,7 +232,7 @@ fn render_const(
             )?;
             writeln!(&mut code, "    match val {{")?;
             for value in values.iter() {
-                let value_name = &value.name;
+                let value_name = rs_const_name(&value.name);
                 let value_literal = rs_const_literal(&value.value);
                 writeln!(
                     &mut code,
@@ -269,7 +269,7 @@ fn render_const(
     writeln!(&mut code, "impl {model_name} {{")?;
 
     for value in values.iter() {
-        let value_name = &value.name;
+        let value_name = rs_const_name(&value.name);
         let value_literal = rs_const_literal(&value.value);
         if let Some(desc) = &value.desc {
             writeln!(&mut code, "    /// {desc}")?;
@@ -283,6 +283,11 @@ fn render_const(
 
     writeln!(&mut code, "}}")?;
     Ok(code)
+}
+
+fn rs_const_name(name: &str) -> String {
+    use convert_case::{Case, Casing};
+    name.to_case(Case::UpperSnake)
 }
 
 fn rs_const_literal(val: &StringOrInteger) -> String {

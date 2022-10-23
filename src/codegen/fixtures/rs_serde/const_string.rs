@@ -7,8 +7,8 @@ pub struct Reason(pub &'static str);
 impl Reason {
     pub fn from_value(val: &str) -> Option<Self> {
         match val {
-            "ok" => Some(Self::Ok),
-            "error" => Some(Self::Error),
+            "ok" => Some(Self::OK),
+            "error" => Some(Self::ERROR),
             _ => None,
         }
     }
@@ -19,7 +19,7 @@ impl Reason {
 
 impl Reason {
     /// Everything is ok
-    pub const Ok: Reason = Reason("ok");
+    pub const OK: Reason = Reason("ok");
     /// Request is bad
-    pub const Error: Reason = Reason("error");
+    pub const ERROR: Reason = Reason("error");
 }

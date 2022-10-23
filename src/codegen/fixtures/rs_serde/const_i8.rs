@@ -7,8 +7,8 @@ pub struct Code(pub i8);
 impl Code {
     pub fn from_value(val: i8) -> Option<Self> {
         match val {
-            0 => Some(Self::Ok),
-            1 => Some(Self::Error),
+            0 => Some(Self::OK),
+            1 => Some(Self::ERROR),
             _ => None,
         }
     }
@@ -19,7 +19,7 @@ impl Code {
 
 impl Code {
     /// Everything is ok
-    pub const Ok: Code = Code(0);
+    pub const OK: Code = Code(0);
     /// Request is bad
-    pub const Error: Code = Code(1);
+    pub const ERROR: Code = Code(1);
 }
