@@ -1,7 +1,14 @@
+use std::collections::BTreeMap;
+
 use tot_spec::*;
 
 fn main() {
     let def = Definition {
+        includes: vec![Include {
+            path: "base.yaml".into(),
+            namespace: "base".into(),
+            attributes: BTreeMap::from([("rs_mod".into(), "base".into())]),
+        }],
         models: vec![
             ModelDef {
                 name: "SimpleStruct".to_string(),

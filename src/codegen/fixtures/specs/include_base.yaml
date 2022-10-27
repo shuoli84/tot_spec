@@ -1,0 +1,5 @@
+models:
+  - name: Id
+    type:
+      name: new_type
+      inner_type: i64

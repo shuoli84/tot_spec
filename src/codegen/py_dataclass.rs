@@ -273,7 +273,10 @@ fn py_type(ty: &Type) -> String {
             format!("typing.List[{}]", py_type(item_type))
         }
         Type::Map { value_type } => format!("typing.Dict[str, {}]", py_type(value_type)),
-        Type::Reference { target } => format!("\"{}\"", target),
+        Type::Reference {
+            namespace: _,
+            target,
+        } => format!("\"{}\"", target),
     }
 }
 
@@ -355,7 +358,11 @@ fn to_dict_for_one_field(
             writeln!(&mut result, "    {out_var}[key] = item_tmp")?;
             result
         }
-        Type::Reference { target } => {
+        Type::Reference { namespace, target } => {
+            if namespace.is_some() {
+                unimplemented!()
+            }
+
             let target_model = def.get_model(target).unwrap();
             match &target_model.type_ {
                 crate::ModelType::NewType { inner_type } => {
@@ -477,7 +484,11 @@ fn from_dict_for_one_field(
             writeln!(&mut result, "    {out_var}[key] = item_tmp")?;
             result
         }
-        Type::Reference { target } => {
+        Type::Reference { namespace, target } => {
+            if namespace.is_some() {
+                unimplemented!()
+            }
+
             let target_model = def.get_model(target).unwrap();
             match &target_model.type_ {
                 crate::ModelType::NewType { inner_type } => {

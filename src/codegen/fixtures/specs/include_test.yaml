@@ -1,0 +1,25 @@
+includes:
+  - path: include_base.yaml
+    namespace: base
+    attributes:
+      rs_mod: base
+
+  - path: include_base.yaml
+    namespace: base_dup
+    attributes:
+      rs_mod: base
+
+models:
+  - name: TestBase
+    type:
+      name: struct
+      fields:
+        - name: id
+          desc: use base's BaseId as the id
+          type: base.BaseId
+          required: true
+        
+        - name: id_2
+          desc: use base_dup's BaseId as the id_2, this is just demo
+          type: base_dup.BaseId
+          required: true

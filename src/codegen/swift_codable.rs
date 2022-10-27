@@ -278,7 +278,10 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
         Type::Map { value_type } => {
             format!("[String:{}]", swift_type(value_type, package_name))
         }
-        Type::Reference { target } => {
+        Type::Reference { namespace, target } => {
+            if namespace.is_some() {
+                unimplemented!()
+            }
             format!("{}.{}", package_name, target)
         }
     }

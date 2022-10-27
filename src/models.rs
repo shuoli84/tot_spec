@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Definition {
+    pub includes: Vec<Include>,
     /// meta can provide keyvalue metadata for codegen
     pub meta: BTreeMap<String, BTreeMap<String, String>>,
     pub models: Vec<ModelDef>,
@@ -26,6 +27,23 @@ impl Definition {
             None => std::borrow::Cow::Owned(Default::default()),
         }
     }
+}
+
+/// Include is used to import other definitions.
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct Include {
+    /// where to locate the file, it can be relative or absolute
+    pub path: String,
+
+    /// namespace is same as use the_def as namespace. So models
+    /// in current def can reference with format "namespace.TypeName"
+    pub namespace: String,
+
+    /// attributes for Include.
+    /// rs_mod is the rs_mod path to use. In codegen, it will become
+    ///   "use {rs_mod} as {namespace};"
+    #[serde(default)]
+    pub attributes: BTreeMap<String, String>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -247,7 +265,10 @@ pub enum Type {
     #[serde(rename = "map")]
     Map { value_type: Box<Type> },
     #[serde(rename = "ref")]
-    Reference { target: String },
+    Reference {
+        namespace: Option<String>,
+        target: String,
+    },
 }
 
 impl Type {
@@ -265,6 +286,7 @@ impl Type {
 
     pub fn reference(target: impl Into<String>) -> Self {
         Self::Reference {
+            namespace: None,
             target: target.into(),
         }
     }
@@ -286,7 +308,14 @@ impl Type {
                     value_type.rs_type()
                 )
             }
-            Type::Reference { target } => target.clone(),
+            Type::Reference {
+                namespace: None,
+                target,
+            } => target.clone(),
+            Type::Reference {
+                namespace: Some(namespace),
+                target,
+            } => format!("{namespace}::{target}"),
         }
     }
 }
@@ -370,9 +399,10 @@ mod serde_helper {
             } else {
                 bail!(format!("invalid type: {}", s));
             }
-        } else if let Some((identifier, rest)) = if_identifier(s) {
+        } else if let Some(((namespace, identifier), rest)) = if_identifier(s) {
             Ok((
                 Type::Reference {
+                    namespace: namespace.map(Into::into),
                     target: identifier.to_string(),
                 },
                 rest,
@@ -382,11 +412,11 @@ mod serde_helper {
         }
     }
 
-    fn if_identifier(s: &str) -> Option<(&str, &str)> {
+    fn if_identifier(s: &str) -> Option<((Option<&str>, &str), &str)> {
         let s = s.trim();
         let mut index: Option<usize> = None;
         for (idx, c) in s.chars().enumerate() {
-            if c.is_ascii_alphanumeric() || c == '_' {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '.' {
                 index = Some(idx);
             } else {
                 break;
@@ -396,7 +426,12 @@ mod serde_helper {
         if let Some(index) = index {
             // index is the last valid index, split_at index should increase by 1
             let index = index + 1;
-            Some(s.split_at(index))
+            let (name_and_id, rest) = s.split_at(index);
+            if let Some((namespace, identifier)) = name_and_id.split_once('.') {
+                Some(((Some(namespace), identifier), rest))
+            } else {
+                Some(((None, name_and_id), rest))
+            }
         } else {
             None
         }
@@ -588,6 +623,19 @@ mod serde_helper {
             }
 
             deserializer.deserialize_any(StringOrIntegerVisitor)
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::if_identifier;
+        #[test]
+        fn test_if_identifier() {
+            assert_eq!(if_identifier("normal").unwrap(), ((None, "normal"), ""));
+            assert_eq!(
+                if_identifier("namespace.normal").unwrap(),
+                ((Some("namespace"), "normal"), "")
+            );
         }
     }
 }

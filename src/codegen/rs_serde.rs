@@ -8,6 +8,18 @@ use super::utils::multiline_prefix_with;
 pub fn render(def: &Definition) -> anyhow::Result<String> {
     let mut result = String::new();
 
+    for include in def.includes.iter() {
+        let mod_path = include
+            .attributes
+            .get("rs_mod")
+            .unwrap_or(&include.namespace);
+        if mod_path.eq(&include.namespace) {
+            writeln!(&mut result, "use {};", mod_path)?;
+        } else {
+            writeln!(&mut result, "use {} as {};", mod_path, include.namespace)?;
+        }
+    }
+
     for model in def.models.iter() {
         let model_name = &model.name;
 
@@ -319,9 +331,14 @@ mod tests {
 
         fn test_models_codegen(models: Vec<ModelDef>, code: &str) {
             let definition = Definition {
+                includes: vec![],
                 models,
                 meta: Default::default(),
             };
+            test_def(definition, code)
+        }
+
+        fn test_def(definition: Definition, code: &str) {
             let rendered = super::render(&definition).unwrap();
             let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
             let code_ast = syn::parse_file(&mut code.to_string()).unwrap();
@@ -450,9 +467,13 @@ mod tests {
                 include_str!("fixtures/specs/const_string.yaml"),
                 include_str!("fixtures/rs_serde/const_string.rs"),
             ),
+            (
+                include_str!("fixtures/specs/include_test.yaml"),
+                include_str!("fixtures/rs_serde/include_test.rs"),
+            ),
         ] {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
-            test_models_codegen(def.models, expected);
+            test_def(def, expected);
         }
     }
 }
