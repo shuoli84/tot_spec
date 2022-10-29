@@ -20,12 +20,17 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
         }
     }
 
+    let mut model_codes = vec![];
+
     for model in def.models.iter() {
+        model_codes.push("".to_string());
+        let model_code = model_codes.last_mut().unwrap();
+
         let model_name = &model.name;
 
-        writeln!(&mut result, "")?;
+        writeln!(model_code, "")?;
         writeln!(
-            &mut result,
+            model_code,
             "{}",
             multiline_prefix_with(
                 model
@@ -45,36 +50,36 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
-                writeln!(&mut result, "{}", render_derived(&derived))?;
+                writeln!(model_code, "{}", render_derived(&derived))?;
                 writeln!(
-                    &mut result,
+                    model_code,
                     "#[serde(tag = \"type\", content = \"payload\")]"
                 )?;
-                writeln!(&mut result, "pub enum {} {{", &model.name)?;
+                writeln!(model_code, "pub enum {} {{", &model.name)?;
 
                 for variant in variants {
                     if let Some(desc) = &variant.desc {
                         let comment = multiline_prefix_with(desc, "/// ");
-                        writeln!(&mut result, "{}", indent(&comment, 1))?;
+                        writeln!(model_code, "{}", indent(&comment, 1))?;
                     }
 
                     if let Some(payload_type) = &variant.payload_type {
                         writeln!(
-                            &mut result,
+                            model_code,
                             "    {}({}),",
                             variant.name,
                             payload_type.rs_type()
                         )?;
                     } else {
-                        writeln!(&mut result, "    {},", variant.name,)?;
+                        writeln!(model_code, "    {},", variant.name,)?;
                     }
                 }
 
-                writeln!(&mut result, "}}")?;
+                writeln!(model_code, "}}")?;
             }
             crate::ModelType::Struct(struct_def) => {
-                writeln!(&mut result, "{}", render_derived(&derived))?;
-                writeln!(&mut result, "pub struct {} {{", &model.name)?;
+                writeln!(model_code, "{}", render_derived(&derived))?;
+                writeln!(model_code, "pub struct {} {{", &model.name)?;
 
                 let mut fields = vec![];
                 if let Some(virtual_name) = &struct_def.extend {
@@ -96,28 +101,28 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 for field in fields.iter() {
                     if let Some(desc) = &field.desc {
                         let comment = multiline_prefix_with(desc, "/// ");
-                        writeln!(&mut result, "{}", indent(&comment, 1))?;
+                        writeln!(model_code, "{}", indent(&comment, 1))?;
                     }
 
-                    writeln!(&mut result, "    pub {}: {},", field.name, field.rs_type())?;
+                    writeln!(model_code, "    pub {}: {},", field.name, field.rs_type())?;
                 }
 
-                writeln!(&mut result, "}}")?;
+                writeln!(model_code, "}}")?;
 
                 if let Some(virtual_name) = &struct_def.extend {
-                    writeln!(&mut result, "\nimpl {} for {} {{", virtual_name, model.name)?;
+                    writeln!(model_code, "\nimpl {} for {} {{", virtual_name, model.name)?;
                     match def.get_model(&virtual_name) {
                         Some(model) => match &model.type_ {
                             crate::ModelType::Virtual(struct_def) => {
                                 for field in struct_def.fields.iter() {
                                     writeln!(
-                                        &mut result,
+                                        model_code,
                                         "    fn {}(&self) -> &{} {{",
                                         field.name,
                                         field.rs_type()
                                     )?;
-                                    writeln!(&mut result, "        &self.{}", field.name)?;
-                                    writeln!(&mut result, "    }}",)?;
+                                    writeln!(model_code, "        &self.{}", field.name)?;
+                                    writeln!(model_code, "    }}",)?;
                                 }
                             }
                             _ => {
@@ -126,41 +131,50 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         },
                         None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
                     }
-                    writeln!(&mut result, "}}")?;
+                    writeln!(model_code, "}}")?;
                 }
             }
 
             crate::ModelType::Virtual(struct_def) => {
-                writeln!(&mut result, "pub trait {} {{", &model.name)?;
+                writeln!(model_code, "pub trait {} {{", &model.name)?;
                 for field in struct_def.fields.iter() {
                     if let Some(desc) = &field.desc {
                         let comment = indent(multiline_prefix_with(desc, "/// "), 1);
-                        writeln!(&mut result, "{comment}",)?;
+                        writeln!(model_code, "{comment}",)?;
                     }
 
                     writeln!(
-                        &mut result,
+                        model_code,
                         "    fn {}(&self) -> &{};",
                         field.name,
                         field.rs_type()
                     )?;
                 }
-                writeln!(&mut result, "}}")?;
+                writeln!(model_code, "}}")?;
             }
 
             crate::ModelType::NewType { inner_type } => {
                 let code = render_new_type(model_name, &derived, inner_type)?;
-                writeln!(&mut result, "{}", code.trim())?;
+                writeln!(model_code, "{}", code.trim())?;
             }
             crate::ModelType::Const { value_type, values } => {
                 let code = render_const(&model_name, &derived, value_type, &values)?;
-                writeln!(&mut result, "{}", code.trim())?;
+                writeln!(model_code, "{}", code.trim())?;
             }
         }
+
+        // format with prettyplease
+        let ast = syn::parse_file(model_code)?;
+        *model_code = prettyplease::unparse(&ast);
     }
 
-    let ast = syn::parse_file(&mut result)?;
-    let result = prettyplease::unparse(&ast);
+    for (idx, model_code) in model_codes.into_iter().enumerate() {
+        // prepend a new line
+        if idx != 0 {
+            writeln!(&mut result, "")?;
+        }
+        writeln!(&mut result, "{}", model_code.trim())?;
+    }
 
     Ok(result)
 }
