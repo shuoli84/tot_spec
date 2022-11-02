@@ -1,6 +1,10 @@
 /// Base
 pub trait Base {
     fn request_id(&self) -> &std::option::Option<std::string::String>;
+    fn set_request_id(
+        &mut self,
+        value: std::option::Option<std::string::String>,
+    ) -> std::option::Option<std::string::String>;
 }
 
 /// AddRequest
@@ -14,6 +18,13 @@ impl Base for AddRequest {
     fn request_id(&self) -> &std::option::Option<std::string::String> {
         &self.request_id
     }
+
+    fn set_request_id(
+        &mut self,
+        value: std::option::Option<std::string::String>,
+    ) -> std::option::Option<std::string::String> {
+        std::mem::replace(&mut self.request_id, value)
+    }
 }
 
 /// ResetRequest
@@ -25,5 +36,12 @@ pub struct ResetRequest {
 impl Base for ResetRequest {
     fn request_id(&self) -> &std::option::Option<std::string::String> {
         &self.request_id
+    }
+
+    fn set_request_id(
+        &mut self,
+        value: std::option::Option<std::string::String>,
+    ) -> std::option::Option<std::string::String> {
+        std::mem::replace(&mut self.request_id, value)
     }
 }

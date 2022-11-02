@@ -112,23 +112,32 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 if let Some(virtual_name) = &struct_def.extend {
                     writeln!(model_code, "\nimpl {} for {} {{", virtual_name, model.name)?;
                     match def.get_model(&virtual_name) {
-                        Some(model) => match &model.type_ {
-                            crate::ModelType::Virtual(struct_def) => {
-                                for field in struct_def.fields.iter() {
-                                    writeln!(
+                        Some(model) => {
+                            match &model.type_ {
+                                crate::ModelType::Virtual(struct_def) => {
+                                    for field in struct_def.fields.iter() {
+                                        let field_name = &field.name;
+                                        let field_type = field.rs_type();
+                                        writeln!(
+                                            model_code,
+                                            "    fn {field_name}(&self) -> &{field_type} {{",
+                                        )?;
+                                        writeln!(model_code, "        &self.{field_name}")?;
+                                        writeln!(model_code, "    }}",)?;
+
+                                        writeln!(
                                         model_code,
-                                        "    fn {}(&self) -> &{} {{",
-                                        field.name,
-                                        field.rs_type()
+                                        "    fn set_{field_name}(&mut self, value: {field_type}) -> {field_type} {{",
                                     )?;
-                                    writeln!(model_code, "        &self.{}", field.name)?;
-                                    writeln!(model_code, "    }}",)?;
+                                        writeln!(model_code, "        std::mem::replace(&mut self.{field_name},  value)")?;
+                                        writeln!(model_code, "    }}",)?;
+                                    }
+                                }
+                                _ => {
+                                    anyhow::bail!("model is not virtual: {}", virtual_name);
                                 }
                             }
-                            _ => {
-                                anyhow::bail!("model is not virtual: {}", virtual_name);
-                            }
-                        },
+                        }
                         None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
                     }
                     writeln!(model_code, "}}")?;
@@ -143,11 +152,14 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         writeln!(model_code, "{comment}",)?;
                     }
 
+                    let field_type = field.rs_type();
+
+                    writeln!(model_code, "    fn {}(&self) -> &{field_type};", field.name,)?;
+
                     writeln!(
                         model_code,
-                        "    fn {}(&self) -> &{};",
+                        "    fn set_{}(&mut self, value: {field_type}) -> {field_type};",
                         field.name,
-                        field.rs_type()
                     )?;
                 }
                 writeln!(model_code, "}}")?;
