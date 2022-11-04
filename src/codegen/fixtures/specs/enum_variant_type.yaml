@@ -1,0 +1,15 @@
+models:
+  - name: Number
+    type:
+      name: enum
+      variants:
+        - name: Int64
+          desc: Variant Int64
+          payload_type: i64
+      
+        - name: Float
+          desc: Variant Float
+          payload_type: f64
+
+    attributes:
+      rs_enum_variant_type: true

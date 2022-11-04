@@ -1,5 +1,8 @@
+use anyhow::Context;
+
 use crate::{
-    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, StringOrInteger, Type,
+    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, StringOrInteger,
+    StructDef, Type,
 };
 use std::fmt::Write;
 
@@ -50,98 +53,91 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
-                writeln!(model_code, "{}", render_derived(&derived))?;
-                writeln!(
-                    model_code,
-                    "#[serde(tag = \"type\", content = \"payload\")]"
-                )?;
-                writeln!(model_code, "pub enum {} {{", &model.name)?;
-
-                for variant in variants {
-                    if let Some(desc) = &variant.desc {
-                        let comment = multiline_prefix_with(desc, "/// ");
-                        writeln!(model_code, "{}", indent(&comment, 1))?;
-                    }
-
-                    if let Some(payload_type) = &variant.payload_type {
+                match model.attribute("rs_enum_variant_type").map(String::as_str) {
+                    Some("true") => {
+                        // create separate type for each variant
+                        writeln!(model_code, "{}", render_derived(&derived))?;
                         writeln!(
                             model_code,
-                            "    {}({}),",
-                            variant.name,
-                            payload_type.rs_type()
+                            "#[serde(tag = \"type\", content = \"payload\")]"
                         )?;
-                    } else {
-                        writeln!(model_code, "    {},", variant.name,)?;
-                    }
-                }
+                        writeln!(model_code, "pub enum {} {{", &model.name)?;
 
-                writeln!(model_code, "}}")?;
-            }
-            crate::ModelType::Struct(struct_def) => {
-                writeln!(model_code, "{}", render_derived(&derived))?;
-                writeln!(model_code, "pub struct {} {{", &model.name)?;
+                        for variant in variants {
+                            let variant_name = &variant.name;
+                            let variant_type_name = format!("{model_name}{variant_name}");
 
-                let mut fields = vec![];
-                if let Some(virtual_name) = &struct_def.extend {
-                    match def.get_model(&virtual_name) {
-                        Some(model) => match &model.type_ {
-                            crate::ModelType::Virtual(struct_def) => {
-                                fields.extend(struct_def.fields.clone());
+                            if let Some(desc) = &variant.desc {
+                                let comment = multiline_prefix_with(desc, "/// ");
+                                writeln!(model_code, "{}", indent(&comment, 1))?;
                             }
-                            _ => {
-                                anyhow::bail!("model is not virtual: {}", virtual_name);
+                            writeln!(model_code, "    {variant_name}({variant_type_name}),",)?;
+                        }
+                        writeln!(model_code, "}}")?;
+
+                        for variant in variants {
+                            let variant_name = &variant.name;
+                            let variant_type_name = format!("{model_name}{variant_name}");
+
+                            let mut code = "".to_string();
+                            let code = &mut code;
+
+                            writeln!(code, "{}", render_derived(&derived))?;
+
+                            if let Some(payload_type) = &variant.payload_type {
+                                let payload_type = payload_type.rs_type();
+                                writeln!(code, "pub struct {variant_type_name}({payload_type});")?;
+                            } else if let Some(fields) = &variant.payload_fields {
+                                todo!()
+                            } else {
+                                writeln!(code, "pub struct {variant_type_name};")?;
                             }
-                        },
-                        None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
+
+                            writeln!(code, "impl Into<{model_name}> for {variant_type_name} {{")?;
+                            writeln!(code, "    fn into(self) -> {model_name} {{")?;
+                            writeln!(code, "        {model_name}::{variant_name}(self)")?;
+                            writeln!(code, "    }}")?;
+                            writeln!(code, "}}")?;
+
+                            writeln!(model_code, "{}", code)?;
+                        }
                     }
-                }
+                    _ => {
+                        // create separate type for each variant
+                        writeln!(model_code, "{}", render_derived(&derived))?;
+                        writeln!(
+                            model_code,
+                            "#[serde(tag = \"type\", content = \"payload\")]"
+                        )?;
+                        writeln!(model_code, "pub enum {} {{", &model.name)?;
 
-                fields.extend(struct_def.fields.clone());
+                        for variant in variants {
+                            if let Some(desc) = &variant.desc {
+                                let comment = multiline_prefix_with(desc, "/// ");
+                                writeln!(model_code, "{}", indent(&comment, 1))?;
+                            }
 
-                for field in fields.iter() {
-                    if let Some(desc) = &field.desc {
-                        let comment = multiline_prefix_with(desc, "/// ");
-                        writeln!(model_code, "{}", indent(&comment, 1))?;
-                    }
-
-                    writeln!(model_code, "    pub {}: {},", field.name, field.rs_type())?;
-                }
-
-                writeln!(model_code, "}}")?;
-
-                if let Some(virtual_name) = &struct_def.extend {
-                    writeln!(model_code, "\nimpl {} for {} {{", virtual_name, model.name)?;
-                    match def.get_model(&virtual_name) {
-                        Some(model) => {
-                            match &model.type_ {
-                                crate::ModelType::Virtual(struct_def) => {
-                                    for field in struct_def.fields.iter() {
-                                        let field_name = &field.name;
-                                        let field_type = field.rs_type();
-                                        writeln!(
-                                            model_code,
-                                            "    fn {field_name}(&self) -> &{field_type} {{",
-                                        )?;
-                                        writeln!(model_code, "        &self.{field_name}")?;
-                                        writeln!(model_code, "    }}",)?;
-
-                                        writeln!(
-                                        model_code,
-                                        "    fn set_{field_name}(&mut self, value: {field_type}) -> {field_type} {{",
-                                    )?;
-                                        writeln!(model_code, "        std::mem::replace(&mut self.{field_name},  value)")?;
-                                        writeln!(model_code, "    }}",)?;
-                                    }
-                                }
-                                _ => {
-                                    anyhow::bail!("model is not virtual: {}", virtual_name);
-                                }
+                            if let Some(payload_type) = &variant.payload_type {
+                                writeln!(
+                                    model_code,
+                                    "    {}({}),",
+                                    variant.name,
+                                    payload_type.rs_type()
+                                )?;
+                            } else if let Some(fields) = &variant.payload_fields {
+                                todo!()
+                            } else {
+                                writeln!(model_code, "    {},", variant.name,)?;
                             }
                         }
-                        None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
+
+                        writeln!(model_code, "}}")?;
                     }
-                    writeln!(model_code, "}}")?;
                 }
+            }
+            crate::ModelType::Struct(struct_def) => {
+                let code = render_struct(&model_name, &derived, struct_def, &def)?;
+                writeln!(model_code, "{}", code.trim())?;
             }
 
             crate::ModelType::Virtual(struct_def) => {
@@ -176,7 +172,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
         }
 
         // format with prettyplease
-        let ast = syn::parse_file(model_code)?;
+        let ast = syn::parse_file(model_code).context(model_code.to_string())?;
         *model_code = prettyplease::unparse(&ast);
     }
 
@@ -200,6 +196,82 @@ fn render_derived(derived: &[&str]) -> String {
             .collect::<Vec<_>>()
             .join("")
     )
+}
+
+fn render_struct(
+    model_name: &str,
+    derived: &[&str],
+    struct_def: &StructDef,
+    def: &Definition,
+) -> anyhow::Result<String> {
+    let mut result = "".to_string();
+    let model_code = &mut result;
+
+    writeln!(model_code, "{}", render_derived(&derived))?;
+    writeln!(model_code, "pub struct {model_name} {{")?;
+
+    let mut fields = vec![];
+    if let Some(virtual_name) = &struct_def.extend {
+        match def.get_model(&virtual_name) {
+            Some(model) => match &model.type_ {
+                crate::ModelType::Virtual(struct_def) => {
+                    fields.extend(struct_def.fields.clone());
+                }
+                _ => {
+                    anyhow::bail!("model is not virtual: {}", virtual_name);
+                }
+            },
+            None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
+        }
+    }
+
+    fields.extend(struct_def.fields.clone());
+
+    for field in fields.iter() {
+        if let Some(desc) = &field.desc {
+            let comment = multiline_prefix_with(desc, "/// ");
+            writeln!(model_code, "{}", indent(&comment, 1))?;
+        }
+
+        writeln!(model_code, "    pub {}: {},", field.name, field.rs_type())?;
+    }
+
+    writeln!(model_code, "}}")?;
+
+    if let Some(virtual_name) = &struct_def.extend {
+        writeln!(model_code, "")?;
+        writeln!(model_code, "impl {virtual_name} for {model_name} {{")?;
+        match def.get_model(&virtual_name) {
+            Some(model) => match &model.type_ {
+                crate::ModelType::Virtual(struct_def) => {
+                    for field in struct_def.fields.iter() {
+                        let field_name = &field.name;
+                        let field_type = field.rs_type();
+                        writeln!(model_code, "    fn {field_name}(&self) -> &{field_type} {{",)?;
+                        writeln!(model_code, "        &self.{field_name}")?;
+                        writeln!(model_code, "    }}",)?;
+
+                        writeln!(
+                            model_code,
+                            "    fn set_{field_name}(&mut self, value: {field_type}) -> {field_type} {{",
+                        )?;
+                        writeln!(
+                            model_code,
+                            "        std::mem::replace(&mut self.{field_name},  value)"
+                        )?;
+                        writeln!(model_code, "    }}",)?;
+                    }
+                }
+                _ => {
+                    anyhow::bail!("model is not virtual: {}", virtual_name);
+                }
+            },
+            None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
+        }
+        writeln!(model_code, "}}")?;
+    }
+
+    Ok(result)
 }
 
 fn render_new_type(
@@ -414,28 +486,6 @@ mod tests {
             include_str!("fixtures/rs_serde/key_value.rs"),
         );
 
-        test_model_codegen(
-            ModelDef {
-                name: "Number".into(),
-                type_: ModelType::Enum {
-                    variants: vec![
-                        VariantDef {
-                            name: "I64".into(),
-                            payload_type: Some(Type::I64.into()),
-                            desc: Some("Variant I64".into()),
-                        },
-                        VariantDef {
-                            name: "F64".into(),
-                            payload_type: Some(Type::F64.into()),
-                            desc: Some("Variant F64".into()),
-                        },
-                    ],
-                },
-                ..ModelDef::default()
-            },
-            include_str!("fixtures/rs_serde/enum.rs"),
-        );
-
         test_models_codegen(
             vec![
                 ModelDef {
@@ -496,6 +546,14 @@ mod tests {
             (
                 include_str!("fixtures/specs/include_test.yaml"),
                 include_str!("fixtures/rs_serde/include_test.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/enum.yaml"),
+                include_str!("fixtures/rs_serde/enum.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/enum_variant_type.yaml"),
+                include_str!("fixtures/rs_serde/enum_variant_type.rs"),
             ),
         ] {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
