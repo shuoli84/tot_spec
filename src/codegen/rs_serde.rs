@@ -1,8 +1,8 @@
 use anyhow::Context;
 
 use crate::{
-    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, StringOrInteger,
-    StructDef, Type,
+    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
+    StringOrInteger, StructDef, Type, VariantDef,
 };
 use std::fmt::Write;
 
@@ -53,87 +53,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
-                match model.attribute("rs_enum_variant_type").map(String::as_str) {
-                    Some("true") => {
-                        // create separate type for each variant
-                        writeln!(model_code, "{}", render_derived(&derived))?;
-                        writeln!(
-                            model_code,
-                            "#[serde(tag = \"type\", content = \"payload\")]"
-                        )?;
-                        writeln!(model_code, "pub enum {} {{", &model.name)?;
-
-                        for variant in variants {
-                            let variant_name = &variant.name;
-                            let variant_type_name = format!("{model_name}{variant_name}");
-
-                            if let Some(desc) = &variant.desc {
-                                let comment = multiline_prefix_with(desc, "/// ");
-                                writeln!(model_code, "{}", indent(&comment, 1))?;
-                            }
-                            writeln!(model_code, "    {variant_name}({variant_type_name}),",)?;
-                        }
-                        writeln!(model_code, "}}")?;
-
-                        for variant in variants {
-                            let variant_name = &variant.name;
-                            let variant_type_name = format!("{model_name}{variant_name}");
-
-                            let mut code = "".to_string();
-                            let code = &mut code;
-
-                            writeln!(code, "{}", render_derived(&derived))?;
-
-                            if let Some(payload_type) = &variant.payload_type {
-                                let payload_type = payload_type.rs_type();
-                                writeln!(code, "pub struct {variant_type_name}({payload_type});")?;
-                            } else if let Some(fields) = &variant.payload_fields {
-                                todo!()
-                            } else {
-                                writeln!(code, "pub struct {variant_type_name};")?;
-                            }
-
-                            writeln!(code, "impl Into<{model_name}> for {variant_type_name} {{")?;
-                            writeln!(code, "    fn into(self) -> {model_name} {{")?;
-                            writeln!(code, "        {model_name}::{variant_name}(self)")?;
-                            writeln!(code, "    }}")?;
-                            writeln!(code, "}}")?;
-
-                            writeln!(model_code, "{}", code)?;
-                        }
-                    }
-                    _ => {
-                        // create separate type for each variant
-                        writeln!(model_code, "{}", render_derived(&derived))?;
-                        writeln!(
-                            model_code,
-                            "#[serde(tag = \"type\", content = \"payload\")]"
-                        )?;
-                        writeln!(model_code, "pub enum {} {{", &model.name)?;
-
-                        for variant in variants {
-                            if let Some(desc) = &variant.desc {
-                                let comment = multiline_prefix_with(desc, "/// ");
-                                writeln!(model_code, "{}", indent(&comment, 1))?;
-                            }
-
-                            if let Some(payload_type) = &variant.payload_type {
-                                writeln!(
-                                    model_code,
-                                    "    {}({}),",
-                                    variant.name,
-                                    payload_type.rs_type()
-                                )?;
-                            } else if let Some(fields) = &variant.payload_fields {
-                                todo!()
-                            } else {
-                                writeln!(model_code, "    {},", variant.name,)?;
-                            }
-                        }
-
-                        writeln!(model_code, "}}")?;
-                    }
-                }
+                let code = render_enum(model, &derived, variants, def)?;
+                writeln!(model_code, "{}", code.trim())?;
             }
             crate::ModelType::Struct(struct_def) => {
                 let code = render_struct(&model_name, &derived, struct_def, &def)?;
@@ -207,36 +128,32 @@ fn render_struct(
     let mut result = "".to_string();
     let model_code = &mut result;
 
-    writeln!(model_code, "{}", render_derived(&derived))?;
-    writeln!(model_code, "pub struct {model_name} {{")?;
+    {
+        writeln!(model_code, "{}", render_derived(&derived))?;
+        writeln!(model_code, "pub struct {model_name} {{")?;
 
-    let mut fields = vec![];
-    if let Some(virtual_name) = &struct_def.extend {
-        match def.get_model(&virtual_name) {
-            Some(model) => match &model.type_ {
-                crate::ModelType::Virtual(struct_def) => {
-                    fields.extend(struct_def.fields.clone());
-                }
-                _ => {
-                    anyhow::bail!("model is not virtual: {}", virtual_name);
-                }
-            },
-            None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
-        }
-    }
-
-    fields.extend(struct_def.fields.clone());
-
-    for field in fields.iter() {
-        if let Some(desc) = &field.desc {
-            let comment = multiline_prefix_with(desc, "/// ");
-            writeln!(model_code, "{}", indent(&comment, 1))?;
+        let mut fields = vec![];
+        if let Some(virtual_name) = &struct_def.extend {
+            match def.get_model(&virtual_name) {
+                Some(model) => match &model.type_ {
+                    crate::ModelType::Virtual(struct_def) => {
+                        fields.extend(struct_def.fields.clone());
+                    }
+                    _ => {
+                        anyhow::bail!("model is not virtual: {}", virtual_name);
+                    }
+                },
+                None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
+            }
         }
 
-        writeln!(model_code, "    pub {}: {},", field.name, field.rs_type())?;
-    }
+        fields.extend(struct_def.fields.clone());
 
-    writeln!(model_code, "}}")?;
+        let fields_def_code = render_fields_def(&fields)?;
+        writeln!(model_code, "{}", indent(fields_def_code, 1))?;
+
+        writeln!(model_code, "}}")?;
+    }
 
     if let Some(virtual_name) = &struct_def.extend {
         writeln!(model_code, "")?;
@@ -271,6 +188,124 @@ fn render_struct(
         writeln!(model_code, "}}")?;
     }
 
+    Ok(result)
+}
+
+fn render_fields_def(fields: &[FieldDef]) -> anyhow::Result<String> {
+    let mut result = "".to_string();
+    let code = &mut result;
+    for field in fields.iter() {
+        if let Some(desc) = &field.desc {
+            let comment = multiline_prefix_with(desc, "/// ");
+            writeln!(code, "{}", comment)?;
+        }
+
+        writeln!(code, "pub {}: {},", field.name, field.rs_type())?;
+    }
+    Ok(result)
+}
+
+fn render_enum(
+    model: &ModelDef,
+    derived: &[&str],
+    variants: &[VariantDef],
+    def: &Definition,
+) -> anyhow::Result<String> {
+    let model_name = &model.name;
+
+    let mut result = "".to_string();
+    let model_code = &mut result;
+    match model.attribute("rs_enum_variant_type").map(String::as_str) {
+        Some("true") => {
+            // create separate type for each variant
+            writeln!(model_code, "{}", render_derived(&derived))?;
+            writeln!(
+                model_code,
+                "#[serde(tag = \"type\", content = \"payload\")]"
+            )?;
+            writeln!(model_code, "pub enum {} {{", &model.name)?;
+
+            for variant in variants {
+                let variant_name = &variant.name;
+                let variant_type_name = format!("{model_name}{variant_name}");
+
+                if let Some(desc) = &variant.desc {
+                    let comment = multiline_prefix_with(desc, "/// ");
+                    writeln!(model_code, "{}", indent(&comment, 1))?;
+                }
+                writeln!(model_code, "    {variant_name}({variant_type_name}),",)?;
+            }
+            writeln!(model_code, "}}")?;
+
+            for variant in variants {
+                let variant_name = &variant.name;
+                let variant_type_name = format!("{model_name}{variant_name}");
+
+                let mut code = "".to_string();
+                let code = &mut code;
+
+                if let Some(payload_type) = &variant.payload_type {
+                    let payload_type = payload_type.rs_type();
+                    writeln!(code, "{}", render_derived(&derived))?;
+                    writeln!(code, "pub struct {variant_type_name}({payload_type});")?;
+                } else if let Some(fields) = &variant.payload_fields {
+                    let struct_def = StructDef {
+                        extend: None,
+                        fields: fields.clone(),
+                    };
+                    let struct_code =
+                        render_struct(&variant_type_name, &derived, &struct_def, def)?;
+                    writeln!(code, "{}", struct_code)?;
+                } else {
+                    writeln!(code, "{}", render_derived(&derived))?;
+                    writeln!(code, "pub struct {variant_type_name};")?;
+                }
+
+                writeln!(code, "impl Into<{model_name}> for {variant_type_name} {{")?;
+                writeln!(code, "    fn into(self) -> {model_name} {{")?;
+                writeln!(code, "        {model_name}::{variant_name}(self)")?;
+                writeln!(code, "    }}")?;
+                writeln!(code, "}}")?;
+
+                writeln!(model_code, "{}", code)?;
+            }
+        }
+        _ => {
+            // create separate type for each variant
+            writeln!(model_code, "{}", render_derived(&derived))?;
+            writeln!(
+                model_code,
+                "#[serde(tag = \"type\", content = \"payload\")]"
+            )?;
+            writeln!(model_code, "pub enum {} {{", &model.name)?;
+
+            for variant in variants {
+                if let Some(desc) = &variant.desc {
+                    let comment = multiline_prefix_with(desc, "/// ");
+                    writeln!(model_code, "{}", indent(&comment, 1))?;
+                }
+
+                if let Some(payload_type) = &variant.payload_type {
+                    writeln!(
+                        model_code,
+                        "    {}({}),",
+                        variant.name,
+                        payload_type.rs_type()
+                    )?;
+                } else if let Some(fields) = &variant.payload_fields {
+                    let fields_def_code = render_fields_def(&fields)?;
+
+                    writeln!(model_code, "    {} {{", variant.name,)?;
+                    writeln!(model_code, "{}", indent(&fields_def_code, 2))?;
+                    writeln!(model_code, "    }},")?;
+                } else {
+                    writeln!(model_code, "    {},", variant.name,)?;
+                }
+            }
+
+            writeln!(model_code, "}}")?;
+        }
+    }
     Ok(result)
 }
 
@@ -554,6 +589,10 @@ mod tests {
             (
                 include_str!("fixtures/specs/enum_variant_type.yaml"),
                 include_str!("fixtures/rs_serde/enum_variant_type.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/enum_variant_fields.yaml"),
+                include_str!("fixtures/rs_serde/enum_variant_fields.rs"),
             ),
         ] {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();

@@ -1,0 +1,29 @@
+models:
+  - name: Number
+    type:
+      name: enum
+      variants:
+        - name: Real
+          payload_fields:
+            - name: real
+              type: i64
+              required: true
+            - name: imagine
+              type: i64
+              required: true
+    attributes:
+      rs_enum_variant_type: true
+
+  - name: Number2
+    desc: Number2 with variant with fields
+    type:
+      name: enum
+      variants:
+        - name: Real
+          payload_fields:
+            - name: real
+              type: i64
+              required: true
+            - name: imagine
+              type: i64
+              required: true
