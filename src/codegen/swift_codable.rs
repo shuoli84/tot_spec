@@ -15,60 +15,57 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
         .unwrap_or(Cow::Owned("PACKAGE".to_string()));
 
     let mut result = "".to_string();
-    writeln!(&mut result, "import Foundation")?;
+    writeln!(result, "import Foundation")?;
 
-    writeln!(&mut result, "")?;
-    writeln!(&mut result, "public enum ModelError: Error {{")?;
-    writeln!(&mut result, "    case Error")?;
-    writeln!(&mut result, "}}")?;
+    writeln!(result, "")?;
+    writeln!(result, "public enum ModelError: Error {{")?;
+    writeln!(result, "    case Error")?;
+    writeln!(result, "}}")?;
 
     for model in def.models.iter() {
         let model_name = &model.name;
 
-        writeln!(&mut result, "")?;
+        writeln!(result, "")?;
         if let Some(desc) = &model.desc {
-            writeln!(&mut result, "{}", multiline_prefix_with(desc, "// "))?;
+            writeln!(result, "{}", multiline_prefix_with(desc, "// "))?;
         }
         match &model.type_ {
             crate::ModelType::Enum { variants } => {
-                writeln!(&mut result, "public enum {}: Codable {{", model.name)?;
+                writeln!(result, "public enum {}: Codable {{", model.name)?;
 
                 for variant in variants {
                     if let Some(payload) = &variant.payload_type {
                         writeln!(
-                            &mut result,
+                            result,
                             "    case {}({})",
                             variant.name,
                             swift_type(&payload, &package_name)
                         )?;
                     } else {
-                        writeln!(&mut result, "    case {}", variant.name,)?;
+                        writeln!(result, "    case {}", variant.name,)?;
                     }
                 }
 
-                writeln!(&mut result, "\n    // coding keys")?;
-                writeln!(&mut result, "    enum CodingKeys: String, CodingKey {{")?;
-                writeln!(&mut result, "        case type, payload")?;
-                writeln!(&mut result, "    }}")?;
+                writeln!(result, "\n    // coding keys")?;
+                writeln!(result, "    enum CodingKeys: String, CodingKey {{")?;
+                writeln!(result, "        case type, payload")?;
+                writeln!(result, "    }}")?;
 
                 // decoder
                 let decoder_code = {
                     let mut code_block = "".to_string();
-                    writeln!(&mut code_block, "// decoder")?;
+                    writeln!(code_block, "// decoder")?;
+                    writeln!(code_block, "public init(from decoder: Decoder) throws {{")?;
                     writeln!(
-                        &mut code_block,
-                        "public init(from decoder: Decoder) throws {{"
-                    )?;
-                    writeln!(
-                        &mut code_block,
+                        code_block,
                         "    let container = try decoder.container(keyedBy: CodingKeys.self)"
                     )?;
                     writeln!(
-                        &mut code_block,
+                        code_block,
                         "    let type = try container.decode(String.self, forKey: CodingKeys.type)"
                     )?;
 
-                    writeln!(&mut code_block, "    switch type {{")?;
+                    writeln!(code_block, "    switch type {{")?;
 
                     let mut case_blocks = vec![];
 
@@ -77,13 +74,13 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
                         let mut case_block = "".to_string();
 
-                        writeln!(&mut case_block, "case \"{variant_name}\":")?;
+                        writeln!(case_block, "case \"{variant_name}\":")?;
                         if let Some(payload_type) = &variant.payload_type {
                             let payload_type = swift_type(&payload_type, &package_name);
-                            writeln!(&mut case_block, "    let payload = try container.decode({payload_type}.self, forKey:.payload)")?;
-                            writeln!(&mut case_block, "    self = .{variant_name}(payload)")?;
+                            writeln!(case_block, "    let payload = try container.decode({payload_type}.self, forKey:.payload)")?;
+                            writeln!(case_block, "    self = .{variant_name}(payload)")?;
                         } else {
-                            writeln!(&mut case_block, "    self = .{variant_name}")?;
+                            writeln!(case_block, "    self = .{variant_name}")?;
                         }
 
                         case_blocks.push(case_block);
@@ -91,89 +88,85 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
                     {
                         let mut default_block = "".to_string();
-                        writeln!(&mut default_block, "default:")?;
-                        writeln!(&mut default_block, "    throw ModelError.Error")?;
+                        writeln!(default_block, "default:")?;
+                        writeln!(default_block, "    throw ModelError.Error")?;
                         case_blocks.push(default_block);
                     }
 
                     for case_block in case_blocks.into_iter() {
-                        writeln!(&mut code_block, "{}", indent(case_block.trim(), 2))?;
+                        writeln!(code_block, "{}", indent(case_block.trim(), 2))?;
                     }
 
-                    writeln!(&mut code_block, "    }}")?;
-                    writeln!(&mut code_block, "}}")?;
+                    writeln!(code_block, "    }}")?;
+                    writeln!(code_block, "}}")?;
                     code_block
                 };
-                writeln!(&mut result, "")?;
-                writeln!(&mut result, "{}", indent(decoder_code.trim(), 1))?;
+                writeln!(result, "")?;
+                writeln!(result, "{}", indent(decoder_code.trim(), 1))?;
 
                 // encoder
                 let encoder_code = {
                     let mut code_block = "".to_string();
-                    writeln!(&mut code_block, "// encoder")?;
+                    writeln!(code_block, "// encoder")?;
                     writeln!(
-                        &mut code_block,
+                        code_block,
                         "public func encode(to encoder: Encoder) throws {{"
                     )?;
 
                     let func_body = {
                         let mut func_body = "".to_string();
                         writeln!(
-                            &mut func_body,
+                            func_body,
                             "var container = encoder.container(keyedBy: CodingKeys.self)"
                         )?;
 
-                        writeln!(&mut func_body, "switch self {{")?;
+                        writeln!(func_body, "switch self {{")?;
 
                         for variant in variants.iter() {
                             let name = &variant.name;
                             let mut case_code = "".to_string();
 
                             if variant.payload_type.is_some() {
-                                writeln!(&mut case_code, "case let .{name}(payload):")?;
+                                writeln!(case_code, "case let .{name}(payload):")?;
 
                                 writeln!(
-                                    &mut case_code,
+                                    case_code,
                                     "    try container.encode(\"{name}\", forKey: .type)"
                                 )?;
                                 writeln!(
-                                    &mut case_code,
+                                    case_code,
                                     "    try container.encode(payload, forKey: .payload)"
                                 )?;
                             } else {
-                                writeln!(&mut case_code, "case .{name}:")?;
+                                writeln!(case_code, "case .{name}:")?;
                                 writeln!(
-                                    &mut case_code,
+                                    case_code,
                                     "    try container.encode(\"{name}\", forKey: .type)"
                                 )?;
                             }
 
-                            writeln!(&mut func_body, "{}", indent(case_code.trim(), 1))?;
+                            writeln!(func_body, "{}", indent(case_code.trim(), 1))?;
                         }
 
-                        writeln!(&mut func_body, "}}")?;
+                        writeln!(func_body, "}}")?;
 
                         func_body
                     };
 
-                    writeln!(&mut code_block, "{}", indent(&func_body.trim(), 1))?;
-                    writeln!(&mut code_block, "}}")?;
+                    writeln!(code_block, "{}", indent(&func_body.trim(), 1))?;
+                    writeln!(code_block, "}}")?;
                     code_block
                 };
-                writeln!(&mut result, "")?;
-                writeln!(&mut result, "{}", indent(&encoder_code.trim(), 1))?;
+                writeln!(result, "")?;
+                writeln!(result, "{}", indent(&encoder_code.trim(), 1))?;
 
-                writeln!(&mut result, "}}")?;
+                writeln!(result, "}}")?;
             }
             crate::ModelType::Struct(struct_def) => {
                 let mut fields: Vec<FieldDef> = vec![];
 
                 if let Some(base) = &struct_def.extend {
-                    writeln!(
-                        &mut result,
-                        "public struct {}: Codable, {base} {{",
-                        model.name
-                    )?;
+                    writeln!(result, "public struct {}: Codable, {base} {{", model.name)?;
                     let base_model = def.get_model(&base).unwrap();
                     match &base_model.type_ {
                         crate::ModelType::Virtual(struct_def) => {
@@ -184,7 +177,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         }
                     }
                 } else {
-                    writeln!(&mut result, "public struct {}: Codable {{", model.name)?;
+                    writeln!(result, "public struct {}: Codable {{", model.name)?;
                 }
 
                 fields.extend(struct_def.fields.clone());
@@ -196,19 +189,19 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         field_type = format!("{field_type}?");
                     }
 
-                    writeln!(&mut result, "    public var {field_name}: {field_type}")?;
+                    writeln!(result, "    public var {field_name}: {field_type}")?;
                 }
 
                 // generate member intializer, the default initializer is internal
                 // we need to generate a public one
                 let code_block = generate_memberwise_init(&fields, &package_name)?;
-                writeln!(&mut result, "")?;
-                writeln!(&mut result, "{}", indent(code_block.trim(), 1))?;
+                writeln!(result, "")?;
+                writeln!(result, "{}", indent(code_block.trim(), 1))?;
 
-                writeln!(&mut result, "}}")?;
+                writeln!(result, "}}")?;
             }
             crate::ModelType::Virtual(struct_def) => {
-                writeln!(&mut result, "public protocol {} {{", model.name)?;
+                writeln!(result, "public protocol {} {{", model.name)?;
 
                 for field in struct_def.fields.iter() {
                     let field_name = &field.name;
@@ -217,17 +210,17 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         field_type = format!("{field_type}?");
                     }
 
-                    writeln!(&mut result, "    var {field_name}: {field_type} {{")?;
-                    writeln!(&mut result, "        get")?;
-                    writeln!(&mut result, "        set")?;
-                    writeln!(&mut result, "    }}")?;
+                    writeln!(result, "    var {field_name}: {field_type} {{")?;
+                    writeln!(result, "        get")?;
+                    writeln!(result, "        set")?;
+                    writeln!(result, "    }}")?;
                 }
 
-                writeln!(&mut result, "}}")?;
+                writeln!(result, "}}")?;
             }
             crate::ModelType::NewType { inner_type } => {
                 writeln!(
-                    &mut result,
+                    result,
                     "public typealias {} = {}",
                     model.name,
                     swift_type(inner_type, &package_name)
@@ -241,12 +234,12 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                     crate::ConstType::String => "String",
                 };
 
-                writeln!(&mut result, "public enum {model_name}: {swift_ty} {{",)?;
+                writeln!(result, "public enum {model_name}: {swift_ty} {{",)?;
                 for value in values.iter() {
                     let value_name = &value.name;
                     if let Some(desc) = &value.desc {
                         let comment = indent(multiline_prefix_with(desc, "// "), 1);
-                        writeln!(&mut result, "{comment}")?;
+                        writeln!(result, "{comment}")?;
                     }
 
                     let value_literal = match &value.value {
@@ -254,9 +247,9 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                         crate::StringOrInteger::Integer(i) => i.to_string(),
                     };
 
-                    writeln!(&mut result, "    case {value_name} = {value_literal}",)?;
+                    writeln!(result, "    case {value_name} = {value_literal}",)?;
                 }
-                writeln!(&mut result, "}}",)?;
+                writeln!(result, "}}",)?;
             }
         }
     }
@@ -310,14 +303,14 @@ fn generate_memberwise_init(fields: &[FieldDef], package_name: &str) -> anyhow::
         field_params.join(", ")
     };
 
-    writeln!(&mut code, "public init({field_params}) {{")?;
+    writeln!(code, "public init({field_params}) {{")?;
 
     for field in fields.iter() {
         let field_name = &field.name;
-        writeln!(&mut code, "    self.{field_name} = {field_name}",)?;
+        writeln!(code, "    self.{field_name} = {field_name}",)?;
     }
 
-    writeln!(&mut code, "}}")?;
+    writeln!(code, "}}")?;
 
     Ok(code)
 }

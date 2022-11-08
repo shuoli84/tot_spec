@@ -17,9 +17,9 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             .get("rs_mod")
             .unwrap_or(&include.namespace);
         if mod_path.eq(&include.namespace) {
-            writeln!(&mut result, "use {};", mod_path)?;
+            writeln!(result, "use {};", mod_path)?;
         } else {
-            writeln!(&mut result, "use {} as {};", mod_path, include.namespace)?;
+            writeln!(result, "use {} as {};", mod_path, include.namespace)?;
         }
     }
 
@@ -100,9 +100,9 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
     for (idx, model_code) in model_codes.into_iter().enumerate() {
         // prepend a new line
         if idx != 0 {
-            writeln!(&mut result, "")?;
+            writeln!(result, "")?;
         }
-        writeln!(&mut result, "{}", model_code.trim())?;
+        writeln!(result, "{}", model_code.trim())?;
     }
 
     Ok(result)
@@ -315,9 +315,9 @@ fn render_new_type(
     inner_type: &Type,
 ) -> anyhow::Result<String> {
     let mut result = "".to_string();
-    writeln!(&mut result, "{}", render_derived(derived))?;
+    writeln!(result, "{}", render_derived(derived))?;
     writeln!(
-        &mut result,
+        result,
         "pub struct {model_name}(pub {});",
         inner_type.rs_type()
     )?;
@@ -366,77 +366,68 @@ fn render_const(
         ],
     );
 
-    writeln!(&mut code, "{}", render_derived(&derived))?;
-    writeln!(
-        &mut code,
-        "pub struct {model_name}(pub {value_type_in_struct});"
-    )?;
+    writeln!(code, "{}", render_derived(&derived))?;
+    writeln!(code, "pub struct {model_name}(pub {value_type_in_struct});")?;
 
     {
         // generate from_value and to_value
-        writeln!(&mut code, "")?;
-        writeln!(&mut code, "impl {model_name} {{")?;
+        writeln!(code, "")?;
+        writeln!(code, "impl {model_name} {{")?;
 
         let from_value = {
             // from_value
             let mut code = "".to_string();
             writeln!(
-                &mut code,
+                code,
                 "pub fn from_value(val: {value_type_in_from_value}) -> Option<Self> {{"
             )?;
-            writeln!(&mut code, "    match val {{")?;
+            writeln!(code, "    match val {{")?;
             for value in values.iter() {
                 let value_name = rs_const_name(&value.name);
                 let value_literal = rs_const_literal(&value.value);
-                writeln!(
-                    &mut code,
-                    "        {value_literal} => Some(Self::{value_name}),"
-                )?;
+                writeln!(code, "        {value_literal} => Some(Self::{value_name}),")?;
             }
-            writeln!(&mut code, "        _ => None,")?;
+            writeln!(code, "        _ => None,")?;
 
-            writeln!(&mut code, "    }}")?;
-            writeln!(&mut code, "}}")?;
+            writeln!(code, "    }}")?;
+            writeln!(code, "}}")?;
             code
         };
 
-        writeln!(&mut code, "{}", indent(&from_value.trim(), 1))?;
+        writeln!(code, "{}", indent(&from_value.trim(), 1))?;
 
         let to_value = {
             // from_value
             let mut code = "".to_string();
-            writeln!(
-                &mut code,
-                "pub fn to_value(self) -> {value_type_in_to_value} {{"
-            )?;
-            writeln!(&mut code, "    self.0")?;
-            writeln!(&mut code, "}}")?;
+            writeln!(code, "pub fn to_value(self) -> {value_type_in_to_value} {{")?;
+            writeln!(code, "    self.0")?;
+            writeln!(code, "}}")?;
             code
         };
 
-        writeln!(&mut code, "{}", indent(&to_value.trim(), 1))?;
+        writeln!(code, "{}", indent(&to_value.trim(), 1))?;
 
-        writeln!(&mut code, "}}")?;
+        writeln!(code, "}}")?;
     }
 
-    writeln!(&mut code, "")?;
-    writeln!(&mut code, "impl {model_name} {{")?;
+    writeln!(code, "")?;
+    writeln!(code, "impl {model_name} {{")?;
 
     for value in values.iter() {
         let value_name = rs_const_name(&value.name);
         let value_literal = rs_const_literal(&value.value);
         if let Some(desc) = &value.desc {
             let comment = indent(multiline_prefix_with(desc, "/// "), 1);
-            writeln!(&mut code, "{comment}")?;
+            writeln!(code, "{comment}")?;
         }
 
         writeln!(
-            &mut code,
+            code,
             "    pub const {value_name}: {model_name} = {model_name}({value_literal});"
         )?;
     }
 
-    writeln!(&mut code, "}}")?;
+    writeln!(code, "}}")?;
     Ok(code)
 }
 
