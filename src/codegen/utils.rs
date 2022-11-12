@@ -1,3 +1,5 @@
+use anyhow::Context;
+
 /// indent content with level
 pub fn indent(content: impl AsRef<str>, level: usize) -> String {
     let prefix = "    ".repeat(level);
@@ -8,6 +10,12 @@ pub fn indent(content: impl AsRef<str>, level: usize) -> String {
         .map(|l| format!("{prefix}{}", l))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// format rust code
+pub fn format_rust_code(code: &str) -> anyhow::Result<String> {
+    let ast = syn::parse_file(code).context(code.to_string())?;
+    Ok(prettyplease::unparse(&ast))
 }
 
 /// prepend prefix for each line of content

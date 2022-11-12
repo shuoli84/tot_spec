@@ -1,5 +1,3 @@
-use anyhow::Context;
-
 use crate::{
     codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
     StringOrInteger, StructDef, Type, VariantDef,
@@ -92,9 +90,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             }
         }
 
-        // format with prettyplease
-        let ast = syn::parse_file(model_code).context(model_code.to_string())?;
-        *model_code = prettyplease::unparse(&ast);
+        *model_code = super::utils::format_rust_code(model_code.as_str())?;
     }
 
     for (idx, model_code) in model_codes.into_iter().enumerate() {
