@@ -230,6 +230,8 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             crate::ModelType::Const { value_type, values } => {
                 let swift_ty = match value_type {
                     crate::ConstType::I8 => "Int8",
+                    crate::ConstType::I16 => "Int16",
+                    crate::ConstType::I32 => "Int32",
                     crate::ConstType::I64 => "Int64",
                     crate::ConstType::String => "String",
                 };
@@ -261,6 +263,8 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
     match ty {
         Type::Bool => "Bool".into(),
         Type::I8 => "Int8".into(),
+        Type::I16 => "Int16".into(),
+        Type::I32 => "Int32".into(),
         Type::I64 => "Int64".into(),
         Type::F64 => "Float64".into(),
         Type::Bytes => "Data".into(),

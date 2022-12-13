@@ -343,6 +343,8 @@ fn render_const(
     let value_type_in_to_value = value_type_in_struct;
     let value_type_in_from_value = match value_type {
         ConstType::I8 => "i8",
+        ConstType::I16 => "i16",
+        ConstType::I32 => "i32",
         ConstType::I64 => "i64",
         // from_value able to accept &str for all lifetime
         ConstType::String => "&str",
@@ -482,6 +484,9 @@ mod tests {
                         FieldDef::new("i8_value", Type::I8)
                             .with_required(true)
                             .with_desc("required i8 field"),
+                        FieldDef::new("i16_value", Type::I16)
+                            .with_required(true)
+                            .with_desc("required i16 field"),
                         FieldDef::new("i64_value", Type::I64),
                         FieldDef::new("string_value", Type::String),
                         FieldDef::new("bytes_value", Type::Bytes),
@@ -541,21 +546,14 @@ mod tests {
             include_str!("fixtures/rs_serde/extend.rs"),
         );
 
-        test_model_codegen(
-            ModelDef {
-                name: "Id".into(),
-                type_: ModelType::new_type(Type::reference("i64")),
-                desc: Some("NewType to i64, and derive Ord macros".into()),
-                ..ModelDef::default()
-            }
-            .with_attribute("rs_extra_derive", "PartialEq, Eq, PartialOrd, Ord"),
-            include_str!("fixtures/rs_serde/new_type.rs"),
-        );
-
         for (spec, expected) in &[
             (
                 include_str!("fixtures/specs/const_i8.yaml"),
                 include_str!("fixtures/rs_serde/const_i8.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/const_i16.yaml"),
+                include_str!("fixtures/rs_serde/const_i16.rs"),
             ),
             (
                 include_str!("fixtures/specs/const_i64.yaml"),
@@ -580,6 +578,10 @@ mod tests {
             (
                 include_str!("fixtures/specs/enum_variant_fields.yaml"),
                 include_str!("fixtures/rs_serde/enum_variant_fields.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/new_type.yaml"),
+                include_str!("fixtures/rs_serde/new_type.rs"),
             ),
         ] {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();

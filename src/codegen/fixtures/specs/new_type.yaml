@@ -1,0 +1,9 @@
+models:
+  - name: Id
+    desc: NewType to i64, and derive Ord macros
+    type: 
+      name: new_type
+      inner_type: i64
+    attributes:
+      rs_extra_derive: PartialEq, Eq, PartialOrd, Ord
+

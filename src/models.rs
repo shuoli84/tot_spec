@@ -228,6 +228,8 @@ pub struct ConstValueDef {
 #[derive(Debug, Clone)]
 pub enum ConstType {
     I8,
+    I16,
+    I32,
     I64,
     String,
 }
@@ -236,6 +238,8 @@ impl ConstType {
     pub fn rs_type(&self) -> &'static str {
         match self {
             ConstType::I8 => "i8",
+            ConstType::I16 => "i16",
+            ConstType::I32 => "i32",
             ConstType::I64 => "i64",
             ConstType::String => "&'static str",
         }
@@ -250,6 +254,10 @@ pub enum Type {
     Bool,
     #[serde(rename = "i8")]
     I8,
+    #[serde(rename = "i16")]
+    I16,
+    #[serde(rename = "i32")]
+    I32,
     #[serde(rename = "i64")]
     I64,
     #[serde(rename = "f64")]
@@ -297,6 +305,8 @@ impl Type {
         match self {
             Type::Bool => "bool".into(),
             Type::I8 => "i8".into(),
+            Type::I16 => "i16".into(),
+            Type::I32 => "i32".into(),
             Type::I64 => "i64".into(),
             Type::F64 => "f64".into(),
             Type::Bytes => "std::vec::Vec<u8>".into(),
@@ -447,6 +457,8 @@ mod serde_helper {
         {
             let type_str = match self {
                 ConstType::I8 => "i8",
+                ConstType::I16 => "i16",
+                ConstType::I32 => "i32",
                 ConstType::I64 => "i64",
                 ConstType::String => "string",
             };
@@ -475,6 +487,8 @@ mod serde_helper {
                 {
                     match v {
                         "i8" => Ok(ConstType::I8),
+                        "i16" => Ok(ConstType::I16),
+                        "i32" => Ok(ConstType::I32),
                         "i64" => Ok(ConstType::I64),
                         "string" => Ok(ConstType::String),
                         _ => Err(E::custom(format!("invalid value: {}", v))),

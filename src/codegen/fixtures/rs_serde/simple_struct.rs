@@ -5,6 +5,8 @@ pub struct SimpleStruct {
     pub bool_value: bool,
     /// required i8 field
     pub i8_value: i8,
+    /// required i16 field
+    pub i16_value: i16,
     pub i64_value: std::option::Option<i64>,
     pub string_value: std::option::Option<std::string::String>,
     pub bytes_value: std::option::Option<std::vec::Vec<u8>>,

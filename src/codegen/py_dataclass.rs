@@ -212,7 +212,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 writeln!(result, "class {model_name}(abc.ABC):")?;
 
                 let value_type_py = match value_type {
-                    crate::ConstType::I8 | crate::ConstType::I64 => "int",
+                    crate::ConstType::I8
+                    | crate::ConstType::I16
+                    | crate::ConstType::I32
+                    | crate::ConstType::I64 => "int",
                     crate::ConstType::String => "str",
                 };
 
@@ -249,7 +252,7 @@ fn py_type_for_field(field: &FieldDef) -> String {
 fn py_type(ty: &Type) -> String {
     match ty {
         Type::Bool => "bool".into(),
-        Type::I8 | Type::I64 => "int".into(),
+        Type::I8 | Type::I16 | Type::I32 | Type::I64 => "int".into(),
         Type::F64 => "float".into(),
         Type::Bytes => "bytes".into(),
         Type::String => "str".into(),
@@ -315,7 +318,7 @@ fn to_dict_for_one_field(
     def: &Definition,
 ) -> anyhow::Result<String> {
     Ok(match ty {
-        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
+        Type::Bool | Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64 | Type::String => {
             format!("{out_var} = {in_expr}")
         }
         Type::Bytes => {
@@ -438,7 +441,7 @@ fn from_dict_for_one_field(
     def: &Definition,
 ) -> anyhow::Result<String> {
     Ok(match ty {
-        Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
+        Type::Bool | Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64 | Type::String => {
             format!("{out_var} = {in_expr}")
         }
         Type::Bytes => {
