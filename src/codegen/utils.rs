@@ -7,7 +7,13 @@ pub fn indent(content: impl AsRef<str>, level: usize) -> String {
         .as_ref()
         .split("\n")
         .into_iter()
-        .map(|l| format!("{prefix}{}", l))
+        .map(|l| {
+            if !l.is_empty() {
+                format!("{prefix}{}", l)
+            } else {
+                l.to_string()
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }

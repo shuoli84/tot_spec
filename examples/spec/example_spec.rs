@@ -1,5 +1,5 @@
 /// SimpleStruct
-#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SimpleStruct {
     pub bool_value: bool,
     pub i8_value: i8,

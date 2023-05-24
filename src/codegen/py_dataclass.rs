@@ -265,7 +265,8 @@ fn py_type(ty: &Type) -> String {
             target,
         } => format!("\"{}\"", target),
         Type::Json => {
-            todo!()
+            // now we just mark json as Any
+            "typing.Any".to_string()
         }
     }
 }
@@ -279,7 +280,13 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
         writeln!(result, "\n    # {}", field.name)?;
 
         match &*field.type_ {
-            Type::Bytes | Type::I64 | Type::I8 | Type::Bool | Type::F64 | Type::String => {
+            Type::Bytes
+            | Type::I64
+            | Type::I8
+            | Type::Bool
+            | Type::F64
+            | Type::String
+            | Type::Json => {
                 writeln!(
                     result,
                     "    result[\"{field_name}\"] = self.{field_name}",
@@ -360,7 +367,11 @@ fn to_dict_for_one_field(
                 }
             }
         }
-        Type::Json => todo!(),
+        Type::Json => {
+            // for json type, it can be either dict, list, int, str, float, None, but it should not contain
+            // user defined struct, so it should be fine that we just assign it to output dict
+            format!("{out_var} = {in_expr}")
+        }
     })
 }
 
@@ -482,7 +493,10 @@ fn from_dict_for_one_field(
                 _ => format!("{out_var} = {target}.from_dict({in_expr})"),
             }
         }
-        Type::Json => todo!(),
+        Type::Json => {
+            // for json type, it should be fine to just assign to property
+            format!("{out_var} = {in_expr}")
+        }
     })
 }
 
@@ -511,6 +525,10 @@ mod tests {
             (
                 include_str!("fixtures/specs/const_string.yaml"),
                 include_str!("fixtures/py_dataclass/const_string.py"),
+            ),
+            (
+                include_str!("fixtures/specs/json.yaml"),
+                include_str!("fixtures/py_dataclass/json.py"),
             ),
         ];
 

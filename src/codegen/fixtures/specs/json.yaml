@@ -1,5 +1,6 @@
 models:
   - name: TestJsonStruct
+    desc: Test struct for json field
     type: 
       name: struct
       fields:
