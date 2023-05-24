@@ -264,6 +264,9 @@ fn py_type(ty: &Type) -> String {
             namespace: _,
             target,
         } => format!("\"{}\"", target),
+        Type::Json => {
+            todo!()
+        }
     }
 }
 
@@ -357,6 +360,7 @@ fn to_dict_for_one_field(
                 }
             }
         }
+        Type::Json => todo!(),
     })
 }
 
@@ -478,6 +482,7 @@ fn from_dict_for_one_field(
                 _ => format!("{out_var} = {target}.from_dict({in_expr})"),
             }
         }
+        Type::Json => todo!(),
     })
 }
 

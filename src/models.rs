@@ -277,6 +277,9 @@ pub enum Type {
         namespace: Option<String>,
         target: String,
     },
+    /// json object
+    #[serde(rename = "json")]
+    Json,
 }
 
 impl Type {
@@ -326,6 +329,7 @@ impl Type {
                 namespace: Some(namespace),
                 target,
             } => format!("{namespace}::{target}"),
+            Type::Json => "serde_json::Value".to_string(),
         }
     }
 }
@@ -412,6 +416,8 @@ mod serde_helper {
             } else {
                 bail!(format!("invalid type: {}", s));
             }
+        } else if let Some(rest) = s.strip_prefix("json") {
+            Ok((Type::Json, rest))
         } else if let Some(((namespace, identifier), rest)) = if_identifier(s) {
             Ok((
                 Type::Reference {

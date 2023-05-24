@@ -53,13 +53,8 @@ models:
     - name: children
       type:
         name: list
-        item_type:
-          name: ref
-          target: SimpleStruct
-      attributes: {}
-      required: false
-  attributes:
-    rs_extra_derive: PartialEq, Eq, PartialOrd, Ord
+        item_type: SimpleStruct
+
 - name: KeyValue
   type:
     name: new_type
@@ -69,6 +64,7 @@ models:
         name: string
       value_type:
         name: bytes
+
 - name: Container
   type:
     name: new_type
@@ -77,6 +73,7 @@ models:
       item_type:
         name: ref
         target: SimpleStruct
+
 - name: RealNumber
   type: 
     name: struct

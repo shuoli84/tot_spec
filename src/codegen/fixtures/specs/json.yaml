@@ -1,0 +1,7 @@
+models:
+  - name: TestJsonStruct
+    type: 
+      name: struct
+      fields:
+        - name: json_value
+          type: json
