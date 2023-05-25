@@ -1,4 +1,4 @@
-use crate::{Context, Definition, ModelDef, Type};
+use crate::{Context, Definition, ModelDef, Type, TypeReference};
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 /// java does not export to a file, instead, it exports to a folder
@@ -33,8 +33,6 @@ pub fn render_one(
     def: &Definition,
     context: &Context,
 ) -> anyhow::Result<String> {
-    let meta = def.get_meta("java_jackson");
-
     let mut result = "".to_string();
 
     writeln!(result, "package {package_name};")?;
@@ -49,23 +47,34 @@ pub fn render_one(
         crate::ModelType::Struct(st) => {
             // Data annotation makes the class a pojo
             writeln!(result, "@Data")?;
-            writeln!(result, "public class {} {{", model.name)?;
 
             match st.extend.as_ref() {
-                Some(_) => todo!(),
-                None => {
-                    for field in st.fields.iter() {
-                        if let Some(desc) = &field.desc {
-                            writeln!(result, "    // {}", desc)?;
-                        }
+                Some(base) => {
+                    if let Some(type_ref) = TypeReference::try_parse(base) {
+                        let java_type = java_type_for_type_reference(&type_ref, def, context)?;
                         writeln!(
                             result,
-                            "    private {java_type} {name};",
-                            java_type = java_type(&field.type_, def, context)?,
-                            name = field.name
+                            "public class {name} extends {base} {{",
+                            name = model.name,
+                            base = java_type
                         )?;
                     }
                 }
+                None => {
+                    writeln!(result, "public class {} {{", model.name)?;
+                }
+            }
+
+            for field in st.fields.iter() {
+                if let Some(desc) = &field.desc {
+                    writeln!(result, "    // {}", desc)?;
+                }
+                writeln!(
+                    result,
+                    "    private {java_type} {name};",
+                    java_type = java_type(&field.type_, def, context)?,
+                    name = field.name
+                )?;
             }
 
             writeln!(result, "}}")?;
@@ -120,7 +129,30 @@ pub fn render_one(
 
             writeln!(result, "}}")?;
         }
-        crate::ModelType::Virtual(_) => todo!(),
+        crate::ModelType::Virtual(st) => {
+            // Data annotation makes the class a pojo
+            writeln!(result, "@Data")?;
+            writeln!(result, "public abstract class {} {{", model.name)?;
+
+            match st.extend.as_ref() {
+                Some(_) => todo!(),
+                None => {
+                    for field in st.fields.iter() {
+                        if let Some(desc) = &field.desc {
+                            writeln!(result, "    // {}", desc)?;
+                        }
+                        writeln!(
+                            result,
+                            "    private {java_type} {name};",
+                            java_type = java_type(&field.type_, def, context)?,
+                            name = field.name
+                        )?;
+                    }
+                }
+            }
+
+            writeln!(result, "}}")?;
+        }
         crate::ModelType::NewType { inner_type } => todo!(),
         crate::ModelType::Const { value_type, values } => todo!(),
     }
@@ -141,23 +173,30 @@ fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<S
         Type::Map { value_type } => {
             format!("Map<String, {}>", java_type(value_type, def, context)?)
         }
-        Type::Reference { namespace, target } => {
-            let fqdn_target = match namespace {
-                Some(namespace) => {
-                    let include_def = context.load_include_def(namespace, def)?;
-                    let package = java_package_for_def(&include_def);
-                    format!("{package}.{target}")
-                }
-                None => {
-                    let package = java_package_for_def(def);
-                    format!("{package}.{target}")
-                }
-            };
-
-            fqdn_target
-        }
+        Type::Reference(type_ref) => java_type_for_type_reference(type_ref, def, context)?,
         Type::Json => todo!(),
     })
+}
+
+fn java_type_for_type_reference(
+    type_ref: &TypeReference,
+    def: &Definition,
+    context: &Context,
+) -> anyhow::Result<String> {
+    let TypeReference { namespace, target } = type_ref;
+    let fqdn_target = match namespace {
+        Some(namespace) => {
+            let include_def = context.load_include_def(namespace, def)?;
+            let package = java_package_for_def(&include_def);
+            format!("{package}.{target}")
+        }
+        None => {
+            let package = java_package_for_def(def);
+            format!("{package}.{target}")
+        }
+    };
+
+    Ok(fqdn_target)
 }
 
 fn java_package_for_def(def: &Definition) -> String {
@@ -187,6 +226,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/enum.yaml",
                 "src/codegen/fixtures/java_jackson/enum",
+            ),
+            (
+                "src/codegen/fixtures/specs/extend.yaml",
+                "src/codegen/fixtures/java_jackson/extend",
             ),
         ];
 

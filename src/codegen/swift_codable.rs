@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 
-use crate::{Definition, FieldDef, Type};
+use crate::{Definition, FieldDef, Type, TypeReference};
 
 use super::utils::{indent, multiline_prefix_with};
 
@@ -275,7 +275,7 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
         Type::Map { value_type } => {
             format!("[String:{}]", swift_type(value_type, package_name))
         }
-        Type::Reference { namespace, target } => {
+        Type::Reference(TypeReference { namespace, target }) => {
             if namespace.is_some() {
                 unimplemented!()
             }

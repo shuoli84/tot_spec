@@ -1,4 +1,4 @@
-use crate::{Definition, FieldDef, StringOrInteger, Type};
+use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 
 use super::utils::{self, indent, multiline_prefix_with};
@@ -260,10 +260,10 @@ fn py_type(ty: &Type) -> String {
             format!("typing.List[{}]", py_type(item_type))
         }
         Type::Map { value_type } => format!("typing.Dict[str, {}]", py_type(value_type)),
-        Type::Reference {
+        Type::Reference(TypeReference {
             namespace: _,
             target,
-        } => format!("\"{}\"", target),
+        }) => format!("\"{}\"", target),
         Type::Json => {
             // now we just mark json as Any
             "typing.Any".to_string()
@@ -352,7 +352,7 @@ fn to_dict_for_one_field(
             writeln!(result, "    {out_var}[key] = item_tmp")?;
             result
         }
-        Type::Reference { namespace, target } => {
+        Type::Reference(TypeReference { namespace, target }) => {
             if namespace.is_some() {
                 unimplemented!()
             }
@@ -480,7 +480,7 @@ fn from_dict_for_one_field(
             writeln!(result, "    {out_var}[key] = item_tmp")?;
             result
         }
-        Type::Reference { namespace, target } => {
+        Type::Reference(TypeReference { namespace, target }) => {
             if namespace.is_some() {
                 unimplemented!()
             }

@@ -324,6 +324,26 @@ impl ConstType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeReference {
+    pub namespace: Option<String>,
+    pub target: String,
+}
+
+impl TypeReference {
+    /// try parse from string
+    pub fn try_parse(s: &str) -> Option<Self> {
+        if let Some(((namespace, identifier), _)) = serde_helper::if_identifier(s) {
+            Some(TypeReference {
+                namespace: namespace.map(Into::into),
+                target: identifier.to_string(),
+            })
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "name")]
 /// All types supported
 pub enum Type {
@@ -350,10 +370,7 @@ pub enum Type {
     #[serde(rename = "map")]
     Map { value_type: Box<Type> },
     #[serde(rename = "ref")]
-    Reference {
-        namespace: Option<String>,
-        target: String,
-    },
+    Reference(TypeReference),
     /// json object
     #[serde(rename = "json")]
     Json,
@@ -373,10 +390,10 @@ impl Type {
     }
 
     pub fn reference(target: impl Into<String>) -> Self {
-        Self::Reference {
+        Self::Reference(TypeReference {
             namespace: None,
             target: target.into(),
-        }
+        })
     }
 }
 
@@ -398,14 +415,14 @@ impl Type {
                     value_type.rs_type()
                 )
             }
-            Type::Reference {
+            Type::Reference(TypeReference {
                 namespace: None,
                 target,
-            } => target.clone(),
-            Type::Reference {
+            }) => target.clone(),
+            Type::Reference(TypeReference {
                 namespace: Some(namespace),
                 target,
-            } => format!("{namespace}::{target}"),
+            }) => format!("{namespace}::{target}"),
             Type::Json => "serde_json::Value".to_string(),
         }
     }
@@ -497,10 +514,10 @@ mod serde_helper {
             Ok((Type::Json, rest))
         } else if let Some(((namespace, identifier), rest)) = if_identifier(s) {
             Ok((
-                Type::Reference {
+                Type::Reference(TypeReference {
                     namespace: namespace.map(Into::into),
                     target: identifier.to_string(),
-                },
+                }),
                 rest,
             ))
         } else {
@@ -508,7 +525,7 @@ mod serde_helper {
         }
     }
 
-    fn if_identifier(s: &str) -> Option<((Option<&str>, &str), &str)> {
+    pub fn if_identifier(s: &str) -> Option<((Option<&str>, &str), &str)> {
         let s = s.trim();
         let mut index: Option<usize> = None;
         for (idx, c) in s.chars().enumerate() {
