@@ -1,3 +1,7 @@
+meta:
+  java_jackson: 
+    package: com.tot_spec.test.include_test
+
 includes:
   - path: include_base.yaml
     namespace: base
