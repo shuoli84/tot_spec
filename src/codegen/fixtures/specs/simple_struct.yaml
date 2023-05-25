@@ -23,8 +23,6 @@ models:
       type: bytes
     - name: string_to_string
       type: map[string]
-    - name: key_values
-      type: KeyValue
     - name: children
       desc: nested self
       type: list[SimpleStruct]

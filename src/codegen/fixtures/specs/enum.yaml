@@ -1,3 +1,7 @@
+meta:
+  java_jackson:
+    package: com.tot_spec.test.enum
+
 models:
   - name: Number
     type:
@@ -10,3 +14,16 @@ models:
         - name: Float
           desc: Variant Float
           payload_type: f64
+
+        - name: RealNumber
+          payload_type: RealNumber
+
+  - name: RealNumber
+    type:
+      name: struct
+      fields:
+        - name: part_0
+          type: f64
+
+        - name: part_1
+          type: f64

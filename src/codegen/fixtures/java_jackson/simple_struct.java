@@ -12,7 +12,6 @@ public class SimpleStruct {
     private String string_value;
     private byte[] bytes_value;
     private Map<String, String> string_to_string;
-    private KeyValue key_values;
     // nested self
-    private List<SimpleStruct> children;
+    private List<com.tot_spec.test.simple_struct.SimpleStruct> children;
 }

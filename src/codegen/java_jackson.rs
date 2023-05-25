@@ -17,6 +17,8 @@ pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
     for model in def.models.iter() {
         writeln!(result, "")?;
 
+        let model_name = &model.name;
+
         match &model.type_ {
             crate::ModelType::Struct(st) => {
                 // Data annotation makes the class a pojo
@@ -42,7 +44,56 @@ pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
 
                 writeln!(result, "}}")?;
             }
-            crate::ModelType::Enum { variants } => todo!(),
+            crate::ModelType::Enum { variants } => {
+                // Data annotation makes the class a pojo
+                writeln!(
+                    result,
+                    "@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = \"type\")"
+                )?;
+                {
+                    writeln!(result, "@JsonSubTypes({{")?;
+
+                    for v in variants {
+                        writeln!(
+                            result,
+                            "    @JsonSubTypes.Type(value = {model_name}.{name}.class, name = \"{name}\"),",
+                            name = v.name
+                        )?;
+                    }
+
+                    writeln!(result, "}})")?;
+                }
+                writeln!(result, "public abstract class {} {{", model.name)?;
+
+                for (idx, v) in variants.iter().enumerate() {
+                    let variant_name = &v.name;
+
+                    writeln!(result, "    @Data")?;
+                    writeln!(
+                        result,
+                        "    public static class {variant_name} extends {model_name} {{"
+                    )?;
+
+                    match v.payload_type.as_ref() {
+                        Some(payload_type) => {
+                            writeln!(
+                                result,
+                                "        private {} payload;",
+                                java_type(payload_type, def, context)?,
+                            )?;
+                        }
+                        None => todo!(),
+                    }
+
+                    writeln!(result, "    }}")?;
+
+                    if idx + 1 < variants.len() {
+                        writeln!(result)?;
+                    }
+                }
+
+                writeln!(result, "}}")?;
+            }
             crate::ModelType::Virtual(_) => todo!(),
             crate::ModelType::NewType { inner_type } => todo!(),
             crate::ModelType::Const { value_type, values } => todo!(),
@@ -72,7 +123,10 @@ fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<S
                     let package = java_package_for_def(&include_def);
                     format!("{package}.{target}")
                 }
-                None => target.clone(),
+                None => {
+                    let package = java_package_for_def(def);
+                    format!("{package}.{target}")
+                }
             };
 
             fqdn_target
@@ -104,6 +158,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/simple_struct.yaml",
                 include_str!("fixtures/java_jackson/simple_struct.java"),
+            ),
+            (
+                "src/codegen/fixtures/specs/enum.yaml",
+                include_str!("fixtures/java_jackson/enum.java"),
             ),
         ];
 
