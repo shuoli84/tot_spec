@@ -24,9 +24,3 @@ public abstract class Number {
         private com.tot_spec.test.enum.RealNumber payload;
     }
 }
-
-@Data
-public class RealNumber {
-    private Double part_0;
-    private Double part_1;
-}
