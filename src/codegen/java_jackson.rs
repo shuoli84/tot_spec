@@ -5,10 +5,21 @@ use std::{borrow::Cow, fmt::Write, path::PathBuf};
 pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
     std::fs::create_dir_all(target_folder)?;
 
+    let package_name = def
+        .get_meta("java_jackson")
+        .get("package")
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("missing package"))?;
+
+    let mut package_folder = target_folder.to_owned();
+
+    package_name.split('.').for_each(|c| package_folder.push(c));
+    std::fs::create_dir_all(&package_folder)?;
+
     for model in def.models.iter() {
         let model_name = &model.name;
-        let file_path = target_folder.join(format!("{model_name}.java"));
-        let file_content = render_one(model, def, context)?;
+        let file_path = package_folder.join(format!("{model_name}.java"));
+        let file_content = render_one(model, &package_name, def, context)?;
 
         std::fs::write(file_path, file_content)?;
     }
@@ -16,12 +27,13 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
     Ok(())
 }
 
-pub fn render_one(model: &ModelDef, def: &Definition, context: &Context) -> anyhow::Result<String> {
+pub fn render_one(
+    model: &ModelDef,
+    package_name: &str,
+    def: &Definition,
+    context: &Context,
+) -> anyhow::Result<String> {
     let meta = def.get_meta("java_jackson");
-    let package_name = meta
-        .get("package")
-        .map(|s| Cow::Borrowed(s))
-        .unwrap_or(Cow::Owned("PACKAGE".to_string()));
 
     let mut result = "".to_string();
 
