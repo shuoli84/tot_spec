@@ -283,6 +283,7 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
         }
         Type::Json => todo!(),
         Type::Decimal => todo!(),
+        Type::BigInt => todo!(),
     }
 }
 

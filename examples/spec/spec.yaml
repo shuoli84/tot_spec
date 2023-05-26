@@ -8,40 +8,35 @@ models:
 - name: SimpleStruct
   type:
     name: struct
-    extend: null
     fields:
+
     - name: bool_value
-      type:
-        name: bool
-      attributes: {}
+      type: bool
       required: true
+
     - name: i8_value
-      type:
-        name: i8
-      attributes: {}
-      required: true
+      type: i8
+
     - name: i64_value
-      type:
-        name: i64
-      attributes: {}
-      required: false
+      type: i64
+
+    - name: decimal_value
+      type: decimal
+
+    - name: bigint_value
+      type: bigint
+
     - name: string_value
-      type:
-        name: string
-      attributes: {}
-      required: false
+      type: string
+
     - name: bytes_value
-      type:
-        name: bytes
-      required: false
+      type: bytes
+
     - name: string_to_string
-      type:
-        name: map
-        value_type:
-          name: string
+      type: map[string]
       attributes:
         rs_type: std::collections::BTreeMap::<std::string::String, std::string::String>
-      required: false
+
     - name: key_values
       type:
         name: ref

@@ -361,6 +361,8 @@ pub enum Type {
     F64,
     #[serde(rename = "decimal")]
     Decimal,
+    #[serde(rename = "bigint")]
+    BigInt,
     #[serde(rename = "bytes")]
     Bytes,
     #[serde(rename = "string")]
@@ -427,6 +429,7 @@ impl Type {
             }) => format!("{namespace}::{target}"),
             Type::Json => "serde_json::Value".to_string(),
             Type::Decimal => "rust_decimal::Decimal".into(),
+            Type::BigInt => "num_big::BigInt".into(),
         }
     }
 }
@@ -517,6 +520,8 @@ mod serde_helper {
             Ok((Type::Json, rest))
         } else if let Some(rest) = s.strip_prefix("decimal") {
             Ok((Type::Decimal, rest))
+        } else if let Some(rest) = s.strip_prefix("bigint") {
+            Ok((Type::BigInt, rest))
         } else if let Some(((namespace, identifier), rest)) = if_identifier(s) {
             Ok((
                 Type::Reference(TypeReference {

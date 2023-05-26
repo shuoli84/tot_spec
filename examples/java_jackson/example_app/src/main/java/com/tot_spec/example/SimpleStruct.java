@@ -7,6 +7,8 @@ public class SimpleStruct {
     private Boolean boolValue;
     private Integer i8Value;
     private Integer i64Value;
+    private java.math.BigDecimal decimalValue;
+    private java.math.BigInteger bigintValue;
     private String stringValue;
     private byte[] bytesValue;
     private Map<String, String> stringToString;
