@@ -19,12 +19,10 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
         writeln!(result, "")?;
 
-        let comment = if let Some(desc) = &model.desc {
-            multiline_prefix_with(desc, "# ")
-        } else {
-            model_name.clone()
-        };
-        writeln!(result, "{comment}")?;
+        if let Some(desc) = &model.desc {
+            let comment = multiline_prefix_with(desc, "# ");
+            writeln!(result, "{comment}")?;
+        }
 
         match &model.type_ {
             // python has no built in enum, so we generate base class
@@ -268,6 +266,7 @@ fn py_type(ty: &Type) -> String {
             // now we just mark json as Any
             "typing.Any".to_string()
         }
+        Type::Decimal => todo!(),
     }
 }
 
@@ -372,6 +371,7 @@ fn to_dict_for_one_field(
             // user defined struct, so it should be fine that we just assign it to output dict
             format!("{out_var} = {in_expr}")
         }
+        Type::Decimal => todo!(),
     })
 }
 
@@ -497,6 +497,7 @@ fn from_dict_for_one_field(
             // for json type, it should be fine to just assign to property
             format!("{out_var} = {in_expr}")
         }
+        Type::Decimal => todo!(),
     })
 }
 

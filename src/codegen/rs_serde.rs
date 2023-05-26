@@ -587,6 +587,10 @@ mod tests {
                 include_str!("fixtures/specs/json.yaml"),
                 include_str!("fixtures/rs_serde/json.rs"),
             ),
+            (
+                include_str!("fixtures/specs/decimal.yaml"),
+                include_str!("fixtures/rs_serde/decimal.rs"),
+            ),
         ] {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
             test_def(def, expected);

@@ -225,6 +225,7 @@ fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<S
         }
         Type::Reference(type_ref) => java_type_for_type_reference(type_ref, def, context)?,
         Type::Json => "com.fasterxml.jackson.databind.JsonNode".to_string(),
+        Type::Decimal => "BigDecimal".into(),
     })
 }
 

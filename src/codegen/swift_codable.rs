@@ -282,6 +282,7 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
             format!("{}.{}", package_name, target)
         }
         Type::Json => todo!(),
+        Type::Decimal => todo!(),
     }
 }
 

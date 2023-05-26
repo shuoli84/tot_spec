@@ -359,6 +359,8 @@ pub enum Type {
     I64,
     #[serde(rename = "f64")]
     F64,
+    #[serde(rename = "decimal")]
+    Decimal,
     #[serde(rename = "bytes")]
     Bytes,
     #[serde(rename = "string")]
@@ -424,6 +426,7 @@ impl Type {
                 target,
             }) => format!("{namespace}::{target}"),
             Type::Json => "serde_json::Value".to_string(),
+            Type::Decimal => "rust_decimal::Decimal".into(),
         }
     }
 }
@@ -512,6 +515,8 @@ mod serde_helper {
             }
         } else if let Some(rest) = s.strip_prefix("json") {
             Ok((Type::Json, rest))
+        } else if let Some(rest) = s.strip_prefix("decimal") {
+            Ok((Type::Decimal, rest))
         } else if let Some(((namespace, identifier), rest)) = if_identifier(s) {
             Ok((
                 Type::Reference(TypeReference {
