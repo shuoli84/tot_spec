@@ -153,7 +153,28 @@ pub fn render_one(
 
             writeln!(result, "}}")?;
         }
-        crate::ModelType::NewType { inner_type } => todo!(),
+        crate::ModelType::NewType { inner_type } => {
+            writeln!(result, "public class {model_name} {{")?;
+            let java_type = java_type(&inner_type, def, context)?;
+
+            writeln!(result, "    private {java_type} value;",)?;
+
+            writeln!(result, "")?;
+
+            writeln!(result, "    @com.fasterxml.jackson.annotation.JsonCreator")?;
+            writeln!(result, "    public {model_name}({java_type} value) {{")?;
+            writeln!(result, "        this.value = value;")?;
+            writeln!(result, "    }}")?;
+
+            writeln!(result, "")?;
+
+            writeln!(result, "    @com.fasterxml.jackson.annotation.JsonValue")?;
+            writeln!(result, "    public {java_type} get_value() {{")?;
+            writeln!(result, "        return value;")?;
+            writeln!(result, "    }}")?;
+
+            writeln!(result, "}}")?;
+        }
         crate::ModelType::Const { value_type, values } => todo!(),
     }
 
@@ -234,6 +255,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/json.yaml",
                 "src/codegen/fixtures/java_jackson/json",
+            ),
+            (
+                "src/codegen/fixtures/specs/new_type.yaml",
+                "src/codegen/fixtures/java_jackson/new_type",
             ),
         ];
 
