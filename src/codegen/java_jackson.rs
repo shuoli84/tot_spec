@@ -174,7 +174,7 @@ fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<S
             format!("Map<String, {}>", java_type(value_type, def, context)?)
         }
         Type::Reference(type_ref) => java_type_for_type_reference(type_ref, def, context)?,
-        Type::Json => todo!(),
+        Type::Json => "com.fasterxml.jackson.databind.JsonNode".to_string(),
     })
 }
 
@@ -230,6 +230,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/extend.yaml",
                 "src/codegen/fixtures/java_jackson/extend",
+            ),
+            (
+                "src/codegen/fixtures/specs/json.yaml",
+                "src/codegen/fixtures/java_jackson/json",
             ),
         ];
 
