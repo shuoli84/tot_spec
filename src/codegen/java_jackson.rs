@@ -1,4 +1,6 @@
-use crate::{Context, Definition, ModelDef, Type, TypeReference};
+use convert_case::Casing;
+
+use crate::{ConstType, Context, Definition, ModelDef, StringOrInteger, Type, TypeReference};
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 /// java does not export to a file, instead, it exports to a folder
@@ -42,6 +44,10 @@ pub fn render_one(
     writeln!(result, "")?;
 
     let model_name = &model.name;
+
+    if let Some(desc) = &model.desc {
+        writeln!(result, "// {desc}")?;
+    }
 
     match &model.type_ {
         crate::ModelType::Struct(st) => {
@@ -175,7 +181,28 @@ pub fn render_one(
 
             writeln!(result, "}}")?;
         }
-        crate::ModelType::Const { value_type, values } => todo!(),
+        crate::ModelType::Const { value_type, values } => {
+            writeln!(result, "public class {model_name} {{")?;
+            let java_type = java_type_for_const(&value_type);
+
+            for (idx, value) in values.iter().enumerate() {
+                if let Some(desc) = &value.desc {
+                    writeln!(result, "    // {desc}")?;
+                }
+                writeln!(
+                    result,
+                    "    public static final {java_type} {} = {};",
+                    value.name.to_case(convert_case::Case::UpperSnake),
+                    java_literal(&value.value)
+                )?;
+
+                if idx + 1 < values.len() {
+                    writeln!(result, "")?;
+                }
+            }
+
+            writeln!(result, "}}")?;
+        }
     }
 
     Ok(result)
@@ -220,6 +247,20 @@ fn java_type_for_type_reference(
     Ok(fqdn_target)
 }
 
+fn java_type_for_const(ty: &ConstType) -> &'static str {
+    match ty {
+        ConstType::I8 | ConstType::I16 | ConstType::I32 | ConstType::I64 => "Integer",
+        ConstType::String => "String",
+    }
+}
+
+fn java_literal(val: &StringOrInteger) -> String {
+    match val {
+        StringOrInteger::String(val) => format!("\"{}\"", val.replace('"', "\"")),
+        StringOrInteger::Integer(val) => format!("{val}"),
+    }
+}
+
 fn java_package_for_def(def: &Definition) -> String {
     let meta = def.get_meta("java_jackson");
     let package_name = meta
@@ -259,6 +300,14 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/new_type.yaml",
                 "src/codegen/fixtures/java_jackson/new_type",
+            ),
+            (
+                "src/codegen/fixtures/specs/const_string.yaml",
+                "src/codegen/fixtures/java_jackson/const_string",
+            ),
+            (
+                "src/codegen/fixtures/specs/const_i64.yaml",
+                "src/codegen/fixtures/java_jackson/const_i64",
             ),
         ];
 

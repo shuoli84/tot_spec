@@ -2,6 +2,7 @@ package com.tot_spec.test.new_type;
 import lombok.Data;
 import java.util.*;
 
+// NewType to i64, and derive Ord macros
 public class Id {
     private Integer value;
 
