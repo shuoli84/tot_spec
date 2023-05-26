@@ -225,7 +225,7 @@ fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<S
         }
         Type::Reference(type_ref) => java_type_for_type_reference(type_ref, def, context)?,
         Type::Json => "com.fasterxml.jackson.databind.JsonNode".to_string(),
-        Type::Decimal => "BigDecimal".into(),
+        Type::Decimal => "java.math.BigDecimal".into(),
     })
 }
 
@@ -311,6 +311,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/const_i64.yaml",
                 "src/codegen/fixtures/java_jackson/const_i64",
+            ),
+            (
+                "src/codegen/fixtures/specs/decimal.yaml",
+                "src/codegen/fixtures/java_jackson/decimal",
             ),
         ];
 
