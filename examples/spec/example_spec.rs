@@ -7,7 +7,7 @@ pub struct SimpleStruct {
     pub string_value: std::option::Option<std::string::String>,
     pub bytes_value: std::option::Option<std::vec::Vec<u8>>,
     pub string_to_string: std::option::Option<
-        std::collections::BTreeMap::<std::string::String, std::string::String>,
+        std::collections::BTreeMap<std::string::String, std::string::String>,
     >,
     pub key_values: std::option::Option<KeyValue>,
     pub children_container: std::option::Option<Container>,

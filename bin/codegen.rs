@@ -22,6 +22,11 @@ fn main() {
 
     println!("{} models loaded", def.models.len());
 
+    if let Some(output) = &args.output {
+        let parent_folder = output.parent().unwrap();
+        std::fs::create_dir_all(parent_folder).unwrap();
+    }
+
     let output = if args.codegen.eq("rs_serde") {
         codegen::rs_serde::render(&def).unwrap()
     } else if args.codegen.eq("py_dataclass") {
