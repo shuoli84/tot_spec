@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import abc
 import typing
+import decimal
 
 
 # Const def for i8

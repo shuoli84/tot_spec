@@ -11,6 +11,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
     writeln!(result, "from dataclasses import dataclass")?;
     writeln!(result, "import abc")?;
     writeln!(result, "import typing")?;
+    writeln!(result, "import decimal")?;
 
     writeln!(result, "")?;
 
@@ -266,7 +267,7 @@ fn py_type(ty: &Type) -> String {
             // now we just mark json as Any
             "typing.Any".to_string()
         }
-        Type::Decimal => todo!(),
+        Type::Decimal => "decimal.Decimal".to_string(),
     }
 }
 
@@ -371,7 +372,9 @@ fn to_dict_for_one_field(
             // user defined struct, so it should be fine that we just assign it to output dict
             format!("{out_var} = {in_expr}")
         }
-        Type::Decimal => todo!(),
+        Type::Decimal => {
+            format!("{out_var} = str({in_expr})")
+        }
     })
 }
 
@@ -497,7 +500,9 @@ fn from_dict_for_one_field(
             // for json type, it should be fine to just assign to property
             format!("{out_var} = {in_expr}")
         }
-        Type::Decimal => todo!(),
+        Type::Decimal => {
+            format!("{out_var} = decimal.Decimal({in_expr})")
+        }
     })
 }
 
@@ -530,6 +535,10 @@ mod tests {
             (
                 include_str!("fixtures/specs/json.yaml"),
                 include_str!("fixtures/py_dataclass/json.py"),
+            ),
+            (
+                include_str!("fixtures/specs/decimal.yaml"),
+                include_str!("fixtures/py_dataclass/decimal.py"),
             ),
         ];
 
