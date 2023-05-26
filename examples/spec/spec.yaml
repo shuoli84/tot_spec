@@ -1,6 +1,8 @@
 meta:
   swift_codable:
     package_name: SpecModel
+  java_jackson:
+    package: com.tot_spec.example
 
 models:
 - name: SimpleStruct

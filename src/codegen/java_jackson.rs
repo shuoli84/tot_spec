@@ -38,7 +38,7 @@ pub fn render_one(
     let mut result = "".to_string();
 
     writeln!(result, "package {package_name};")?;
-    writeln!(result, "import lombok.Data;")?;
+    writeln!(result, "import lombok.*;")?;
     writeln!(result, "import java.util.*;")?;
 
     writeln!(result, "")?;
@@ -79,7 +79,7 @@ pub fn render_one(
                     result,
                     "    private {java_type} {name};",
                     java_type = java_type(&field.type_, def, context)?,
-                    name = field.name
+                    name = field.name.to_case(convert_case::Case::Camel)
                 )?;
             }
 
@@ -89,15 +89,15 @@ pub fn render_one(
             // Data annotation makes the class a pojo
             writeln!(
                 result,
-                "@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = \"type\")"
+                "@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME, property = \"type\")"
             )?;
             {
-                writeln!(result, "@JsonSubTypes({{")?;
+                writeln!(result, "@com.fasterxml.jackson.annotation.JsonSubTypes({{")?;
 
                 for v in variants {
                     writeln!(
                             result,
-                            "    @JsonSubTypes.Type(value = {model_name}.{name}.class, name = \"{name}\"),",
+                            "    @com.fasterxml.jackson.annotation.JsonSubTypes.Type(value = {model_name}.{name}.class, name = \"{name}\"),",
                             name = v.name
                         )?;
                 }
@@ -110,6 +110,8 @@ pub fn render_one(
                 let variant_name = &v.name;
 
                 writeln!(result, "    @Data")?;
+                writeln!(result, "    @AllArgsConstructor")?;
+                writeln!(result, "    @NoArgsConstructor")?;
                 writeln!(
                     result,
                     "    public static class {variant_name} extends {model_name} {{"
@@ -151,7 +153,7 @@ pub fn render_one(
                             result,
                             "    private {java_type} {name};",
                             java_type = java_type(&field.type_, def, context)?,
-                            name = field.name
+                            name = field.name.to_case(convert_case::Case::Camel)
                         )?;
                     }
                 }

@@ -5,6 +5,7 @@ tot_spec is a language agonostic model definition util. It is mainly used to def
 # Examples
 
 ## Run examples
+
 ```bash
 # generate rust client code
 cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "rs_serde" -o "examples/spec/example_spec.rs
@@ -15,6 +16,9 @@ cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "py_dataclass" -o
 # generate swift client code
 cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "swift_codable" -o examples/swift_package/Sources/SpecModel/example_spec.swift
 cd examples/swift_package && swift test
+
+# generate java jackson
+cargo run --example codegen -- -s "examples/spec/spec.yaml" -c "java_jackson" -o "examples/java_jackson/example_app/src/main/java/"
 ```
 
 ## Nested struct
@@ -166,6 +170,7 @@ models:
 ```
 
 Rust side, will generate a NewType wraps i8, also with each values defined as const variables
+
 ```rust
 pub struct Code(pub i8);
 
