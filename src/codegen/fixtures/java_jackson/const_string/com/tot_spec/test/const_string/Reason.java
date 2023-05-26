@@ -1,5 +1,5 @@
 package com.tot_spec.test.const_string;
-import lombok.Data;
+import lombok.*;
 import java.util.*;
 
 // Const def for string

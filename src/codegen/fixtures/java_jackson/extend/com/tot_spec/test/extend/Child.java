@@ -1,5 +1,5 @@
 package com.tot_spec.test.extend;
-import lombok.Data;
+import lombok.*;
 import java.util.*;
 
 @Data

@@ -1,5 +1,5 @@
 package com.tot_spec.test.new_type;
-import lombok.Data;
+import lombok.*;
 import java.util.*;
 
 // NewType to i64, and derive Ord macros

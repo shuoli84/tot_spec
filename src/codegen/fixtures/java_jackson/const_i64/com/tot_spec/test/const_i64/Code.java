@@ -1,5 +1,5 @@
 package com.tot_spec.test.const_i64;
-import lombok.Data;
+import lombok.*;
 import java.util.*;
 
 // Const def for i64

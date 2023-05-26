@@ -1,17 +1,17 @@
 package com.tot_spec.test.simple_struct;
-import lombok.Data;
+import lombok.*;
 import java.util.*;
 
 @Data
 public class SimpleStruct {
     // bool value
-    private Boolean bool_value;
+    private Boolean boolValue;
     // i8 value
-    private Integer i8_value;
-    private Integer i64_value;
-    private String string_value;
-    private byte[] bytes_value;
-    private Map<String, String> string_to_string;
+    private Integer i8Value;
+    private Integer i64Value;
+    private String stringValue;
+    private byte[] bytesValue;
+    private Map<String, String> stringToString;
     // nested self
     private List<com.tot_spec.test.simple_struct.SimpleStruct> children;
 }
