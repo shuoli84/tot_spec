@@ -3,6 +3,8 @@ import lombok.*;
 import java.util.*;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class SimpleStruct {
     // bool value
     @com.fasterxml.jackson.annotation.JsonProperty("bool_value")

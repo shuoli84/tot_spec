@@ -5,6 +5,8 @@ use crate::{
 };
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
+use super::utils;
+
 /// java does not export to a file, instead, it exports to a folder
 pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
     std::fs::create_dir_all(target_folder)?;
@@ -15,35 +17,69 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
         .cloned()
         .ok_or_else(|| anyhow::anyhow!("missing package"))?;
 
+    // if namespace_cls exists, then all models will be put into the namespace_cls
+    let namespace_cls = def.get_meta("java_jackson").get("namespace_class").cloned();
+
     let mut package_folder = target_folder.to_owned();
 
     package_name.split('.').for_each(|c| package_folder.push(c));
     std::fs::create_dir_all(&package_folder)?;
 
-    for model in def.models.iter() {
-        let model_name = &model.name;
-        let file_path = package_folder.join(format!("{model_name}.java"));
-        let file_content = render_one(model, &package_name, def, context)?;
+    match namespace_cls {
+        None => {
+            for model in def.models.iter() {
+                let model_name = &model.name;
+                let file_path = package_folder.join(format!("{model_name}.java"));
 
-        std::fs::write(file_path, file_content)?;
+                let mut result = "".to_string();
+
+                writeln!(result, "package {package_name};")?;
+                writeln!(result, "import lombok.*;")?;
+                writeln!(result, "import java.util.*;")?;
+
+                writeln!(result, "")?;
+
+                let model_code = render_model(model, def, context)?;
+
+                writeln!(result, "{}", model_code.trim_end())?;
+
+                std::fs::write(file_path, result)?;
+            }
+        }
+
+        Some(namespace_class) => {
+            let file_path = package_folder.join(format!("{namespace_class}.java"));
+
+            let mut result = "".to_string();
+
+            writeln!(result, "package {package_name};")?;
+            writeln!(result, "import lombok.*;")?;
+            writeln!(result, "import java.util.*;")?;
+            writeln!(result, "")?;
+
+            writeln!(result, "public class {namespace_class} {{")?;
+
+            for model in def.models.iter() {
+                let model_code = render_model(model, def, context)?;
+                let model_code = utils::indent(&model_code, 1);
+                writeln!(result, "{}", model_code.trim_end())?;
+            }
+
+            writeln!(result, "}}")?;
+
+            std::fs::write(file_path, result)?;
+        }
     }
 
     Ok(())
 }
 
-pub fn render_one(
+pub fn render_model(
     model: &ModelDef,
-    package_name: &str,
     def: &Definition,
     context: &Context,
 ) -> anyhow::Result<String> {
     let mut result = "".to_string();
-
-    writeln!(result, "package {package_name};")?;
-    writeln!(result, "import lombok.*;")?;
-    writeln!(result, "import java.util.*;")?;
-
-    writeln!(result, "")?;
 
     let model_name = &model.name;
 
@@ -55,6 +91,8 @@ pub fn render_one(
         crate::ModelType::Struct(st) => {
             // Data annotation makes the class a pojo
             writeln!(result, "@Data")?;
+            writeln!(result, "@AllArgsConstructor")?;
+            writeln!(result, "@NoArgsConstructor")?;
 
             match st.extend.as_ref() {
                 Some(base) => {
@@ -332,6 +370,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/bigint.yaml",
                 "src/codegen/fixtures/java_jackson/bigint",
+            ),
+            (
+                "src/codegen/fixtures/specs/java_namespace.yaml",
+                "src/codegen/fixtures/java_jackson/namespace",
             ),
         ];
 

@@ -3,6 +3,8 @@ import lombok.*;
 import java.util.*;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class TestBase {
     // use base's BaseId as the id
     private com.tot_spec.test.base.BaseId id;

@@ -4,6 +4,8 @@ import java.util.*;
 
 // struct for decimal field
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class TestDecimal {
     private java.math.BigDecimal value;
 }

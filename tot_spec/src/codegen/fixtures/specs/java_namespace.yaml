@@ -1,0 +1,27 @@
+meta:
+  java_jackson:
+    package: com.tot_spec.test.bigint
+    # if namespace_class exists, then all models defined in this spec will be 
+    # nested into it
+    namespace_class: TestClassNamespace
+
+models:
+  - name: Request
+    type: 
+      name: struct
+      fields:
+        - name: left
+          type: bigint
+          required: true
+
+        - name: right
+          type: bigint
+          required: true
+
+  - name: Response
+    type: 
+      name: struct
+      fields:
+        - name: sum
+          type: bigint
+          required: true
