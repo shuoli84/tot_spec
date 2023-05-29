@@ -196,6 +196,9 @@ fn render_fields_def(fields: &[FieldDef]) -> anyhow::Result<String> {
             writeln!(code, "{}", comment)?;
         }
 
+        for attr in field.rs_attributes() {
+            writeln!(code, "#[{attr}]")?;
+        }
         writeln!(code, "pub {}: {},", field.name, field.rs_type())?;
     }
     Ok(result)

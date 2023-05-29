@@ -292,6 +292,15 @@ impl FieldDef {
             format!("std::option::Option<{}>", ty)
         }
     }
+
+    /// returns attributes for this field
+    pub fn rs_attributes(&self) -> Vec<String> {
+        if matches!(&self.type_.0, Type::BigInt) {
+            return vec!["serde(with = \"tot_spec_util::ibig_serde_str\")".to_string()];
+        }
+
+        vec![]
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -623,7 +632,7 @@ mod serde_helper {
 
     /// A wrapper struct which enables parse from string or struct behavior
     /// requires T to impl both FromStr and Deserialize
-    pub struct StringOrStruct<T>(T);
+    pub struct StringOrStruct<T>(pub(crate) T);
 
     impl<T: Clone> Clone for StringOrStruct<T> {
         fn clone(&self) -> Self {
