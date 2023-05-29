@@ -2,8 +2,10 @@
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SimpleStruct {
     pub bool_value: bool,
-    pub i8_value: i8,
+    pub i8_value: std::option::Option<i8>,
     pub i64_value: std::option::Option<i64>,
+    pub decimal_value: std::option::Option<rust_decimal::Decimal>,
+    pub bigint_value: std::option::Option<ibig::BigInt>,
     pub string_value: std::option::Option<std::string::String>,
     pub bytes_value: std::option::Option<std::vec::Vec<u8>>,
     pub string_to_string: std::option::Option<
