@@ -543,6 +543,10 @@ mod tests {
                 include_str!("fixtures/specs/decimal.yaml"),
                 include_str!("fixtures/py_dataclass/decimal.py"),
             ),
+            (
+                include_str!("fixtures/specs/bigint.yaml"),
+                include_str!("fixtures/py_dataclass/bigint.py"),
+            ),
         ];
 
         for (spec, expected) in specs.iter() {
