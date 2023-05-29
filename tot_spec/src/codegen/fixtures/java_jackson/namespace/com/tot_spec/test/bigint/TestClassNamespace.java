@@ -7,13 +7,21 @@ public class TestClassNamespace {
     @AllArgsConstructor
     @NoArgsConstructor
     public class Request {
-        private java.math.BigInteger left;
-        private java.math.BigInteger right;
+        private com.tot_spec.test.bigint.TestClassNamespace.Operant left;
+        private com.tot_spec.test.bigint.TestClassNamespace.Operant right;
     }
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     public class Response {
-        private java.math.BigInteger sum;
+        private java.math.BigDecimal sum;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public class Operant {
+        private java.math.BigDecimal value;
     }
 }

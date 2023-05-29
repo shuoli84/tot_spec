@@ -59,10 +59,14 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
 
             writeln!(result, "public class {namespace_class} {{")?;
 
-            for model in def.models.iter() {
+            for (idx, model) in def.models.iter().enumerate() {
                 let model_code = render_model(model, def, context)?;
                 let model_code = utils::indent(&model_code, 1);
-                writeln!(result, "{}", model_code.trim_end())?;
+                if idx + 1 < def.models.len() {
+                    writeln!(result, "{}", model_code)?;
+                } else {
+                    writeln!(result, "{}", model_code.trim_end())?;
+                }
             }
 
             writeln!(result, "}}")?;
@@ -295,7 +299,13 @@ fn java_package_for_def(def: &Definition) -> String {
         .get("package")
         .map(|s| Cow::Borrowed(s))
         .unwrap_or(Cow::Owned("PACKAGE".to_string()));
-    package_name.to_string()
+
+    match meta.get("namespace_class") {
+        None => package_name.to_string(),
+        Some(namespace_class) => {
+            format!("{}.{}", package_name, namespace_class)
+        }
+    }
 }
 
 fn render_field(field: &FieldDef, def: &Definition, context: &Context) -> anyhow::Result<String> {

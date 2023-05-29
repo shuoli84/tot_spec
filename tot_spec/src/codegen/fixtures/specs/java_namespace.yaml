@@ -11,11 +11,11 @@ models:
       name: struct
       fields:
         - name: left
-          type: bigint
+          type: Operant
           required: true
 
         - name: right
-          type: bigint
+          type: Operant
           required: true
 
   - name: Response
@@ -23,5 +23,12 @@ models:
       name: struct
       fields:
         - name: sum
-          type: bigint
+          type: decimal
           required: true
+
+  - name: Operant
+    type:
+      name: struct
+      fields:
+        - name: value
+          type: decimal
