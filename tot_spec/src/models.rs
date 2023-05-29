@@ -295,10 +295,6 @@ impl FieldDef {
 
     /// returns attributes for this field
     pub fn rs_attributes(&self) -> Vec<String> {
-        if matches!(&self.type_.0, Type::BigInt) {
-            return vec!["serde(with = \"tot_spec_util::ibig_serde_str\")".to_string()];
-        }
-
         vec![]
     }
 }
@@ -438,7 +434,7 @@ impl Type {
             }) => format!("{namespace}::{target}"),
             Type::Json => "serde_json::Value".to_string(),
             Type::Decimal => "rust_decimal::Decimal".into(),
-            Type::BigInt => "ibig::BigInt".into(),
+            Type::BigInt => "tot_spec_util::big_int::BigInt".into(),
         }
     }
 }
