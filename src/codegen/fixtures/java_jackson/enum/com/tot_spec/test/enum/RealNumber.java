@@ -4,6 +4,8 @@ import java.util.*;
 
 @Data
 public class RealNumber {
+    @com.fasterxml.jackson.annotation.JsonProperty("part_0")
     private Double part0;
+    @com.fasterxml.jackson.annotation.JsonProperty("part_1")
     private Double part1;
 }

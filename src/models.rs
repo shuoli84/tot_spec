@@ -429,7 +429,7 @@ impl Type {
             }) => format!("{namespace}::{target}"),
             Type::Json => "serde_json::Value".to_string(),
             Type::Decimal => "rust_decimal::Decimal".into(),
-            Type::BigInt => "num_big::BigInt".into(),
+            Type::BigInt => "ibig::BigInt".into(),
         }
     }
 }

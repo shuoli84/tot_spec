@@ -1,6 +1,8 @@
 use convert_case::Casing;
 
-use crate::{ConstType, Context, Definition, ModelDef, StringOrInteger, Type, TypeReference};
+use crate::{
+    ConstType, Context, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference,
+};
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 /// java does not export to a file, instead, it exports to a folder
@@ -72,15 +74,7 @@ pub fn render_one(
             }
 
             for field in st.fields.iter() {
-                if let Some(desc) = &field.desc {
-                    writeln!(result, "    // {}", desc)?;
-                }
-                writeln!(
-                    result,
-                    "    private {java_type} {name};",
-                    java_type = java_type(&field.type_, def, context)?,
-                    name = field.name.to_case(convert_case::Case::Camel)
-                )?;
+                result.push_str(&render_field(field, def, context)?);
             }
 
             writeln!(result, "}}")?;
@@ -146,15 +140,7 @@ pub fn render_one(
                 Some(_) => todo!(),
                 None => {
                     for field in st.fields.iter() {
-                        if let Some(desc) = &field.desc {
-                            writeln!(result, "    // {}", desc)?;
-                        }
-                        writeln!(
-                            result,
-                            "    private {java_type} {name};",
-                            java_type = java_type(&field.type_, def, context)?,
-                            name = field.name.to_case(convert_case::Case::Camel)
-                        )?;
+                        result.push_str(&render_field(field, def, context)?);
                     }
                 }
             }
@@ -272,6 +258,32 @@ fn java_package_for_def(def: &Definition) -> String {
         .map(|s| Cow::Borrowed(s))
         .unwrap_or(Cow::Owned("PACKAGE".to_string()));
     package_name.to_string()
+}
+
+fn render_field(field: &FieldDef, def: &Definition, context: &Context) -> anyhow::Result<String> {
+    let mut result = "".to_string();
+    if let Some(desc) = &field.desc {
+        writeln!(result, "    // {}", desc)?;
+    }
+
+    let java_field_name = field.name.to_case(convert_case::Case::Camel);
+    let need_rename = java_field_name.ne(&field.name);
+
+    if need_rename {
+        writeln!(
+            result,
+            "    @com.fasterxml.jackson.annotation.JsonProperty(\"{}\")",
+            field.name
+        )?;
+    }
+
+    writeln!(
+        result,
+        "    private {java_type} {name};",
+        java_type = java_type(&field.type_, def, context)?,
+        name = java_field_name
+    )?;
+    Ok(result)
 }
 
 #[cfg(test)]
