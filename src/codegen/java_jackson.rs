@@ -317,6 +317,10 @@ mod tests {
                 "src/codegen/fixtures/specs/decimal.yaml",
                 "src/codegen/fixtures/java_jackson/decimal",
             ),
+            (
+                "src/codegen/fixtures/specs/bigint.yaml",
+                "src/codegen/fixtures/java_jackson/bigint",
+            ),
         ];
 
         for (spec, package_folder) in specs.iter() {

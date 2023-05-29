@@ -1,0 +1,12 @@
+meta:
+  java_jackson:
+    package: com.tot_spec.test.bigint
+
+models:
+  - name: TestBigInt
+    desc: struct for bigint field
+    type: 
+      name: struct
+      fields:
+        - name: value
+          type: bigint
