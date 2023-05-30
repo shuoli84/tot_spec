@@ -60,8 +60,6 @@ fn generate_for_folder(folder: &std::path::PathBuf, codegen: &str, output: &std:
     std::fs::create_dir_all(output).unwrap();
 
     for entry in WalkDir::new(folder) {
-        dbg!(&entry);
-
         let entry = entry.unwrap();
         let entry_path = entry.path();
 
