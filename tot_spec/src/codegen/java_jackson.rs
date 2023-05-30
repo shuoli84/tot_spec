@@ -39,7 +39,7 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
 
                 writeln!(result, "")?;
 
-                let model_code = render_model(model, def, context)?;
+                let model_code = render_model(model, false, def, context)?;
 
                 writeln!(result, "{}", model_code.trim_end())?;
 
@@ -60,7 +60,7 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
             writeln!(result, "public class {namespace_class} {{")?;
 
             for (idx, model) in def.models.iter().enumerate() {
-                let model_code = render_model(model, def, context)?;
+                let model_code = render_model(model, true, def, context)?;
                 let model_code = utils::indent(&model_code, 1);
                 if idx + 1 < def.models.len() {
                     writeln!(result, "{}", model_code)?;
@@ -80,6 +80,7 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
 
 pub fn render_model(
     model: &ModelDef,
+    is_nested: bool,
     def: &Definition,
     context: &Context,
 ) -> anyhow::Result<String> {
@@ -90,6 +91,8 @@ pub fn render_model(
     if let Some(desc) = &model.desc {
         writeln!(result, "// {desc}")?;
     }
+
+    let class_modifier = if is_nested { "static " } else { "" };
 
     match &model.type_ {
         crate::ModelType::Struct(st) => {
@@ -104,14 +107,14 @@ pub fn render_model(
                         let java_type = java_type_for_type_reference(&type_ref, def, context)?;
                         writeln!(
                             result,
-                            "public class {name} extends {base} {{",
+                            "public {class_modifier}class {name} extends {base} {{",
                             name = model.name,
                             base = java_type
                         )?;
                     }
                 }
                 None => {
-                    writeln!(result, "public class {} {{", model.name)?;
+                    writeln!(result, "public {class_modifier}class {} {{", model.name)?;
                 }
             }
 
@@ -212,7 +215,7 @@ pub fn render_model(
             writeln!(result, "}}")?;
         }
         crate::ModelType::Const { value_type, values } => {
-            writeln!(result, "public class {model_name} {{")?;
+            writeln!(result, "public {class_modifier}class {model_name} {{")?;
             let java_type = java_type_for_const(&value_type);
 
             for (idx, value) in values.iter().enumerate() {
