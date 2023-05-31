@@ -3,7 +3,10 @@ import lombok.*;
 import java.util.*;
 
 public class TestClassNamespace {
+    private TestClassNamespace() {}
+
     @Data
+    @Builder
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Request {
@@ -12,6 +15,7 @@ public class TestClassNamespace {
     }
 
     @Data
+    @Builder
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Response {
@@ -19,6 +23,7 @@ public class TestClassNamespace {
     }
 
     @Data
+    @Builder
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Operant {

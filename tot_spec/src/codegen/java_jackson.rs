@@ -59,6 +59,10 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
 
             writeln!(result, "public class {namespace_class} {{")?;
 
+            // private constructor ensures this class is not instiatable
+            writeln!(result, "    private {namespace_class}() {{}}")?;
+            writeln!(result, "")?;
+
             for (idx, model) in def.models.iter().enumerate() {
                 let model_code = render_model(model, true, def, context)?;
                 let model_code = utils::indent(&model_code, 1);
@@ -98,6 +102,7 @@ pub fn render_model(
         crate::ModelType::Struct(st) => {
             // Data annotation makes the class a pojo
             writeln!(result, "@Data")?;
+            writeln!(result, "@Builder")?;
             writeln!(result, "@AllArgsConstructor")?;
             writeln!(result, "@NoArgsConstructor")?;
 
@@ -149,6 +154,7 @@ pub fn render_model(
                 let variant_name = &v.name;
 
                 writeln!(result, "    @Data")?;
+                writeln!(result, "    @Builder")?;
                 writeln!(result, "    @AllArgsConstructor")?;
                 writeln!(result, "    @NoArgsConstructor")?;
                 writeln!(

@@ -4,6 +4,7 @@ import java.util.*;
 
 // Test struct for json field
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class TestJsonStruct {

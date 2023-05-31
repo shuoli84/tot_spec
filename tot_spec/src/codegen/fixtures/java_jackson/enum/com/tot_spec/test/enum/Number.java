@@ -10,6 +10,7 @@ import java.util.*;
 })
 public abstract class Number {
     @Data
+    @Builder
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Int64 extends Number {
@@ -17,6 +18,7 @@ public abstract class Number {
     }
 
     @Data
+    @Builder
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Float extends Number {
@@ -24,6 +26,7 @@ public abstract class Number {
     }
 
     @Data
+    @Builder
     @AllArgsConstructor
     @NoArgsConstructor
     public static class RealNumber extends Number {
