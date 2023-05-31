@@ -227,7 +227,7 @@ pub fn render_model(
             writeln!(result, "")?;
 
             writeln!(result, "    @com.fasterxml.jackson.annotation.JsonValue")?;
-            writeln!(result, "    public {java_type} get_value() {{")?;
+            writeln!(result, "    public {java_type} getValue() {{")?;
             writeln!(result, "        return value;")?;
             writeln!(result, "    }}")?;
 

@@ -13,7 +13,7 @@ public class Id {
     }
 
     @com.fasterxml.jackson.annotation.JsonValue
-    public Integer get_value() {
+    public Integer getValue() {
         return value;
     }
 }
