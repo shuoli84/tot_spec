@@ -98,6 +98,19 @@ pub fn render_model(
 
     let class_modifier = if is_nested { "static " } else { "" };
 
+    let annotations = model
+        .attribute("java_extra_annotation")
+        .map(|a| {
+            a.split(",")
+                .map(|a| a.trim().to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    for annotation in annotations {
+        writeln!(result, "@{annotation}")?;
+    }
+
     match &model.type_ {
         crate::ModelType::Struct(st) => {
             // Data annotation makes the class a pojo

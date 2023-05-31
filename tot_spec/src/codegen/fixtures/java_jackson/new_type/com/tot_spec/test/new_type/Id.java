@@ -3,6 +3,7 @@ import lombok.*;
 import java.util.*;
 
 // NewType to i64, and derive Ord macros
+@lombok.EqualsAndHashCode
 public class Id {
     private Integer value;
 

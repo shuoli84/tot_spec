@@ -10,4 +10,4 @@ models:
       inner_type: i64
     attributes:
       rs_extra_derive: PartialEq, Eq, PartialOrd, Ord
-
+      java_extra_annotation: lombok.EqualsAndHashCode
