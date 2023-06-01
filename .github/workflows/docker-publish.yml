@@ -16,11 +16,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set tag var
-      id: docker_realease_tag
-      run: |
-        echo "docker_tag=1.$(date +'%Y%m%d').${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
@@ -32,9 +27,9 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build and push Docker image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: .
-        push: true
-        tags: |
-          ghcr.io/${{ github.repository }}:latest
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
