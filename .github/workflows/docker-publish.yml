@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - main
+permissions:
+  contents: write
+  id-token: write
+  packages: write
 
 jobs:
   build-and-publish:
@@ -12,8 +16,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - name: Set tag var
+      id: docker_tag
+      run: echo ::set-output name=tag::1.$(date +'%Y%m%d').${GITHUB_RUN_NUMBER}      
+
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Login to GitHub Package Registry
       uses: docker/login-action@v1
@@ -23,10 +31,10 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build and push Docker image
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         context: .
         push: true
         tags: |
-          ghcr.io/${{ github.repository }}:${{ github.sha }}
+          ghcr.io/${{ github.repository }}:${{ steps.docker_tag.outputs.tag }}
           ghcr.io/${{ github.repository }}:latest
