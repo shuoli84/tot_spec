@@ -1,19 +1,57 @@
-use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
+use crate::{Context, Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 
 use super::utils::{self, indent, multiline_prefix_with};
 
-pub fn render(def: &Definition) -> anyhow::Result<String> {
+pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
     let type_var_name = "type_";
 
     let mut result = String::new();
 
+    writeln!(result, "# import annotations to enable forward declaration")?;
+    writeln!(result, "from __future__ import annotations")?;
     writeln!(result, "from dataclasses import dataclass")?;
     writeln!(result, "import abc")?;
     writeln!(result, "import typing")?;
     writeln!(result, "import decimal")?;
 
     writeln!(result, "")?;
+
+    // generate import for includes
+    for include in def.includes.iter() {
+        let include_path = context.get_include_path(&include.namespace, def).unwrap();
+        let working_def_path = context.get_working_def_path();
+        let relative_path = pathdiff::diff_paths(&include_path, working_def_path).unwrap();
+
+        let include_name = relative_path.file_stem().unwrap().to_str().unwrap();
+
+        let mut import_stmt = "from ".to_string();
+        let components = relative_path.components().collect::<Vec<_>>();
+        for (idx, component) in components.iter().enumerate() {
+            match component {
+                std::path::Component::ParentDir => {
+                    import_stmt.push_str(".");
+                }
+                std::path::Component::Normal(name) => {
+                    let name = name.to_str().unwrap();
+                    let name = if idx + 1 == components.len() {
+                        // the last part is include_name, handled outside this loop
+                        continue;
+                    } else {
+                        name
+                    };
+
+                    import_stmt.push_str(name);
+                }
+                _ => {
+                    todo!()
+                }
+            }
+        }
+
+        import_stmt.push_str(&format!(" import {include_name} as {}", include.namespace));
+        writeln!(result, "{import_stmt}")?;
+    }
 
     for model in def.models.iter() {
         let model_name = &model.name;
@@ -69,6 +107,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                                 "payload",
                                 "payload_tmp",
                                 def,
+                                context,
                             )?;
                             writeln!(code_block, "{}", indent(&payload_from_dict, 2))?;
                             writeln!(
@@ -120,6 +159,7 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                                 "self.payload",
                                 "payload_tmp",
                                 def,
+                                context,
                             )?;
                             writeln!(variant_code, "{}", indent(&payload_to_dict, 2))?;
                             writeln!(variant_code, "        return {{")?;
@@ -162,7 +202,14 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 if fields.is_empty() {
                     writeln!(result, "    pass")?;
                 } else {
+                    // dataclass requires that "optional or fields with default value should follow required fields"
+                    fields.sort_by(|l, r| l.required.cmp(&r.required).reverse());
+
                     for field in fields.iter() {
+                        if let Some(desc) = &field.desc {
+                            writeln!(result, "    # {desc}")?;
+                        }
+
                         if field.required {
                             writeln!(result, "    {}: {}", field.name, py_type_for_field(&field))?;
                         } else {
@@ -178,11 +225,11 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
                 }
 
                 writeln!(result, "")?;
-                let to_dict = generate_to_dict(&fields, &def)?;
+                let to_dict = generate_to_dict(&fields, &def, context)?;
                 writeln!(result, "{}", utils::indent(&to_dict, 1))?;
 
                 writeln!(result, "")?;
-                let from_dict = generate_from_dict(&model.name, &fields, &def)?;
+                let from_dict = generate_from_dict(&model.name, &fields, &def, context)?;
                 writeln!(result, "{}", utils::indent(&from_dict, 1))?;
             }
 
@@ -259,10 +306,14 @@ fn py_type(ty: &Type) -> String {
             format!("typing.List[{}]", py_type(item_type))
         }
         Type::Map { value_type } => format!("typing.Dict[str, {}]", py_type(value_type)),
-        Type::Reference(TypeReference {
-            namespace: _,
-            target,
-        }) => format!("\"{}\"", target),
+        Type::Reference(TypeReference { namespace, target }) => match namespace {
+            None => {
+                format!("{}", target)
+            }
+            Some(namespace) => {
+                format!("{}.{}", namespace, target)
+            }
+        },
         Type::Json => {
             // now we just mark json as Any
             "typing.Any".to_string()
@@ -271,7 +322,11 @@ fn py_type(ty: &Type) -> String {
     }
 }
 
-fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<String> {
+fn generate_to_dict(
+    fields: &[FieldDef],
+    def: &Definition,
+    context: &Context,
+) -> anyhow::Result<String> {
     let mut result = "".to_string();
     writeln!(result, "def to_dict(self):")?;
     writeln!(result, "    result = {{}}")?;
@@ -298,8 +353,13 @@ fn generate_to_dict(fields: &[FieldDef], def: &Definition) -> anyhow::Result<Str
                 // for List, Map, Reference
                 let field_name = &field.name;
                 let tmp_var_name = format!("{}_tmp", field.name);
-                let to_dict =
-                    to_dict_for_one_field(&ty, &format!("self.{field_name}"), &tmp_var_name, def)?;
+                let to_dict = to_dict_for_one_field(
+                    &ty,
+                    &format!("self.{field_name}"),
+                    &tmp_var_name,
+                    def,
+                    context,
+                )?;
 
                 if field.required {
                     writeln!(result, "{}", indent(&to_dict, 1))?;
@@ -326,6 +386,7 @@ fn to_dict_for_one_field(
     in_expr: &str,
     out_var: &str,
     def: &Definition,
+    context: &Context,
 ) -> anyhow::Result<String> {
     Ok(match ty {
         Type::Bool | Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64 | Type::String => {
@@ -338,7 +399,8 @@ fn to_dict_for_one_field(
             let mut result = "".to_string();
             writeln!(result, "{out_var} = []",)?;
             writeln!(result, "for item in {in_expr}:",)?;
-            let field_to_dict = to_dict_for_one_field(item_type, "item", "item_tmp", &def)?;
+            let field_to_dict =
+                to_dict_for_one_field(item_type, "item", "item_tmp", &def, context)?;
             writeln!(result, "{}", indent(&field_to_dict, 1))?;
             writeln!(result, "    {out_var}.append(item_tmp)")?;
             result
@@ -347,20 +409,23 @@ fn to_dict_for_one_field(
             let mut result = "".to_string();
             writeln!(result, "{out_var} = {{}}",)?;
             writeln!(result, "for key, item in {in_expr}.items():")?;
-            let field_to_dict = to_dict_for_one_field(value_type, "item", "item_tmp", &def)?;
+            let field_to_dict =
+                to_dict_for_one_field(value_type, "item", "item_tmp", &def, context)?;
             writeln!(result, "{}", indent(&field_to_dict, 1))?;
             writeln!(result, "    {out_var}[key] = item_tmp")?;
             result
         }
         Type::Reference(TypeReference { namespace, target }) => {
-            if namespace.is_some() {
-                unimplemented!()
-            }
+            let target_model = if let Some(namespace) = namespace {
+                let include_def = context.load_include_def(namespace, def).unwrap();
+                include_def.get_model(target).unwrap().clone()
+            } else {
+                def.get_model(target).unwrap().clone()
+            };
 
-            let target_model = def.get_model(target).unwrap();
             match &target_model.type_ {
                 crate::ModelType::NewType { inner_type } => {
-                    to_dict_for_one_field(&inner_type, in_expr, out_var, def)?
+                    to_dict_for_one_field(&inner_type, in_expr, out_var, def, context)?
                 }
                 _ => {
                     format!("{out_var} = {in_expr}.to_dict()")
@@ -368,8 +433,8 @@ fn to_dict_for_one_field(
             }
         }
         Type::Json => {
-            // for json type, it can be either dict, list, int, str, float, None, but it should not contain
-            // user defined struct, so it should be fine that we just assign it to output dict
+            // for json type, it can be either dict, list, int, str, float, None, but it does not contain
+            // user defined struct, should be fine assign it to output dict
             format!("{out_var} = {in_expr}")
         }
         Type::Decimal | Type::BigInt => {
@@ -382,6 +447,7 @@ fn generate_from_dict(
     model_name: &str,
     fields: &[FieldDef],
     def: &Definition,
+    context: &Context,
 ) -> anyhow::Result<String> {
     let mut code_block = "".to_string();
 
@@ -410,7 +476,7 @@ fn generate_from_dict(
                     writeln!(code_block, "if item := d.get(\"{field_name}\"):")?;
 
                     let from_dict_code_block =
-                        from_dict_for_one_field(ty, "item", field_name, def)?;
+                        from_dict_for_one_field(ty, "item", field_name, def, context)?;
 
                     writeln!(code_block, "{}", indent(&from_dict_code_block, 1))?;
                 }
@@ -422,6 +488,7 @@ fn generate_from_dict(
                         &format!("d[\"{field_name}\"]"),
                         field_name,
                         def,
+                        context,
                     )?;
 
                     writeln!(code_block, "{}", from_dict_code_block)?;
@@ -430,7 +497,7 @@ fn generate_from_dict(
                     writeln!(code_block, "if item := d.get(\"{field_name}\"):")?;
 
                     let from_dict_code_block =
-                        from_dict_for_one_field(ty, "item", field_name, def)?;
+                        from_dict_for_one_field(ty, "item", field_name, def, context)?;
 
                     writeln!(code_block, "{}", indent(&from_dict_code_block, 1))?;
                 }
@@ -457,6 +524,7 @@ fn from_dict_for_one_field(
     in_expr: &str,
     out_var: &str,
     def: &Definition,
+    context: &Context,
 ) -> anyhow::Result<String> {
     Ok(match ty {
         Type::Bool | Type::F64 | Type::String => {
@@ -472,7 +540,8 @@ fn from_dict_for_one_field(
             let mut result = "".to_string();
             writeln!(result, "{out_var} = []")?;
             writeln!(result, "for item in {in_expr}:")?;
-            let from_dict_for_item = from_dict_for_one_field(item_type, "item", "item_tmp", def)?;
+            let from_dict_for_item =
+                from_dict_for_one_field(item_type, "item", "item_tmp", def, context)?;
             writeln!(result, "{}", indent(&from_dict_for_item, 1))?;
             writeln!(result, "    {out_var}.append(item_tmp)")?;
             result
@@ -481,22 +550,28 @@ fn from_dict_for_one_field(
             let mut result = "".to_string();
             writeln!(result, "{out_var} = {{}}")?;
             writeln!(result, "for key, item in {in_expr}.items():")?;
-            let from_dict_for_item = from_dict_for_one_field(value_type, "item", "item_tmp", def)?;
+            let from_dict_for_item =
+                from_dict_for_one_field(value_type, "item", "item_tmp", def, context)?;
             writeln!(result, "{}", indent(&from_dict_for_item, 1))?;
             writeln!(result, "    {out_var}[key] = item_tmp")?;
             result
         }
         Type::Reference(TypeReference { namespace, target }) => {
-            if namespace.is_some() {
-                unimplemented!()
-            }
+            let target_model = if let Some(namespace) = namespace {
+                let include_def = context.load_include_def(namespace, def).unwrap();
+                include_def.get_model(target).unwrap().clone()
+            } else {
+                def.get_model(target).unwrap().clone()
+            };
 
-            let target_model = def.get_model(target).unwrap();
             match &target_model.type_ {
                 crate::ModelType::NewType { inner_type } => {
-                    from_dict_for_one_field(&inner_type, in_expr, out_var, def)?
+                    from_dict_for_one_field(&inner_type, in_expr, out_var, def, context)?
                 }
-                _ => format!("{out_var} = {target}.from_dict({in_expr})"),
+                _ => {
+                    let py_type = py_type(&ty);
+                    format!("{out_var} = {py_type}.from_dict({in_expr})")
+                }
             }
         }
         Type::Json => {
@@ -524,36 +599,55 @@ mod tests {
     fn test_py_codegen() {
         let specs = &[
             (
-                include_str!("fixtures/specs/const_i8.yaml"),
-                include_str!("fixtures/py_dataclass/const_i8.py"),
+                "src/codegen/fixtures/specs/simple_struct.yaml",
+                "src/codegen/fixtures/py_dataclass/simple_struct.py",
             ),
             (
-                include_str!("fixtures/specs/const_i64.yaml"),
-                include_str!("fixtures/py_dataclass/const_i64.py"),
+                "src/codegen/fixtures/specs/const_i8.yaml",
+                "src/codegen/fixtures/py_dataclass/const_i8.py",
             ),
             (
-                include_str!("fixtures/specs/const_string.yaml"),
-                include_str!("fixtures/py_dataclass/const_string.py"),
+                "src/codegen/fixtures/specs/const_i64.yaml",
+                "src/codegen/fixtures/py_dataclass/const_i64.py",
             ),
             (
-                include_str!("fixtures/specs/json.yaml"),
-                include_str!("fixtures/py_dataclass/json.py"),
+                "src/codegen/fixtures/specs/const_string.yaml",
+                "src/codegen/fixtures/py_dataclass/const_string.py",
             ),
             (
-                include_str!("fixtures/specs/decimal.yaml"),
-                include_str!("fixtures/py_dataclass/decimal.py"),
+                "src/codegen/fixtures/specs/json.yaml",
+                "src/codegen/fixtures/py_dataclass/json.py",
             ),
             (
-                include_str!("fixtures/specs/bigint.yaml"),
-                include_str!("fixtures/py_dataclass/bigint.py"),
+                "src/codegen/fixtures/specs/decimal.yaml",
+                "src/codegen/fixtures/py_dataclass/decimal.py",
+            ),
+            (
+                "src/codegen/fixtures/specs/bigint.yaml",
+                "src/codegen/fixtures/py_dataclass/bigint.py",
+            ),
+            (
+                "src/codegen/fixtures/specs/include_test.yaml",
+                "src/codegen/fixtures/py_dataclass/include_test.py",
             ),
         ];
 
         for (spec, expected) in specs.iter() {
-            let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
-            let rendered = render(&def).unwrap();
+            let context = Context::load_from_path(spec).unwrap();
+            let def = context.load_from_yaml(spec).unwrap();
 
-            pretty_assertions::assert_eq!(rendered.as_str().trim(), expected.trim());
+            let rendered = render(&def, &context).unwrap();
+
+            let expected_code = std::fs::read_to_string(expected).unwrap();
+            #[cfg(not(feature = "test_update_spec"))]
+            pretty_assertions::assert_eq!(expected_code.trim(), rendered.as_str().trim());
+
+            #[cfg(feature = "test_update_spec")]
+            {
+                if expected_code.trim() != rendered.as_str().trim() {
+                    std::fs::write(expected, rendered).unwrap();
+                }
+            }
         }
     }
 }

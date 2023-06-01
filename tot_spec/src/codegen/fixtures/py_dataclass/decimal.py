@@ -1,3 +1,5 @@
+# import annotations to enable forward declaration
+from __future__ import annotations
 from dataclasses import dataclass
 import abc
 import typing
@@ -31,3 +33,5 @@ class TestDecimal:
         return TestDecimal(
             value = value,
         )
+
+

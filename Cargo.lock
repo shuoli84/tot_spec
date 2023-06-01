@@ -419,6 +419,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "pathdiff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -739,6 +745,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "convert_case",
+ "pathdiff",
  "pretty_assertions",
  "prettyplease",
  "rust_decimal",

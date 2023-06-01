@@ -4,6 +4,7 @@ meta:
 
 models:
 - name: SimpleStruct
+  desc: Example of simple struct definition
   type:
     name: struct
     fields:
@@ -26,3 +27,7 @@ models:
     - name: children
       desc: nested self
       type: list[SimpleStruct]
+    - name: required_str_value
+      desc: this field is required
+      type: string
+      required: true

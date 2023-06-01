@@ -137,7 +137,10 @@ fn generate_one_spec(spec: &std::path::Path, codegen: &str, output: &std::path::
 
     let code = match codegen {
         "rs_serde" => codegen::rs_serde::render(&def).unwrap(),
-        "py_dataclass" => codegen::py_dataclass::render(&def).unwrap(),
+        "py_dataclass" => {
+            let context = Context::load_from_path(spec).unwrap();
+            codegen::py_dataclass::render(&def, &context).unwrap()
+        }
         "swift_codable" => codegen::swift_codable::render(&def).unwrap(),
         "java_jackson" => {
             let spec_content = std::fs::read_to_string(spec).unwrap();

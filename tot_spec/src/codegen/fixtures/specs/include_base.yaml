@@ -7,3 +7,11 @@ models:
     type:
       name: new_type
       inner_type: i64
+
+  - name: Common
+    type:
+      name: struct
+      fields:
+        - name: id
+          type: i64
+          required: true

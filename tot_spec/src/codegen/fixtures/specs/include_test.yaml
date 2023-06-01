@@ -20,10 +20,14 @@ models:
       fields:
         - name: id
           desc: use base's BaseId as the id
-          type: base.BaseId
+          type: base.Id
           required: true
         
         - name: id_2
           desc: use base_dup's BaseId as the id_2, this is just demo
-          type: base_dup.BaseId
+          type: base_dup.Id
+          required: true
+
+        - name: common
+          type: base.Common
           required: true

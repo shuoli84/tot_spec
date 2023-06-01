@@ -38,6 +38,10 @@ impl Context {
         Ok(definitions.get(&path).unwrap().clone())
     }
 
+    pub fn get_working_def_path(&self) -> PathBuf {
+        self.working_definition_path.clone()
+    }
+
     /// get the path for namespace
     pub fn get_include_path(&self, namespace: &str, def: &Definition) -> anyhow::Result<PathBuf> {
         let include = def

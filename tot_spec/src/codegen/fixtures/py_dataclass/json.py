@@ -1,3 +1,5 @@
+# import annotations to enable forward declaration
+from __future__ import annotations
 from dataclasses import dataclass
 import abc
 import typing
@@ -27,3 +29,5 @@ class TestJsonStruct:
         return TestJsonStruct(
             json_value = json_value,
         )
+
+

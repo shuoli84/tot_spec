@@ -8,8 +8,9 @@ import java.util.*;
 @NoArgsConstructor
 public class TestBase {
     // use base's BaseId as the id
-    private com.tot_spec.test.base.BaseId id;
+    private com.tot_spec.test.base.Id id;
     // use base_dup's BaseId as the id_2, this is just demo
     @com.fasterxml.jackson.annotation.JsonProperty("id_2")
-    private com.tot_spec.test.base.BaseId id2;
+    private com.tot_spec.test.base.Id id2;
+    private com.tot_spec.test.base.Common common;
 }

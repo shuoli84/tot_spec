@@ -2,6 +2,7 @@ package com.tot_spec.test.simple_struct;
 import lombok.*;
 import java.util.*;
 
+// Example of simple struct definition
 @Data
 @Builder
 @AllArgsConstructor
@@ -23,4 +24,7 @@ public class SimpleStruct {
     private Map<String, String> stringToString;
     // nested self
     private List<com.tot_spec.test.simple_struct.SimpleStruct> children;
+    // this field is required
+    @com.fasterxml.jackson.annotation.JsonProperty("required_str_value")
+    private String requiredStrValue;
 }
