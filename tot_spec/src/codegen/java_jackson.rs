@@ -59,6 +59,10 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
 
             writeln!(result, "public class {namespace_class} {{")?;
 
+            // private constructor ensures this class is not instiatable
+            writeln!(result, "    private {namespace_class}() {{}}")?;
+            writeln!(result, "")?;
+
             for (idx, model) in def.models.iter().enumerate() {
                 let model_code = render_model(model, true, def, context)?;
                 let model_code = utils::indent(&model_code, 1);
@@ -94,10 +98,24 @@ pub fn render_model(
 
     let class_modifier = if is_nested { "static " } else { "" };
 
+    let annotations = model
+        .attribute("java_extra_annotation")
+        .map(|a| {
+            a.split(",")
+                .map(|a| a.trim().to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    for annotation in annotations {
+        writeln!(result, "@{annotation}")?;
+    }
+
     match &model.type_ {
         crate::ModelType::Struct(st) => {
             // Data annotation makes the class a pojo
             writeln!(result, "@Data")?;
+            writeln!(result, "@Builder")?;
             writeln!(result, "@AllArgsConstructor")?;
             writeln!(result, "@NoArgsConstructor")?;
 
@@ -149,6 +167,7 @@ pub fn render_model(
                 let variant_name = &v.name;
 
                 writeln!(result, "    @Data")?;
+                writeln!(result, "    @Builder")?;
                 writeln!(result, "    @AllArgsConstructor")?;
                 writeln!(result, "    @NoArgsConstructor")?;
                 writeln!(
@@ -208,7 +227,7 @@ pub fn render_model(
             writeln!(result, "")?;
 
             writeln!(result, "    @com.fasterxml.jackson.annotation.JsonValue")?;
-            writeln!(result, "    public {java_type} get_value() {{")?;
+            writeln!(result, "    public {java_type} getValue() {{")?;
             writeln!(result, "        return value;")?;
             writeln!(result, "    }}")?;
 

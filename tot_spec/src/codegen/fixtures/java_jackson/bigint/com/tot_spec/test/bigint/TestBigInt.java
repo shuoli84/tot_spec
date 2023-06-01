@@ -4,6 +4,7 @@ import java.util.*;
 
 // struct for bigint field
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class TestBigInt {

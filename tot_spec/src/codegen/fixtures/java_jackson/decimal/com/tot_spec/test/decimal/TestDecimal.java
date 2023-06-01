@@ -4,6 +4,7 @@ import java.util.*;
 
 // struct for decimal field
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class TestDecimal {

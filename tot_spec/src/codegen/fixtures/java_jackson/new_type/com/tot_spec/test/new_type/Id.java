@@ -3,6 +3,7 @@ import lombok.*;
 import java.util.*;
 
 // NewType to i64, and derive Ord macros
+@lombok.EqualsAndHashCode
 public class Id {
     private Integer value;
 
@@ -12,7 +13,7 @@ public class Id {
     }
 
     @com.fasterxml.jackson.annotation.JsonValue
-    public Integer get_value() {
+    public Integer getValue() {
         return value;
     }
 }

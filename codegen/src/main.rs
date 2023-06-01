@@ -63,6 +63,21 @@ fn generate_for_folder(folder: &std::path::PathBuf, codegen: &str, output: &std:
         let entry = entry.unwrap();
         let entry_path = entry.path();
 
+        if entry_path.is_dir() {
+            if codegen == "py_dataclass" {
+                // python dataclass codegen needs to generate __init__.py for each folder
+                let relative_path = entry_path.strip_prefix(folder).unwrap();
+                let output_folder = output.join(relative_path);
+                std::fs::create_dir_all(output_folder).unwrap();
+                let init_file = output.join(relative_path).join("__init__.py");
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(init_file)
+                    .unwrap();
+            }
+            continue;
+        }
         if !entry_path.is_file() {
             continue;
         }
