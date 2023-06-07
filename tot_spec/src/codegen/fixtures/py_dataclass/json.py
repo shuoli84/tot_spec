@@ -23,11 +23,11 @@ class TestJsonStruct:
     def from_dict(d):
 
         # json_value
-        json_value = None
+        json_value_tmp = None
         if item := d.get("json_value"):
-            json_value = item
+            json_value_tmp = item
         return TestJsonStruct(
-            json_value = json_value,
+            json_value = json_value_tmp,
         )
 
 

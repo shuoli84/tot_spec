@@ -271,10 +271,10 @@ pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
                 {
                     // from_dict
                     let from_dict =
-                        from_dict_for_one_field(&inner_type, "d", "value", def, context)?;
+                        from_dict_for_one_field(&inner_type, "d", "value_tmp", def, context)?;
                     writeln!(result, "    def from_dict(d):")?;
                     writeln!(result, "        {from_dict}")?;
-                    writeln!(result, "        return {model_name}(value)")?;
+                    writeln!(result, "        return {model_name}(value_tmp)")?;
                     writeln!(&mut result, "")?;
                 }
             }
@@ -466,24 +466,28 @@ fn generate_from_dict(
 
     for field in fields {
         let field_name = &field.name;
+        let field_var_name = format!("{field_name}_tmp");
 
-        fields_init_codes.push(format!("{field_name} = {field_name},"));
+        fields_init_codes.push(format!("{field_name} = {field_var_name},"));
 
         writeln!(code_block, "\n# {field_name}")?;
 
         match &*field.type_ {
             Type::Bool | Type::I8 | Type::I64 | Type::F64 | Type::String => {
                 if field.required {
-                    writeln!(code_block, "{field_name} = d[\"{field_name}\"]")?;
+                    writeln!(code_block, "{field_var_name} = d[\"{field_name}\"]")?;
                 } else {
-                    writeln!(code_block, "{field_name} = d.get(\"{field_name}\", None)")?;
+                    writeln!(
+                        code_block,
+                        "{field_var_name} = d.get(\"{field_name}\", None)"
+                    )?;
                 }
             }
             ty @ Type::Bytes => {
                 if field.required {
-                    writeln!(code_block, "{field_name} = bytes(d[\"{field_name}\"])")?;
+                    writeln!(code_block, "{field_var_name} = bytes(d[\"{field_name}\"])")?;
                 } else {
-                    writeln!(code_block, "{field_name} = None")?;
+                    writeln!(code_block, "{field_var_name} = None")?;
                     writeln!(code_block, "if item := d.get(\"{field_name}\"):")?;
 
                     let from_dict_code_block =
@@ -497,18 +501,18 @@ fn generate_from_dict(
                     let from_dict_code_block = from_dict_for_one_field(
                         ty,
                         &format!("d[\"{field_name}\"]"),
-                        field_name,
+                        &field_var_name,
                         def,
                         context,
                     )?;
 
                     writeln!(code_block, "{}", from_dict_code_block)?;
                 } else {
-                    writeln!(code_block, "{field_name} = None")?;
+                    writeln!(code_block, "{field_var_name} = None")?;
                     writeln!(code_block, "if item := d.get(\"{field_name}\"):")?;
 
                     let from_dict_code_block =
-                        from_dict_for_one_field(ty, "item", field_name, def, context)?;
+                        from_dict_for_one_field(ty, "item", &field_var_name, def, context)?;
 
                     writeln!(code_block, "{}", indent(&from_dict_code_block, 1))?;
                 }

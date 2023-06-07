@@ -27,11 +27,11 @@ class TestDecimal:
     def from_dict(d):
 
         # value
-        value = None
+        value_tmp = None
         if item := d.get("value"):
-            value = decimal.Decimal(item)
+            value_tmp = decimal.Decimal(item)
         return TestDecimal(
-            value = value,
+            value = value_tmp,
         )
 
 

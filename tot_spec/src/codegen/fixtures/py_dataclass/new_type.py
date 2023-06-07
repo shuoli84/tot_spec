@@ -16,6 +16,6 @@ class Id:
         return result
 
     def from_dict(d):
-        value = int(d)
-        return Id(value)
+        value_tmp = int(d)
+        return Id(value_tmp)
 

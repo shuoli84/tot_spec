@@ -27,11 +27,11 @@ class TestBigInt:
     def from_dict(d):
 
         # value
-        value = None
+        value_tmp = None
         if item := d.get("value"):
-            value = int(item)
+            value_tmp = int(item)
         return TestBigInt(
-            value = value,
+            value = value_tmp,
         )
 
 

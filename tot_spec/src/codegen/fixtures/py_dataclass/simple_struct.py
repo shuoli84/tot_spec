@@ -79,59 +79,59 @@ class SimpleStruct:
     def from_dict(d):
 
         # bool_value
-        bool_value = d["bool_value"]
+        bool_value_tmp = d["bool_value"]
 
         # i8_value
-        i8_value = d["i8_value"]
+        i8_value_tmp = d["i8_value"]
 
         # required_str_value
-        required_str_value = d["required_str_value"]
+        required_str_value_tmp = d["required_str_value"]
 
         # i16_value
-        i16_value = d.get("i16_value", None)
+        i16_value_tmp = d.get("i16_value", None)
 
         # i32_value
-        i32_value = d.get("i32_value", None)
+        i32_value_tmp = d.get("i32_value", None)
 
         # i64_value
-        i64_value = d.get("i64_value", None)
+        i64_value_tmp = d.get("i64_value", None)
 
         # string_value
-        string_value = d.get("string_value", None)
+        string_value_tmp = d.get("string_value", None)
 
         # bytes_value
-        bytes_value = None
+        bytes_value_tmp = None
         if item := d.get("bytes_value"):
             bytes_value = bytes(item)
 
         # string_to_string
-        string_to_string = None
+        string_to_string_tmp = None
         if item := d.get("string_to_string"):
-            string_to_string = {}
+            string_to_string_tmp = {}
             for key, item in item.items():
                 item_tmp = item
-                string_to_string[key] = item_tmp
+                string_to_string_tmp[key] = item_tmp
 
 
         # children
-        children = None
+        children_tmp = None
         if item := d.get("children"):
-            children = []
+            children_tmp = []
             for item in item:
                 item_tmp = SimpleStruct.from_dict(item)
-                children.append(item_tmp)
+                children_tmp.append(item_tmp)
 
         return SimpleStruct(
-            bool_value = bool_value,
-            i8_value = i8_value,
-            required_str_value = required_str_value,
-            i16_value = i16_value,
-            i32_value = i32_value,
-            i64_value = i64_value,
-            string_value = string_value,
-            bytes_value = bytes_value,
-            string_to_string = string_to_string,
-            children = children,
+            bool_value = bool_value_tmp,
+            i8_value = i8_value_tmp,
+            required_str_value = required_str_value_tmp,
+            i16_value = i16_value_tmp,
+            i32_value = i32_value_tmp,
+            i64_value = i64_value_tmp,
+            string_value = string_value_tmp,
+            bytes_value = bytes_value_tmp,
+            string_to_string = string_to_string_tmp,
+            children = children_tmp,
         )
 
 
