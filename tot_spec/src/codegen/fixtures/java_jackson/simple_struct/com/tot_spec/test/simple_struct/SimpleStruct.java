@@ -14,6 +14,10 @@ public class SimpleStruct {
     // i8 value
     @com.fasterxml.jackson.annotation.JsonProperty("i8_value")
     private Integer i8Value;
+    @com.fasterxml.jackson.annotation.JsonProperty("i16_value")
+    private Integer i16Value;
+    @com.fasterxml.jackson.annotation.JsonProperty("i32_value")
+    private Integer i32Value;
     @com.fasterxml.jackson.annotation.JsonProperty("i64_value")
     private Integer i64Value;
     @com.fasterxml.jackson.annotation.JsonProperty("string_value")

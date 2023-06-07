@@ -11,7 +11,7 @@ public class Container {
     }
 
     @com.fasterxml.jackson.annotation.JsonValue
-    public List<com.tot_spec.example.SimpleStruct> get_value() {
+    public List<com.tot_spec.example.SimpleStruct> getValue() {
         return value;
     }
 }

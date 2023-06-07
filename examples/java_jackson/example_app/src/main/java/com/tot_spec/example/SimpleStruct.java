@@ -3,6 +3,7 @@ import lombok.*;
 import java.util.*;
 
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class SimpleStruct {
@@ -10,6 +11,10 @@ public class SimpleStruct {
     private Boolean boolValue;
     @com.fasterxml.jackson.annotation.JsonProperty("i8_value")
     private Integer i8Value;
+    @com.fasterxml.jackson.annotation.JsonProperty("i16_value")
+    private Integer i16Value;
+    @com.fasterxml.jackson.annotation.JsonProperty("i32_value")
+    private Integer i32Value;
     @com.fasterxml.jackson.annotation.JsonProperty("i64_value")
     private Integer i64Value;
     @com.fasterxml.jackson.annotation.JsonProperty("decimal_value")

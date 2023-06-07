@@ -16,6 +16,10 @@ models:
       desc: i8 value
       type: i8
       required: true
+    - name: i16_value
+      type: i16
+    - name: i32_value
+      type: i32
     - name: i64_value
       type: i64
     - name: string_value

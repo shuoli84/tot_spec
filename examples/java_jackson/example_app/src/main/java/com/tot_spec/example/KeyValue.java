@@ -11,7 +11,7 @@ public class KeyValue {
     }
 
     @com.fasterxml.jackson.annotation.JsonValue
-    public Map<String, byte[]> get_value() {
+    public Map<String, byte[]> getValue() {
         return value;
     }
 }

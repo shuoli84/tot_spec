@@ -15,6 +15,8 @@ class SimpleStruct:
     i8_value: int
     # this field is required
     required_str_value: str
+    i16_value: typing.Optional[int] = None
+    i32_value: typing.Optional[int] = None
     i64_value: typing.Optional[int] = None
     string_value: typing.Optional[str] = None
     bytes_value: typing.Optional[bytes] = None
@@ -33,6 +35,12 @@ class SimpleStruct:
 
         # required_str_value
         result["required_str_value"] = self.required_str_value
+
+        # i16_value
+        result["i16_value"] = self.i16_value
+
+        # i32_value
+        result["i32_value"] = self.i32_value
 
         # i64_value
         result["i64_value"] = self.i64_value
@@ -79,6 +87,12 @@ class SimpleStruct:
         # required_str_value
         required_str_value = d["required_str_value"]
 
+        # i16_value
+        i16_value = d.get("i16_value", None)
+
+        # i32_value
+        i32_value = d.get("i32_value", None)
+
         # i64_value
         i64_value = d.get("i64_value", None)
 
@@ -111,6 +125,8 @@ class SimpleStruct:
             bool_value = bool_value,
             i8_value = i8_value,
             required_str_value = required_str_value,
+            i16_value = i16_value,
+            i32_value = i32_value,
             i64_value = i64_value,
             string_value = string_value,
             bytes_value = bytes_value,

@@ -3,6 +3,7 @@ import lombok.*;
 import java.util.*;
 
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class AddRequest extends com.tot_spec.example.BaseRequest {
