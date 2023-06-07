@@ -246,12 +246,37 @@ pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
             }
 
             crate::ModelType::NewType { inner_type } => {
-                writeln!(
-                    &mut result,
-                    "{} = typing.Type[{}]",
-                    model.name,
-                    py_type(inner_type)
-                )?;
+                let model_name = &model.name;
+                let py_type = py_type(inner_type);
+                writeln!(&mut result, "@dataclass")?;
+                writeln!(&mut result, "class {model_name}:")?;
+                writeln!(&mut result, "    value: {py_type}")?;
+                writeln!(&mut result, "")?;
+
+                {
+                    // to_dict
+                    let to_dict = to_dict_for_one_field(
+                        &inner_type,
+                        &format!("self.value"),
+                        "result",
+                        def,
+                        context,
+                    )?;
+                    writeln!(&mut result, "    def to_dict(self):")?;
+                    writeln!(&mut result, "        {to_dict}")?;
+                    writeln!(&mut result, "        return result")?;
+                    writeln!(&mut result, "")?;
+                }
+
+                {
+                    // from_dict
+                    let from_dict =
+                        from_dict_for_one_field(&inner_type, "d", "value", def, context)?;
+                    writeln!(result, "    def from_dict(d):")?;
+                    writeln!(result, "        {from_dict}")?;
+                    writeln!(result, "        return {model_name}(value)")?;
+                    writeln!(&mut result, "")?;
+                }
             }
 
             crate::ModelType::Const { value_type, values } => {
@@ -415,22 +440,8 @@ fn to_dict_for_one_field(
             writeln!(result, "    {out_var}[key] = item_tmp")?;
             result
         }
-        Type::Reference(TypeReference { namespace, target }) => {
-            let target_model = if let Some(namespace) = namespace {
-                let include_def = context.load_include_def(namespace, def).unwrap();
-                include_def.get_model(target).unwrap().clone()
-            } else {
-                def.get_model(target).unwrap().clone()
-            };
-
-            match &target_model.type_ {
-                crate::ModelType::NewType { inner_type } => {
-                    to_dict_for_one_field(&inner_type, in_expr, out_var, def, context)?
-                }
-                _ => {
-                    format!("{out_var} = {in_expr}.to_dict()")
-                }
-            }
+        Type::Reference(TypeReference { .. }) => {
+            format!("{out_var} = {in_expr}.to_dict()")
         }
         Type::Json => {
             // for json type, it can be either dict, list, int, str, float, None, but it does not contain
@@ -556,23 +567,9 @@ fn from_dict_for_one_field(
             writeln!(result, "    {out_var}[key] = item_tmp")?;
             result
         }
-        Type::Reference(TypeReference { namespace, target }) => {
-            let target_model = if let Some(namespace) = namespace {
-                let include_def = context.load_include_def(namespace, def).unwrap();
-                include_def.get_model(target).unwrap().clone()
-            } else {
-                def.get_model(target).unwrap().clone()
-            };
-
-            match &target_model.type_ {
-                crate::ModelType::NewType { inner_type } => {
-                    from_dict_for_one_field(&inner_type, in_expr, out_var, def, context)?
-                }
-                _ => {
-                    let py_type = py_type(&ty);
-                    format!("{out_var} = {py_type}.from_dict({in_expr})")
-                }
-            }
+        Type::Reference(TypeReference { .. }) => {
+            let py_type = py_type(&ty);
+            format!("{out_var} = {py_type}.from_dict({in_expr})")
         }
         Type::Json => {
             // for json type, it should be fine to just assign to property
@@ -629,6 +626,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/include_test.yaml",
                 "src/codegen/fixtures/py_dataclass/include_test.py",
+            ),
+            (
+                "src/codegen/fixtures/specs/new_type.yaml",
+                "src/codegen/fixtures/py_dataclass/new_type.py",
             ),
         ];
 

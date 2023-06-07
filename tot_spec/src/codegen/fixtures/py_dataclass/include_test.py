@@ -20,11 +20,11 @@ class TestBase:
         result = {}
 
         # id
-        id_tmp = self.id
+        id_tmp = self.id.to_dict()
         result["id"] = id_tmp
 
         # id_2
-        id_2_tmp = self.id_2
+        id_2_tmp = self.id_2.to_dict()
         result["id_2"] = id_2_tmp
 
         # common
@@ -37,10 +37,10 @@ class TestBase:
     def from_dict(d):
 
         # id
-        id = int(d["id"])
+        id = base.Id.from_dict(d["id"])
 
         # id_2
-        id_2 = int(d["id_2"])
+        id_2 = base_dup.Id.from_dict(d["id_2"])
 
         # common
         common = base.Common.from_dict(d["common"])
