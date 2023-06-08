@@ -212,7 +212,11 @@ pub fn render_model(
             writeln!(result, "}}")?;
         }
         crate::ModelType::NewType { inner_type } => {
-            writeln!(result, "public class {model_name} {{")?;
+            for annotation in ["Data", "Builder", "AllArgsConstructor", "NoArgsConstructor"] {
+                writeln!(result, "@{annotation}")?;
+            }
+
+            writeln!(result, "public static class {model_name} {{")?;
             let java_type = java_type(&inner_type, def, context)?;
 
             writeln!(result, "    private {java_type} value;",)?;

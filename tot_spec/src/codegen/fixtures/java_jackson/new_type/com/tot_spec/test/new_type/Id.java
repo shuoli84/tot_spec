@@ -4,7 +4,11 @@ import java.util.*;
 
 // NewType to i64, and derive Ord macros
 @lombok.EqualsAndHashCode
-public class Id {
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public static class Id {
     private Integer value;
 
     @com.fasterxml.jackson.annotation.JsonCreator
