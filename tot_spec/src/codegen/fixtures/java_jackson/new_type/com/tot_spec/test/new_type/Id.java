@@ -6,9 +6,8 @@ import java.util.*;
 @lombok.EqualsAndHashCode
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
-public static class Id {
+public class Id {
     private Integer value;
 
     @com.fasterxml.jackson.annotation.JsonCreator
