@@ -29,7 +29,6 @@ impl Context {
 
         let mut definitions = self.definitions.lock().unwrap();
 
-        println!("loading {path:?}");
         if !definitions.contains_key(&path) {
             let def = Definition::load_from_yaml(&path)?;
             definitions.insert(path.clone(), Arc::new(def));
