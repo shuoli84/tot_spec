@@ -1,0 +1,10 @@
+models:
+  - name: TestRustKeyword
+    type: 
+      name: struct
+      fields:
+        - name: fn
+          type: string
+
+        - name: const
+          type: i32

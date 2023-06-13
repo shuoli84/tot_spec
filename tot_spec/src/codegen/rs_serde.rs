@@ -2,7 +2,7 @@ use crate::{
     codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
     StringOrInteger, StructDef, Type, VariantDef,
 };
-use std::fmt::Write;
+use std::{borrow::Cow, fmt::Write};
 
 use super::utils::multiline_prefix_with;
 
@@ -62,6 +62,9 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
             crate::ModelType::Virtual(struct_def) => {
                 writeln!(model_code, "pub trait {} {{", &model.name)?;
                 for field in struct_def.fields.iter() {
+                    let field_name = &field.name;
+                    let (field_name_rs, _) = to_identifier(field_name);
+
                     if let Some(desc) = &field.desc {
                         let comment = indent(multiline_prefix_with(desc, "/// "), 1);
                         writeln!(model_code, "{comment}",)?;
@@ -69,12 +72,14 @@ pub fn render(def: &Definition) -> anyhow::Result<String> {
 
                     let field_type = field.rs_type();
 
-                    writeln!(model_code, "    fn {}(&self) -> &{field_type};", field.name,)?;
+                    writeln!(
+                        model_code,
+                        "    fn {field_name_rs}(&self) -> &{field_type};",
+                    )?;
 
                     writeln!(
                         model_code,
-                        "    fn set_{}(&mut self, value: {field_type}) -> {field_type};",
-                        field.name,
+                        "    fn set_{field_name_rs}(&mut self, value: {field_type}) -> {field_type};",
                     )?;
                 }
                 writeln!(model_code, "}}")?;
@@ -159,18 +164,22 @@ fn render_struct(
                 crate::ModelType::Virtual(struct_def) => {
                     for field in struct_def.fields.iter() {
                         let field_name = &field.name;
+                        let (field_name_rs, _) = to_identifier(field_name);
                         let field_type = field.rs_type();
-                        writeln!(model_code, "    fn {field_name}(&self) -> &{field_type} {{",)?;
-                        writeln!(model_code, "        &self.{field_name}")?;
+                        writeln!(
+                            model_code,
+                            "    fn {field_name_rs}(&self) -> &{field_type} {{",
+                        )?;
+                        writeln!(model_code, "        &self.{field_name_rs}")?;
                         writeln!(model_code, "    }}",)?;
 
                         writeln!(
                             model_code,
-                            "    fn set_{field_name}(&mut self, value: {field_type}) -> {field_type} {{",
+                            "    fn set_{field_name_rs}(&mut self, value: {field_type}) -> {field_type} {{",
                         )?;
                         writeln!(
                             model_code,
-                            "        std::mem::replace(&mut self.{field_name},  value)"
+                            "        std::mem::replace(&mut self.{field_name_rs},  value)"
                         )?;
                         writeln!(model_code, "    }}",)?;
                     }
@@ -199,7 +208,14 @@ fn render_fields_def(fields: &[FieldDef]) -> anyhow::Result<String> {
         for attr in field.rs_attributes() {
             writeln!(code, "#[{attr}]")?;
         }
-        writeln!(code, "pub {}: {},", field.name, field.rs_type())?;
+
+        let field_name = &field.name;
+        let (field_name_rs, modified) = to_identifier(field_name);
+
+        if modified {
+            writeln!(code, "#[serde(rename = \"{field_name}\")]")?;
+        }
+        writeln!(code, "pub {}: {},", field_name_rs, field.rs_type())?;
     }
     Ok(result)
 }
@@ -444,6 +460,19 @@ fn rs_const_literal(val: &StringOrInteger) -> String {
     }
 }
 
+fn to_identifier(name: &str) -> (Cow<str>, bool) {
+    match name {
+        "as" | "use" | "extern crate" | "break" | "const" | "continue" | "crate" | "else"
+        | "if" | "if let" | "enum" | "extern" | "false" | "fn" | "for" | "impl" | "in" | "let"
+        | "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref" | "return" | "Self"
+        | "self" | "static" | "struct" | "super" | "trait" | "true" | "type" | "unsafe"
+        | "where" | "while" | "abstract" | "alignof" | "become" | "box" | "do" | "final"
+        | "macro" | "offsetof" | "override" | "priv" | "proc" | "pure" | "sizeof" | "typeof"
+        | "unsized" | "virtual" | "yield" => (format!("{name}_").into(), true),
+        _ => (name.into(), false),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::models::*;
@@ -597,6 +626,10 @@ mod tests {
             (
                 include_str!("fixtures/specs/bigint.yaml"),
                 include_str!("fixtures/rs_serde/bigint.rs"),
+            ),
+            (
+                include_str!("fixtures/specs/rs_keyword.yaml"),
+                include_str!("fixtures/rs_serde/keyword.rs"),
             ),
         ] {
             let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
