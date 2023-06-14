@@ -1,5 +1,8 @@
 use clap::Parser;
-use tot_spec::{codegen, Context, Definition};
+use tot_spec::{
+    codegen::{self, spec_folder::SpecFolder},
+    Context, Definition,
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -58,12 +61,14 @@ fn generate_for_folder(folder: &std::path::PathBuf, codegen: &str, output: &std:
     use walkdir::WalkDir;
 
     std::fs::create_dir_all(output).unwrap();
+    let mut spec_folder = SpecFolder::new();
 
     for entry in WalkDir::new(folder) {
         let entry = entry.unwrap();
         let entry_path = entry.path();
 
         if entry_path.is_dir() {
+            // move logic to spec stack handling
             if codegen == "py_dataclass" {
                 // python dataclass codegen needs to generate __init__.py for each folder
                 let relative_path = entry_path.strip_prefix(folder).unwrap();
@@ -90,6 +95,7 @@ fn generate_for_folder(folder: &std::path::PathBuf, codegen: &str, output: &std:
         }
 
         let relative_path = entry_path.strip_prefix(folder).unwrap();
+        spec_folder.insert(relative_path);
 
         // now we get a file ends with yaml, build the output path
         // todo: how to map spec to output path is also codegen dependant, maybe move into core?
@@ -125,6 +131,17 @@ fn generate_for_folder(folder: &std::path::PathBuf, codegen: &str, output: &std:
 
         generate_one_spec(&entry_path, codegen, &output)
     }
+
+    spec_folder.foreach_entry_recursively(|entry| {
+        if codegen == "rs_serde" {
+            let outputs = codegen::rs_serde::render_folder(entry).unwrap();
+            for (file_relative_path, content) in outputs {
+                let file_path = output.join(file_relative_path);
+                println!("write output to {:?}", file_path);
+                std::fs::write(file_path, content).unwrap();
+            }
+        }
+    });
 }
 
 fn generate_one_spec(spec: &std::path::Path, codegen: &str, output: &std::path::PathBuf) {
@@ -136,7 +153,10 @@ fn generate_one_spec(spec: &std::path::Path, codegen: &str, output: &std::path::
     std::fs::create_dir_all(parent_folder).unwrap();
 
     let code = match codegen {
-        "rs_serde" => codegen::rs_serde::render(&def).unwrap(),
+        "rs_serde" => {
+            let context = Context::load_from_path(spec).unwrap();
+            codegen::rs_serde::render(&def, &context).unwrap()
+        }
         "py_dataclass" => {
             let context = Context::load_from_path(spec).unwrap();
             codegen::py_dataclass::render(&def, &context).unwrap()

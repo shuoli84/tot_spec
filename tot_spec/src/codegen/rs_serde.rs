@@ -1,24 +1,82 @@
 use crate::{
-    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
-    StringOrInteger, StructDef, Type, VariantDef,
+    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, Context, FieldDef,
+    ModelDef, StringOrInteger, StructDef, Type, VariantDef,
 };
-use std::{borrow::Cow, fmt::Write};
+use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
-use super::utils::multiline_prefix_with;
+use super::{spec_folder::Entry, utils::multiline_prefix_with};
 
-pub fn render(def: &Definition) -> anyhow::Result<String> {
+pub fn render_folder(entry: &Entry) -> anyhow::Result<Vec<(PathBuf, String)>> {
+    if entry.is_empty() {
+        // this is a leaf node, continue
+        return Ok(vec![]);
+    }
+
+    let mut outputs = vec![];
+    let children = entry.iter_child().collect::<Vec<_>>();
+
+    let mut code = "".to_string();
+    for child in children {
+        writeln!(
+            code,
+            "pub mod {};",
+            child.path().file_stem().unwrap().to_str().unwrap()
+        )
+        .unwrap();
+    }
+
+    outputs.push((entry.path().join("mod.rs"), code));
+
+    Ok(outputs)
+}
+
+pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
     let mut result = String::new();
 
     for include in def.includes.iter() {
-        let mod_path = include
-            .attributes
-            .get("rs_mod")
-            .unwrap_or(&include.namespace);
+        let include_path = context.get_include_path(&include.namespace, def).unwrap();
+        let working_def_path = context.get_working_def_path();
+        let relative_path = pathdiff::diff_paths(&include_path, working_def_path).unwrap();
+
+        let include_name = relative_path.file_stem().unwrap().to_str().unwrap();
+
+        let mut mod_path = "".to_string();
+
+        let relative_path_components = relative_path.components().collect::<Vec<_>>();
+        for (idx, component) in relative_path_components.iter().enumerate() {
+            match component {
+                std::path::Component::ParentDir => {
+                    mod_path.push_str("super::");
+                }
+                std::path::Component::CurDir => {
+                    // do nothing
+                }
+                std::path::Component::Normal(name) => {
+                    if idx + 1 < relative_path_components.len() {
+                        mod_path.push_str(&format!("{}::", name.to_str().unwrap()));
+                    } else {
+                        break;
+                    }
+                }
+                std::path::Component::Prefix(_) | std::path::Component::RootDir => unimplemented!(),
+            }
+        }
+        mod_path.push_str(include_name);
+
+        if let Some(rs_mod) = include.attributes.get("rs_mod") {
+            // rs-mod overwrite
+            mod_path = rs_mod.to_string()
+        }
+
         if mod_path.eq(&include.namespace) {
             writeln!(result, "use {};", mod_path)?;
         } else {
             writeln!(result, "use {} as {};", mod_path, include.namespace)?;
         }
+    }
+
+    if !def.includes.is_empty() {
+        writeln!(result, "")?;
     }
 
     let mut model_codes = vec![];
@@ -479,161 +537,93 @@ mod tests {
 
     #[test]
     fn test_render() {
-        fn test_model_codegen(model: ModelDef, code: &str) {
-            test_models_codegen(vec![model], code)
-        }
-
-        fn test_models_codegen(models: Vec<ModelDef>, code: &str) {
-            let definition = Definition {
-                includes: vec![],
-                models,
-                meta: Default::default(),
-            };
-            test_def(definition, code)
-        }
-
-        fn test_def(definition: Definition, code: &str) {
-            let rendered = super::render(&definition).unwrap();
+        fn test_def(definition: &Definition, context: &Context, code_path: &str) {
+            let rendered = super::render(definition, context).unwrap();
             let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
+
+            let code = std::fs::read_to_string(code_path).unwrap();
             let code_ast = syn::parse_file(&mut code.to_string()).unwrap();
 
             let rendered_pretty = prettyplease::unparse(&rendered_ast);
             let code_pretty = prettyplease::unparse(&code_ast);
 
-            pretty_assertions::assert_eq!(rendered_pretty, code_pretty);
+            #[cfg(not(feature = "test_update_spec"))]
+            pretty_assertions::assert_eq!(code_pretty.trim(), rendered_pretty.as_str().trim());
+
+            #[cfg(feature = "test_update_spec")]
+            {
+                if rendered_pretty.trim() != code_pretty.as_str().trim() {
+                    std::fs::write(code_path, rendered_pretty).unwrap();
+                }
+            }
         }
-
-        test_model_codegen(
-            ModelDef {
-                name: "SimpleStruct".to_string(),
-                desc: Some("A test struct with different kinds of fields".into()),
-                type_: ModelType::Struct(StructDef {
-                    extend: None,
-                    fields: vec![
-                        FieldDef::new("bool_value", Type::Bool)
-                            .with_required(true)
-                            .with_desc("required bool field"),
-                        FieldDef::new("i8_value", Type::I8)
-                            .with_required(true)
-                            .with_desc("required i8 field"),
-                        FieldDef::new("i16_value", Type::I16)
-                            .with_required(true)
-                            .with_desc("required i16 field"),
-                        FieldDef::new("i64_value", Type::I64),
-                        FieldDef::new("string_value", Type::String),
-                        FieldDef::new("bytes_value", Type::Bytes),
-                        FieldDef::new("string_map", Type::map(Type::String))
-                            .with_desc("string map with customized Map type")
-                            .with_attribute(
-                                "rs_type",
-                                "std::collections::BTreeMap<std::string::String, std::string::String>",
-                            ),
-                        FieldDef::new("key_values", Type::reference("KeyValue")),
-                        FieldDef::new("children", Type::list(Type::reference("SimpleStruct"))),
-                    ],
-                }),
-                ..Default::default()
-            },
-            include_str!("fixtures/rs_serde/simple_struct.rs"),
-        );
-        test_model_codegen(
-            ModelDef {
-                name: "KeyValue".into(),
-                type_: ModelType::new_type(Type::map(Type::Bytes)),
-                ..Default::default()
-            },
-            include_str!("fixtures/rs_serde/key_value.rs"),
-        );
-
-        test_models_codegen(
-            vec![
-                ModelDef {
-                    name: "Base".into(),
-                    type_: ModelType::Virtual(StructDef {
-                        extend: None,
-                        fields: vec![FieldDef::new("request_id", Type::String)],
-                    }),
-                    ..ModelDef::default()
-                },
-                ModelDef {
-                    name: "AddRequest".into(),
-                    type_: ModelType::Struct(StructDef {
-                        extend: Some("Base".into()),
-                        fields: vec![FieldDef::new(
-                            "numbers",
-                            Type::list(Type::reference("Number")),
-                        )],
-                    }),
-                    ..ModelDef::default()
-                },
-                ModelDef {
-                    name: "ResetRequest".into(),
-                    type_: ModelType::Struct(StructDef {
-                        extend: Some("Base".into()),
-                        fields: vec![],
-                    }),
-                    ..ModelDef::default()
-                },
-            ],
-            include_str!("fixtures/rs_serde/extend.rs"),
-        );
 
         for (spec, expected) in &[
             (
-                include_str!("fixtures/specs/const_i8.yaml"),
-                include_str!("fixtures/rs_serde/const_i8.rs"),
+                "src/codegen/fixtures/specs/simple_struct.yaml",
+                "src/codegen/fixtures/rs_serde/simple_struct.rs",
             ),
             (
-                include_str!("fixtures/specs/const_i16.yaml"),
-                include_str!("fixtures/rs_serde/const_i16.rs"),
+                "src/codegen/fixtures/specs/extend.yaml",
+                "src/codegen/fixtures/rs_serde/extend.rs",
             ),
             (
-                include_str!("fixtures/specs/const_i64.yaml"),
-                include_str!("fixtures/rs_serde/const_i64.rs"),
+                "src/codegen/fixtures/specs/const_i8.yaml",
+                "src/codegen/fixtures/rs_serde/const_i8.rs",
             ),
             (
-                include_str!("fixtures/specs/const_string.yaml"),
-                include_str!("fixtures/rs_serde/const_string.rs"),
+                "src/codegen/fixtures/specs/const_i16.yaml",
+                "src/codegen/fixtures/rs_serde/const_i16.rs",
             ),
             (
-                include_str!("fixtures/specs/include_test.yaml"),
-                include_str!("fixtures/rs_serde/include_test.rs"),
+                "src/codegen/fixtures/specs/const_i64.yaml",
+                "src/codegen/fixtures/rs_serde/const_i64.rs",
             ),
             (
-                include_str!("fixtures/specs/enum.yaml"),
-                include_str!("fixtures/rs_serde/enum.rs"),
+                "src/codegen/fixtures/specs/const_string.yaml",
+                "src/codegen/fixtures/rs_serde/const_string.rs",
             ),
             (
-                include_str!("fixtures/specs/enum_variant_type.yaml"),
-                include_str!("fixtures/rs_serde/enum_variant_type.rs"),
+                "src/codegen/fixtures/specs/include_test.yaml",
+                "src/codegen/fixtures/rs_serde/include_test.rs",
             ),
             (
-                include_str!("fixtures/specs/enum_variant_fields.yaml"),
-                include_str!("fixtures/rs_serde/enum_variant_fields.rs"),
+                "src/codegen/fixtures/specs/enum.yaml",
+                "src/codegen/fixtures/rs_serde/enum.rs",
             ),
             (
-                include_str!("fixtures/specs/new_type.yaml"),
-                include_str!("fixtures/rs_serde/new_type.rs"),
+                "src/codegen/fixtures/specs/enum_variant_type.yaml",
+                "src/codegen/fixtures/rs_serde/enum_variant_type.rs",
             ),
             (
-                include_str!("fixtures/specs/json.yaml"),
-                include_str!("fixtures/rs_serde/json.rs"),
+                "src/codegen/fixtures/specs/enum_variant_fields.yaml",
+                "src/codegen/fixtures/rs_serde/enum_variant_fields.rs",
             ),
             (
-                include_str!("fixtures/specs/decimal.yaml"),
-                include_str!("fixtures/rs_serde/decimal.rs"),
+                "src/codegen/fixtures/specs/new_type.yaml",
+                "src/codegen/fixtures/rs_serde/new_type.rs",
             ),
             (
-                include_str!("fixtures/specs/bigint.yaml"),
-                include_str!("fixtures/rs_serde/bigint.rs"),
+                "src/codegen/fixtures/specs/json.yaml",
+                "src/codegen/fixtures/rs_serde/json.rs",
             ),
             (
-                include_str!("fixtures/specs/rs_keyword.yaml"),
-                include_str!("fixtures/rs_serde/keyword.rs"),
+                "src/codegen/fixtures/specs/decimal.yaml",
+                "src/codegen/fixtures/rs_serde/decimal.rs",
+            ),
+            (
+                "src/codegen/fixtures/specs/bigint.yaml",
+                "src/codegen/fixtures/rs_serde/bigint.rs",
+            ),
+            (
+                "src/codegen/fixtures/specs/rs_keyword.yaml",
+                "src/codegen/fixtures/rs_serde/keyword.rs",
             ),
         ] {
-            let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
-            test_def(def, expected);
+            println!("{spec}");
+            let context = Context::load_from_path(spec).unwrap();
+            let def = context.load_from_yaml(spec).unwrap();
+            test_def(&def, &context, &expected);
         }
     }
 }

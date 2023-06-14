@@ -3,9 +3,6 @@ import lombok.*;
 import java.util.*;
 
 @Data
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class Base {
+public abstract class Base {
     private String id;
 }

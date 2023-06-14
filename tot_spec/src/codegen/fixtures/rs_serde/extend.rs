@@ -1,47 +1,19 @@
 /// Base
 pub trait Base {
-    fn request_id(&self) -> &std::option::Option<std::string::String>;
-    fn set_request_id(
-        &mut self,
-        value: std::option::Option<std::string::String>,
-    ) -> std::option::Option<std::string::String>;
+    fn id(&self) -> &std::string::String;
+    fn set_id(&mut self, value: std::string::String) -> std::string::String;
 }
-
-/// AddRequest
+/// Child
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct AddRequest {
-    pub request_id: std::option::Option<std::string::String>,
-    pub numbers: std::option::Option<std::vec::Vec<Number>>,
+pub struct Child {
+    pub id: std::string::String,
+    pub name: std::string::String,
 }
-
-impl Base for AddRequest {
-    fn request_id(&self) -> &std::option::Option<std::string::String> {
-        &self.request_id
+impl Base for Child {
+    fn id(&self) -> &std::string::String {
+        &self.id
     }
-
-    fn set_request_id(
-        &mut self,
-        value: std::option::Option<std::string::String>,
-    ) -> std::option::Option<std::string::String> {
-        std::mem::replace(&mut self.request_id, value)
-    }
-}
-
-/// ResetRequest
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct ResetRequest {
-    pub request_id: std::option::Option<std::string::String>,
-}
-
-impl Base for ResetRequest {
-    fn request_id(&self) -> &std::option::Option<std::string::String> {
-        &self.request_id
-    }
-
-    fn set_request_id(
-        &mut self,
-        value: std::option::Option<std::string::String>,
-    ) -> std::option::Option<std::string::String> {
-        std::mem::replace(&mut self.request_id, value)
+    fn set_id(&mut self, value: std::string::String) -> std::string::String {
+        std::mem::replace(&mut self.id, value)
     }
 }

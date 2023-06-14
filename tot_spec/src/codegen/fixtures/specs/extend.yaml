@@ -5,8 +5,7 @@ meta:
 models:
   - name: Base
     type:
-      name: struct
-      abstract: true
+      name: virtual
       fields:
         - name: id
           type: string
