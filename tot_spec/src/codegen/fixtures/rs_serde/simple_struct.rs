@@ -5,8 +5,8 @@ pub struct SimpleStruct {
     pub bool_value: bool,
     /// i8 value
     pub i8_value: i8,
-    pub i16_value: std::option::Option<i8>,
-    pub i32_value: std::option::Option<i8>,
+    pub i16_value: std::option::Option<i16>,
+    pub i32_value: std::option::Option<i32>,
     pub i64_value: std::option::Option<i64>,
     pub string_value: std::option::Option<std::string::String>,
     pub bytes_value: std::option::Option<std::vec::Vec<u8>>,

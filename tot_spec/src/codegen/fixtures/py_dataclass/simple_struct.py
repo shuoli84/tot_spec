@@ -37,10 +37,18 @@ class SimpleStruct:
         result["required_str_value"] = self.required_str_value
 
         # i16_value
-        result["i16_value"] = self.i16_value
+        if self.i16_value is None:
+            result["i16_value"] = None
+        else:
+            i16_value_tmp = self.i16_value
+            result["i16_value"] = i16_value_tmp
 
         # i32_value
-        result["i32_value"] = self.i32_value
+        if self.i32_value is None:
+            result["i32_value"] = None
+        else:
+            i32_value_tmp = self.i32_value
+            result["i32_value"] = i32_value_tmp
 
         # i64_value
         result["i64_value"] = self.i64_value
@@ -88,10 +96,14 @@ class SimpleStruct:
         required_str_value_tmp = d["required_str_value"]
 
         # i16_value
-        i16_value_tmp = d.get("i16_value", None)
+        i16_value_tmp = None
+        if item := d.get("i16_value"):
+            i16_value_tmp = int(item)
 
         # i32_value
-        i32_value_tmp = d.get("i32_value", None)
+        i32_value_tmp = None
+        if item := d.get("i32_value"):
+            i32_value_tmp = int(item)
 
         # i64_value
         i64_value_tmp = d.get("i64_value", None)

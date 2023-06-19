@@ -481,9 +481,9 @@ mod serde_helper {
         } else if let Some(rest) = s.strip_prefix("i8") {
             Ok((Type::I8, rest))
         } else if let Some(rest) = s.strip_prefix("i16") {
-            Ok((Type::I8, rest))
+            Ok((Type::I16, rest))
         } else if let Some(rest) = s.strip_prefix("i32") {
-            Ok((Type::I8, rest))
+            Ok((Type::I32, rest))
         } else if let Some(rest) = s.strip_prefix("i64") {
             Ok((Type::I64, rest))
         } else if let Some(rest) = s.strip_prefix("f64") {
