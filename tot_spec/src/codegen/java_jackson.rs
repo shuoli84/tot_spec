@@ -1,11 +1,79 @@
 use convert_case::Casing;
 
+use crate::codegen::spec_folder::{Entry, SpecFolder};
 use crate::{
     ConstType, Context, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference,
 };
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 use super::utils;
+
+#[derive(Default)]
+pub struct JavaJackson {}
+
+impl super::Codegen for JavaJackson {
+    fn generate_for_folder(
+        &self,
+        folder: &PathBuf,
+        codegen: &str,
+        output: &PathBuf,
+    ) -> anyhow::Result<()> {
+        use walkdir::WalkDir;
+
+        std::fs::create_dir_all(output).unwrap();
+        let mut spec_folder = SpecFolder::new();
+
+        for entry in WalkDir::new(folder) {
+            let entry = entry.unwrap();
+            let spec = entry.path();
+
+            if spec.is_dir() {
+                // move logic to spec stack handling
+                if codegen == "py_dataclass" {
+                    // python dataclass codegen needs to generate __init__.py for each folder
+                    let relative_path = spec.strip_prefix(folder).unwrap();
+                    let output_folder = output.join(relative_path);
+                    std::fs::create_dir_all(output_folder).unwrap();
+                    let init_file = output.join(relative_path).join("__init__.py");
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .write(true)
+                        .open(init_file)?;
+                }
+                continue;
+            }
+            if !spec.is_file() {
+                continue;
+            }
+            if !spec
+                .extension()
+                .map(|ext| ext == "yaml")
+                .unwrap_or_default()
+            {
+                continue;
+            }
+
+            let relative_path = spec.strip_prefix(folder)?;
+            spec_folder.insert(relative_path);
+
+            let output = output.clone();
+
+            {
+                println!("generating codegen={codegen} spec={spec:?} output={output:?}");
+
+                let parent_folder = output.parent().unwrap();
+                std::fs::create_dir_all(parent_folder).unwrap();
+
+                let spec_content = std::fs::read_to_string(spec).unwrap();
+                let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
+
+                let context = Context::load_from_path(spec).unwrap();
+                return render(&def, &context, &output);
+            }
+        }
+        Ok(())
+    }
+}
 
 /// java does not export to a file, instead, it exports to a folder
 pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {

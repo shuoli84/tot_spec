@@ -1,3 +1,5 @@
+# import annotations to enable forward declaration
+from __future__ import annotations
 from dataclasses import dataclass
 import abc
 import typing
@@ -8,15 +10,17 @@ import decimal
 class SimpleStruct:
     bool_value: bool
     i8_value: typing.Optional[int] = None
+    i16_value: typing.Optional[int] = None
+    i32_value: typing.Optional[int] = None
     i64_value: typing.Optional[int] = None
     decimal_value: typing.Optional[decimal.Decimal] = None
     bigint_value: typing.Optional[int] = None
     string_value: typing.Optional[str] = None
     bytes_value: typing.Optional[bytes] = None
     string_to_string: typing.Optional[typing.Dict[str, str]] = None
-    key_values: typing.Optional["KeyValue"] = None
-    children_container: typing.Optional["Container"] = None
-    children: typing.Optional[typing.List["SimpleStruct"]] = None
+    key_values: typing.Optional[KeyValue] = None
+    children_container: typing.Optional[Container] = None
+    children: typing.Optional[typing.List[SimpleStruct]] = None
 
     def to_dict(self):
         result = {}
@@ -26,6 +30,20 @@ class SimpleStruct:
 
         # i8_value
         result["i8_value"] = self.i8_value
+
+        # i16_value
+        if self.i16_value is None:
+            result["i16_value"] = None
+        else:
+            i16_value_tmp = self.i16_value
+            result["i16_value"] = i16_value_tmp
+
+        # i32_value
+        if self.i32_value is None:
+            result["i32_value"] = None
+        else:
+            i32_value_tmp = self.i32_value
+            result["i32_value"] = i32_value_tmp
 
         # i64_value
         result["i64_value"] = self.i64_value
@@ -65,22 +83,14 @@ class SimpleStruct:
         if self.key_values is None:
             result["key_values"] = None
         else:
-            key_values_tmp = {}
-            for key, item in self.key_values.items():
-                item_tmp = list(item)
-                key_values_tmp[key] = item_tmp
-
+            key_values_tmp = self.key_values.to_dict()
             result["key_values"] = key_values_tmp
 
         # children_container
         if self.children_container is None:
             result["children_container"] = None
         else:
-            children_container_tmp = []
-            for item in self.children_container:
-                item_tmp = item.to_dict()
-                children_container_tmp.append(item_tmp)
-
+            children_container_tmp = self.children_container.to_dict()
             result["children_container"] = children_container_tmp
 
         # children
@@ -100,86 +110,128 @@ class SimpleStruct:
     def from_dict(d):
 
         # bool_value
-        bool_value = d["bool_value"]
+        bool_value_tmp = d["bool_value"]
 
         # i8_value
-        i8_value = d.get("i8_value", None)
+        i8_value_tmp = d.get("i8_value", None)
+
+        # i16_value
+        i16_value_tmp = None
+        if item := d.get("i16_value"):
+            i16_value_tmp = int(item)
+
+        # i32_value
+        i32_value_tmp = None
+        if item := d.get("i32_value"):
+            i32_value_tmp = int(item)
 
         # i64_value
-        i64_value = d.get("i64_value", None)
+        i64_value_tmp = d.get("i64_value", None)
 
         # decimal_value
-        decimal_value = None
+        decimal_value_tmp = None
         if item := d.get("decimal_value"):
-            decimal_value = decimal.Decimal(item)
+            decimal_value_tmp = decimal.Decimal(item)
 
         # bigint_value
-        bigint_value = None
+        bigint_value_tmp = None
         if item := d.get("bigint_value"):
-            bigint_value = int(item)
+            bigint_value_tmp = int(item)
 
         # string_value
-        string_value = d.get("string_value", None)
+        string_value_tmp = d.get("string_value", None)
 
         # bytes_value
-        bytes_value = None
+        bytes_value_tmp = None
         if item := d.get("bytes_value"):
             bytes_value = bytes(item)
 
         # string_to_string
-        string_to_string = None
+        string_to_string_tmp = None
         if item := d.get("string_to_string"):
-            string_to_string = {}
+            string_to_string_tmp = {}
             for key, item in item.items():
                 item_tmp = item
-                string_to_string[key] = item_tmp
+                string_to_string_tmp[key] = item_tmp
 
 
         # key_values
-        key_values = None
+        key_values_tmp = None
         if item := d.get("key_values"):
-            key_values = {}
-            for key, item in item.items():
-                item_tmp = bytes(item)
-                key_values[key] = item_tmp
-
+            key_values_tmp = KeyValue.from_dict(item)
 
         # children_container
-        children_container = None
+        children_container_tmp = None
         if item := d.get("children_container"):
-            children_container = []
-            for item in item:
-                item_tmp = SimpleStruct.from_dict(item)
-                children_container.append(item_tmp)
-
+            children_container_tmp = Container.from_dict(item)
 
         # children
-        children = None
+        children_tmp = None
         if item := d.get("children"):
-            children = []
+            children_tmp = []
             for item in item:
                 item_tmp = SimpleStruct.from_dict(item)
-                children.append(item_tmp)
+                children_tmp.append(item_tmp)
 
         return SimpleStruct(
-            bool_value = bool_value,
-            i8_value = i8_value,
-            i64_value = i64_value,
-            decimal_value = decimal_value,
-            bigint_value = bigint_value,
-            string_value = string_value,
-            bytes_value = bytes_value,
-            string_to_string = string_to_string,
-            key_values = key_values,
-            children_container = children_container,
-            children = children,
+            bool_value = bool_value_tmp,
+            i8_value = i8_value_tmp,
+            i16_value = i16_value_tmp,
+            i32_value = i32_value_tmp,
+            i64_value = i64_value_tmp,
+            decimal_value = decimal_value_tmp,
+            bigint_value = bigint_value_tmp,
+            string_value = string_value_tmp,
+            bytes_value = bytes_value_tmp,
+            string_to_string = string_to_string_tmp,
+            key_values = key_values_tmp,
+            children_container = children_container_tmp,
+            children = children_tmp,
         )
 
 
 
-KeyValue = typing.Type[typing.Dict[str, bytes]]
+@dataclass
+class KeyValue:
+    value: typing.Dict[str, bytes]
 
-Container = typing.Type[typing.List["SimpleStruct"]]
+    def to_dict(self):
+        result = {}
+for key, item in self.value.items():
+    item_tmp = list(item)
+    result[key] = item_tmp
+
+        return result
+
+    def from_dict(d):
+        value_tmp = {}
+for key, item in d.items():
+    item_tmp = bytes(item)
+    value_tmp[key] = item_tmp
+
+        return KeyValue(value_tmp)
+
+
+@dataclass
+class Container:
+    value: typing.List[SimpleStruct]
+
+    def to_dict(self):
+        result = []
+for item in self.value:
+    item_tmp = item.to_dict()
+    result.append(item_tmp)
+
+        return result
+
+    def from_dict(d):
+        value_tmp = []
+for item in d:
+    item_tmp = SimpleStruct.from_dict(item)
+    value_tmp.append(item_tmp)
+
+        return Container(value_tmp)
+
 
 @dataclass
 class RealNumber:
@@ -201,13 +253,13 @@ class RealNumber:
     def from_dict(d):
 
         # real
-        real = d.get("real", None)
+        real_tmp = d.get("real", None)
 
         # imagine
-        imagine = d.get("imagine", None)
+        imagine_tmp = d.get("imagine", None)
         return RealNumber(
-            real = real,
-            imagine = imagine,
+            real = real_tmp,
+            imagine = imagine_tmp,
         )
 
 
@@ -269,7 +321,7 @@ class Number_F64(Number):
 # variant RealNumber for Number
 @dataclass
 class Number_RealNumber(Number):
-    payload: "RealNumber"
+    payload: RealNumber
 
     def to_dict(self):
         type_ = "RealNumber"
@@ -293,7 +345,7 @@ class BaseRequest(abc.ABC):
 @dataclass
 class AddRequest(BaseRequest):
     request_id: typing.Optional[str] = None
-    numbers: typing.Optional[typing.List["Number"]] = None
+    numbers: typing.Optional[typing.List[Number]] = None
 
     def to_dict(self):
         result = {}
@@ -318,19 +370,19 @@ class AddRequest(BaseRequest):
     def from_dict(d):
 
         # request_id
-        request_id = d.get("request_id", None)
+        request_id_tmp = d.get("request_id", None)
 
         # numbers
-        numbers = None
+        numbers_tmp = None
         if item := d.get("numbers"):
-            numbers = []
+            numbers_tmp = []
             for item in item:
                 item_tmp = Number.from_dict(item)
-                numbers.append(item_tmp)
+                numbers_tmp.append(item_tmp)
 
         return AddRequest(
-            request_id = request_id,
-            numbers = numbers,
+            request_id = request_id_tmp,
+            numbers = numbers_tmp,
         )
 
 
@@ -351,9 +403,9 @@ class ResetRequest(BaseRequest):
     def from_dict(d):
 
         # request_id
-        request_id = d.get("request_id", None)
+        request_id_tmp = d.get("request_id", None)
         return ResetRequest(
-            request_id = request_id,
+            request_id = request_id_tmp,
         )
 
 

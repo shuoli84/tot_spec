@@ -1,9 +1,88 @@
 use std::borrow::Cow;
 use std::fmt::Write;
+use std::path::PathBuf;
 
-use crate::{Definition, FieldDef, Type, TypeReference};
+use crate::codegen::spec_folder::{Entry, SpecFolder};
+use crate::{Context, Definition, FieldDef, Type, TypeReference};
 
 use super::utils::{indent, multiline_prefix_with};
+
+#[derive(Default)]
+pub struct SwiftCodable {}
+
+impl super::Codegen for SwiftCodable {
+    fn generate_for_folder(
+        &self,
+        folder: &PathBuf,
+        codegen: &str,
+        output: &PathBuf,
+    ) -> anyhow::Result<()> {
+        use walkdir::WalkDir;
+
+        std::fs::create_dir_all(output).unwrap();
+        let mut spec_folder = SpecFolder::new();
+
+        for entry in WalkDir::new(folder) {
+            let entry = entry.unwrap();
+            let spec = entry.path();
+
+            if spec.is_dir() {
+                // move logic to spec stack handling
+                if codegen == "py_dataclass" {
+                    // python dataclass codegen needs to generate __init__.py for each folder
+                    let relative_path = spec.strip_prefix(folder).unwrap();
+                    let output_folder = output.join(relative_path);
+                    std::fs::create_dir_all(output_folder).unwrap();
+                    let init_file = output.join(relative_path).join("__init__.py");
+                    std::fs::OpenOptions::new()
+                        .create(true)
+                        .write(true)
+                        .open(init_file)
+                        .unwrap();
+                }
+                continue;
+            }
+            if !spec.is_file() {
+                continue;
+            }
+            if !spec
+                .extension()
+                .map(|ext| ext == "yaml")
+                .unwrap_or_default()
+            {
+                continue;
+            }
+
+            let relative_path = spec.strip_prefix(folder).unwrap();
+            spec_folder.insert(relative_path);
+
+            // now we get a file ends with yaml, build the output path
+            // todo: how to map spec to output path is also codegen dependant, maybe move into core?
+            let output = {
+                let mut output = output.clone();
+                output.push(relative_path);
+                output.set_extension("swift");
+                output
+            };
+
+            {
+                println!("generating codegen={codegen} spec={spec:?} output={output:?}");
+                let spec_content = std::fs::read_to_string(spec).unwrap();
+                let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
+
+                let parent_folder = output.parent().unwrap();
+                std::fs::create_dir_all(parent_folder).unwrap();
+
+                let code = render(&def)?;
+
+                std::fs::write(&output, code).unwrap();
+                println!("write output to {:?}", output);
+            }
+        }
+
+        Ok(())
+    }
+}
 
 /// render the definition to a swift file
 pub fn render(def: &Definition) -> anyhow::Result<String> {

@@ -1,1 +1,1 @@
-pub mod example_spec;
+pub mod spec;

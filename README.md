@@ -8,17 +8,17 @@ tot_spec is a language agonostic model definition util. It is mainly used to def
 
 ```bash
 # generate rust client code
-cargo run -- -s "examples/spec/spec.yaml" -c "rs_serde" -o "examples/spec/example_spec.rs
+cargo run -- -i "examples/spec" -c "rs_serde" -o "examples/spec/
 
 # generate python client code
-cargo run -- -s "examples/spec/spec.yaml" -c "py_dataclass" -o examples/spec/example_spec.py
+cargo run -- -i "examples/spec" -c "py_dataclass" -o examples/spec/
 
 # generate swift client code
-cargo run -- -s "examples/spec/spec.yaml" -c "swift_codable" -o examples/swift_package/Sources/SpecModel/example_spec.swift
+cargo run -- -i "examples/spec" -c "swift_codable" -o examples/swift_package/Sources/SpecModel/
 cd examples/swift_package && swift test
 
 # generate java jackson
-cargo run -- -s "examples/spec/spec.yaml" -c "java_jackson" -o "examples/java_jackson/example_app/src/main/java/"
+cargo run -- -i "examples/spec" -c "java_jackson" -o "examples/java_jackson/example_app/src/main/java/"
 ```
 
 ## Nested struct

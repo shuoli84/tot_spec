@@ -14,3 +14,4 @@ clap = { version = "4.0", features = ["derive"] }
 tot_spec = { path = "../tot_spec" }
 serde_yaml = "0.9"
 walkdir = "2.3.3"
+anyhow = "1.0"

@@ -3,6 +3,8 @@
 pub struct SimpleStruct {
     pub bool_value: bool,
     pub i8_value: std::option::Option<i8>,
+    pub i16_value: std::option::Option<i16>,
+    pub i32_value: std::option::Option<i32>,
     pub i64_value: std::option::Option<i64>,
     pub decimal_value: std::option::Option<rust_decimal::Decimal>,
     pub bigint_value: std::option::Option<tot_spec_util::big_int::BigInt>,

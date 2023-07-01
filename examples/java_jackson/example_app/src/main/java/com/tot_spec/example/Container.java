@@ -2,6 +2,9 @@ package com.tot_spec.example;
 import lombok.*;
 import java.util.*;
 
+@Data
+@Builder
+@NoArgsConstructor
 public class Container {
     private List<com.tot_spec.example.SimpleStruct> value;
 
