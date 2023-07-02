@@ -39,6 +39,7 @@ impl Entry {
         &self.component
     }
 
+    /// this is relative path
     pub fn path(&self) -> &PathBuf {
         &self.path
     }
@@ -64,11 +65,11 @@ impl Entry {
 }
 
 #[derive(Debug, Default)]
-pub struct SpecFolder {
+pub struct FolderTree {
     root: Entry,
 }
 
-impl SpecFolder {
+impl FolderTree {
     pub fn new() -> Self {
         Self::default()
     }
@@ -97,7 +98,7 @@ mod tests {
 
     #[test]
     fn test_stack() {
-        let mut stack = SpecFolder::new();
+        let mut stack = FolderTree::new();
 
         stack.insert(&PathBuf::from("a/b/c.yaml"));
         stack.insert(&PathBuf::from("a/b/d.yaml"));

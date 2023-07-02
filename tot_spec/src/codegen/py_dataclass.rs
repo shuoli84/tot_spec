@@ -1,4 +1,3 @@
-use crate::codegen::spec_folder::SpecFolder;
 use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -11,67 +10,39 @@ pub struct PyDataclass {}
 
 impl super::Codegen for PyDataclass {
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
-        use walkdir::WalkDir;
+        let context = Context::new_from_folder(folder)?;
 
-        std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = SpecFolder::new();
+        context.folder_tree().foreach_entry_recursively(|entry| {
+            // python dataclass codegen needs to generate __init__.py for each folder
+            let output_folder = output.join(entry.path());
+            std::fs::create_dir_all(&output_folder).unwrap();
 
-        for entry in WalkDir::new(folder) {
-            let entry = entry.unwrap();
-            let spec = entry.path();
+            let init_file = output_folder.join("__init__.py");
+            std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(init_file)
+                .unwrap();
+        });
 
-            if spec.is_dir() {
-                // move logic to spec stack handling
-                // python dataclass codegen needs to generate __init__.py for each folder
-                let relative_path = spec.strip_prefix(folder).unwrap();
-                let output_folder = output.join(relative_path);
-                std::fs::create_dir_all(output_folder).unwrap();
-                let init_file = output.join(relative_path).join("__init__.py");
-                std::fs::OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .open(init_file)?;
-                continue;
-            }
-            if !spec.is_file() {
-                continue;
-            }
-            if !spec
-                .extension()
-                .map(|ext| ext == "yaml")
-                .unwrap_or_default()
-            {
-                continue;
-            }
+        for (spec_path, _) in context.iter_specs() {
+            let mut output = output.join(spec_path);
+            output.set_extension("py");
 
-            let relative_path = spec.strip_prefix(folder).unwrap();
-            spec_folder.insert(relative_path);
+            let parent_folder = output.parent().unwrap();
+            std::fs::create_dir_all(parent_folder)?;
 
-            let output = {
-                let mut output = output.clone();
-                output.push(relative_path);
-                output.set_extension("py");
-                output
-            };
+            let code = render(spec_path, &context)?;
 
-            {
-                let parent_folder = output.parent().unwrap();
-                std::fs::create_dir_all(parent_folder).unwrap();
-
-                let context = Context::new();
-                let code = render(spec, &context).unwrap();
-
-                std::fs::write(&output, code).unwrap();
-                println!("write output to {:?}", output);
-            }
+            std::fs::write(&output, code)?;
+            println!("write output to {:?}", output);
         }
         Ok(())
     }
 }
 
 fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
-    let def = context.load_from_yaml(spec_path)?;
-    let def = &def;
+    let def = context.get_definition(spec_path)?;
 
     let type_var_name = "type_";
 

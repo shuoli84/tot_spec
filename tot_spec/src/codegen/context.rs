@@ -1,32 +1,72 @@
+use crate::codegen::spec_folder::FolderTree;
 use crate::Definition;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use walkdir::WalkDir;
 
 /// Context stores use info for a codegen pass
 pub struct Context {
     /// All loaded definitions
-    definitions: Mutex<HashMap<PathBuf, Arc<Definition>>>,
+    definitions: HashMap<PathBuf, Definition>,
+
+    folder_tree: FolderTree,
+
+    root_folder: PathBuf,
 }
 
 impl Context {
-    pub fn new() -> Self {
-        Self {
-            definitions: Mutex::default(),
+    pub fn new_from_folder(folder: &PathBuf) -> anyhow::Result<Self> {
+        let mut definitions = HashMap::new();
+        let mut spec_folder = FolderTree::new();
+
+        for entry in WalkDir::new(folder) {
+            let entry = entry.unwrap();
+            let spec = entry.path();
+
+            if !spec.is_file() {
+                continue;
+            }
+            if !spec
+                .extension()
+                .map(|ext| ext == "yaml")
+                .unwrap_or_default()
+            {
+                continue;
+            }
+
+            let relative_path = spec.strip_prefix(folder).unwrap();
+            spec_folder.insert(relative_path);
+
+            let def = Definition::load_from_yaml(&spec)?;
+            definitions.insert(relative_path.to_owned(), def);
         }
+
+        Ok(Self {
+            definitions,
+            folder_tree: spec_folder,
+            root_folder: folder.clone(),
+        })
     }
 
-    pub fn load_from_yaml<'a>(&self, path: impl Into<PathBuf>) -> anyhow::Result<Arc<Definition>> {
-        let path = path.into();
+    /// get a ref to spec's root folder
+    pub fn root_folder(&self) -> &PathBuf {
+        &self.root_folder
+    }
 
-        let mut definitions = self.definitions.lock().unwrap();
+    /// get a ref to the `FolderTree`
+    pub fn folder_tree(&self) -> &FolderTree {
+        &self.folder_tree
+    }
 
-        if !definitions.contains_key(&path) {
-            let def = Definition::load_from_yaml(&path)?;
-            definitions.insert(path.clone(), Arc::new(def));
-        }
+    /// get a ref to definition for spec path, the spec should already loaded
+    /// panic if path not loaded
+    pub fn get_definition(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
+        Ok(self.definitions.get(path.as_ref()).unwrap())
+    }
 
-        Ok(definitions.get(&path).unwrap().clone())
+    /// get an iterator for all specs
+    pub fn iter_specs(&self) -> impl Iterator<Item = (&PathBuf, &Definition)> {
+        self.definitions.iter()
     }
 
     /// get the path for namespace
@@ -50,8 +90,8 @@ impl Context {
         namespace: &str,
         def: &Definition,
         spec_path: &Path,
-    ) -> anyhow::Result<Arc<Definition>> {
+    ) -> anyhow::Result<&Definition> {
         let path = self.get_include_path(namespace, def, spec_path)?;
-        self.load_from_yaml(path)
+        self.get_definition(path)
     }
 }

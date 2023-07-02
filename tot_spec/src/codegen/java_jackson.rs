@@ -2,7 +2,6 @@ use convert_case::Casing;
 
 use super::context::Context;
 use super::utils;
-use crate::codegen::spec_folder::SpecFolder;
 use crate::{ConstType, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference};
 use std::path::Path;
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
@@ -12,46 +11,19 @@ pub struct JavaJackson {}
 
 impl super::Codegen for JavaJackson {
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
-        let context = Context::new();
+        let context = Context::new_from_folder(folder)?;
 
-        use walkdir::WalkDir;
-
-        std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = SpecFolder::new();
-
-        for entry in WalkDir::new(folder) {
-            let entry = entry.unwrap();
-            let spec = entry.path();
-
-            if !spec.is_file() {
-                continue;
-            }
-            if !spec
-                .extension()
-                .map(|ext| ext == "yaml")
-                .unwrap_or_default()
-            {
-                continue;
-            }
-
-            let relative_path = spec.strip_prefix(folder)?;
-            spec_folder.insert(relative_path);
-
-            let output = output.clone();
-
-            let parent_folder = output.parent().unwrap();
-            std::fs::create_dir_all(parent_folder).unwrap();
-
-            render(&spec, &context, &output)?;
+        for (spec_path, _) in context.iter_specs() {
+            render(&spec_path, &context, &output)?;
         }
+
         Ok(())
     }
 }
 
 /// java does not export to a file, instead, it exports to a folder
 fn render(spec_path: &Path, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
-    let def = context.load_from_yaml(spec_path)?;
-    let def = &def;
+    let def = context.get_definition(spec_path)?;
 
     std::fs::create_dir_all(target_folder)?;
 

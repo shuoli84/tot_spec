@@ -1,4 +1,3 @@
-use crate::codegen::spec_folder::SpecFolder;
 use crate::{
     codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
     StringOrInteger, StructDef, Type, VariantDef,
@@ -14,53 +13,9 @@ pub struct RsSerde {}
 
 impl super::Codegen for RsSerde {
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
-        use walkdir::WalkDir;
+        let context = Context::new_from_folder(folder)?;
 
-        std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = SpecFolder::new();
-
-        for entry in WalkDir::new(folder) {
-            let entry = entry.unwrap();
-            let spec = entry.path();
-
-            if !spec.is_file() {
-                continue;
-            }
-            if !spec
-                .extension()
-                .map(|ext| ext == "yaml")
-                .unwrap_or_default()
-            {
-                continue;
-            }
-
-            let relative_path = spec.strip_prefix(folder).unwrap();
-            spec_folder.insert(relative_path);
-
-            let output = {
-                let mut output = output.clone();
-                output.push(relative_path);
-                output.set_extension("rs");
-                output
-            };
-
-            {
-                println!("generating spec={spec:?} output={output:?}");
-
-                let parent_folder = output.parent().unwrap();
-                std::fs::create_dir_all(parent_folder).unwrap();
-
-                let code = {
-                    let context = Context::new();
-                    render(&spec, &context).unwrap()
-                };
-
-                std::fs::write(&output, code).unwrap();
-                println!("write output to {:?}", output);
-            }
-        }
-
-        spec_folder.foreach_entry_recursively(|entry| {
+        context.folder_tree().foreach_entry_recursively(|entry| {
             let outputs = render_folder(entry).unwrap();
             for (file_relative_path, content) in outputs {
                 let file_path = output.join(file_relative_path);
@@ -68,6 +23,25 @@ impl super::Codegen for RsSerde {
                 std::fs::write(file_path, content).unwrap();
             }
         });
+
+        for (spec, _) in context.iter_specs() {
+            let output = {
+                let mut output = output.clone();
+                output.push(spec);
+                output.set_extension("rs");
+                output
+            };
+
+            println!("generating spec={spec:?} output={output:?}");
+
+            let parent_folder = output.parent().unwrap();
+            std::fs::create_dir_all(parent_folder)?;
+
+            let code = render(&spec, &context)?;
+
+            std::fs::write(&output, code).unwrap();
+            println!("write output to {:?}", output);
+        }
 
         Ok(())
     }
@@ -98,7 +72,7 @@ fn render_folder(entry: &Entry) -> anyhow::Result<Vec<(PathBuf, String)>> {
 }
 
 fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
-    let def = context.load_from_yaml(spec_path)?;
+    let def = context.get_definition(spec_path)?;
     let def = &def;
     let mut result = String::new();
 
@@ -602,7 +576,6 @@ fn to_identifier(name: &str) -> (Cow<str>, bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 
     #[test]
     fn test_render() {

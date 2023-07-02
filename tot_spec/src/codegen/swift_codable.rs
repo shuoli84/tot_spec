@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use crate::codegen::spec_folder::SpecFolder;
+use crate::codegen::spec_folder::FolderTree;
 use crate::{Definition, FieldDef, Type, TypeReference};
 
 use super::utils::{indent, multiline_prefix_with};
@@ -15,7 +15,7 @@ impl super::Codegen for SwiftCodable {
         use walkdir::WalkDir;
 
         std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = SpecFolder::new();
+        let mut spec_folder = FolderTree::new();
 
         for entry in WalkDir::new(folder) {
             let entry = entry.unwrap();
