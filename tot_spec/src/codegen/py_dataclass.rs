@@ -9,12 +9,7 @@ use super::utils::{self, indent, multiline_prefix_with};
 pub struct PyDataclass {}
 
 impl super::Codegen for PyDataclass {
-    fn generate_for_folder(
-        &self,
-        folder: &PathBuf,
-        codegen: &str,
-        output: &PathBuf,
-    ) -> anyhow::Result<()> {
+    fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
         use walkdir::WalkDir;
 
         std::fs::create_dir_all(output).unwrap();
@@ -59,7 +54,7 @@ impl super::Codegen for PyDataclass {
             };
 
             {
-                println!("generating codegen={codegen} spec={spec:?} output={output:?}");
+                println!("generating spec={spec:?} output={output:?}");
                 let spec_content = std::fs::read_to_string(spec).unwrap();
                 let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
 

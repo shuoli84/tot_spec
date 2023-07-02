@@ -37,6 +37,6 @@ fn main() -> anyhow::Result<()> {
         _ => anyhow::bail!("unknown codegen name"),
     };
 
-    codegen.generate_for_folder(&args.input, &args.codegen, &args.output)?;
+    codegen.generate_for_folder(&args.input, &args.output)?;
     Ok(())
 }
