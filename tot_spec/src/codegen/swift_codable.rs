@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use crate::codegen::spec_folder::{Entry, SpecFolder};
-use crate::{Context, Definition, FieldDef, Type, TypeReference};
+use crate::codegen::spec_folder::{SpecFolder};
+use crate::{Definition, FieldDef, Type, TypeReference};
 
 use super::utils::{indent, multiline_prefix_with};
 

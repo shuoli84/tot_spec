@@ -1,9 +1,9 @@
-use crate::codegen::spec_folder::{Entry, SpecFolder};
+use crate::codegen::spec_folder::{SpecFolder};
 use crate::{Context, Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use super::utils::{self, indent, multiline_prefix_with};
+use super::utils::{indent, multiline_prefix_with};
 
 #[derive(Default)]
 pub struct PyDataclass {}

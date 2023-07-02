@@ -1,7 +1,6 @@
 use clap::Parser;
 use tot_spec::codegen::{
-    java_jackson::JavaJackson, py_dataclass::PyDataclass, rs_serde::RsSerde,
-    spec_folder::SpecFolder, swift_codable::SwiftCodable, Codegen,
+    java_jackson::JavaJackson, py_dataclass::PyDataclass, rs_serde::RsSerde, swift_codable::SwiftCodable, Codegen,
 };
 
 #[derive(Parser, Debug)]

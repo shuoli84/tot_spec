@@ -1,6 +1,6 @@
 use convert_case::Casing;
 
-use crate::codegen::spec_folder::{Entry, SpecFolder};
+use crate::codegen::spec_folder::{SpecFolder};
 use crate::{
     ConstType, Context, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference,
 };
