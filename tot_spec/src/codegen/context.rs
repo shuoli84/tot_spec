@@ -7,19 +7,13 @@ use std::sync::{Arc, Mutex};
 pub struct Context {
     /// All loaded definitions
     definitions: Mutex<HashMap<PathBuf, Arc<Definition>>>,
-
-    /// The path for working definition
-    working_definition_path: PathBuf,
 }
 
 impl Context {
-    pub fn load_from_path(path: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let path = path.as_ref();
-
-        Ok(Self {
-            definitions: Default::default(),
-            working_definition_path: path.to_owned(),
-        })
+    pub fn new() -> Self {
+        Self {
+            definitions: Mutex::default(),
+        }
     }
 
     pub fn load_from_yaml<'a>(&self, path: impl Into<PathBuf>) -> anyhow::Result<Arc<Definition>> {
@@ -35,22 +29,19 @@ impl Context {
         Ok(definitions.get(&path).unwrap().clone())
     }
 
-    pub fn get_working_def_path(&self) -> PathBuf {
-        self.working_definition_path.clone()
-    }
-
     /// get the path for namespace
-    pub fn get_include_path(&self, namespace: &str, def: &Definition) -> anyhow::Result<PathBuf> {
+    pub fn get_include_path(
+        &self,
+        namespace: &str,
+        def: &Definition,
+        spec_path: &Path,
+    ) -> anyhow::Result<PathBuf> {
         let include = def
             .get_include(namespace)
             .ok_or_else(|| anyhow::anyhow!("{} not found", namespace))?;
 
         let relative_path = &include.path;
-        let included_def_path = self
-            .working_definition_path
-            .parent()
-            .unwrap()
-            .join(relative_path);
+        let included_def_path = spec_path.parent().unwrap().join(relative_path);
         Ok(included_def_path)
     }
 
@@ -58,8 +49,9 @@ impl Context {
         &self,
         namespace: &str,
         def: &Definition,
+        spec_path: &Path,
     ) -> anyhow::Result<Arc<Definition>> {
-        let path = self.get_include_path(namespace, def)?;
+        let path = self.get_include_path(namespace, def, spec_path)?;
         self.load_from_yaml(path)
     }
 }

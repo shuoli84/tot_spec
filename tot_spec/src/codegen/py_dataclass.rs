@@ -1,7 +1,7 @@
 use crate::codegen::spec_folder::SpecFolder;
 use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::context::Context;
 use super::utils::{indent, multiline_prefix_with};
@@ -55,15 +55,11 @@ impl super::Codegen for PyDataclass {
             };
 
             {
-                println!("generating spec={spec:?} output={output:?}");
-                let spec_content = std::fs::read_to_string(spec).unwrap();
-                let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
-
                 let parent_folder = output.parent().unwrap();
                 std::fs::create_dir_all(parent_folder).unwrap();
 
-                let context = Context::load_from_path(spec).unwrap();
-                let code = render(&def, &context).unwrap();
+                let context = Context::new();
+                let code = render(spec, &context).unwrap();
 
                 std::fs::write(&output, code).unwrap();
                 println!("write output to {:?}", output);
@@ -73,7 +69,10 @@ impl super::Codegen for PyDataclass {
     }
 }
 
-pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
+fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
+    let def = context.load_from_yaml(spec_path)?;
+    let def = &def;
+
     let type_var_name = "type_";
 
     let mut result = String::new();
@@ -89,11 +88,14 @@ pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
 
     // generate import for includes
     for include in def.includes.iter() {
-        let include_path = context.get_include_path(&include.namespace, def).unwrap();
-        let working_def_path = context.get_working_def_path();
-        let relative_path = pathdiff::diff_paths(&include_path, working_def_path).unwrap();
+        let include_path = context.get_include_path(&include.namespace, def, spec_path)?;
+        let relative_path = pathdiff::diff_paths(&include_path, spec_path).unwrap();
 
-        let include_name = relative_path.file_stem().unwrap().to_str().unwrap();
+        let include_name = relative_path
+            .file_stem()
+            .ok_or_else(|| anyhow::anyhow!("failed to load file stem, {relative_path:?}"))?
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("fail to convert name to str"))?;
 
         let mut import_stmt = "from ".to_string();
         let components = relative_path.components().collect::<Vec<_>>();
@@ -708,10 +710,8 @@ mod tests {
         ];
 
         for (spec, expected) in specs.iter() {
-            let context = Context::load_from_path(spec).unwrap();
-            let def = context.load_from_yaml(spec).unwrap();
-
-            let rendered = render(&def, &context).unwrap();
+            let context = Context::new();
+            let rendered = render(PathBuf::from(spec).as_path(), &context).unwrap();
 
             let expected_code = std::fs::read_to_string(expected).unwrap();
             #[cfg(not(feature = "test_update_spec"))]

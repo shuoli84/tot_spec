@@ -64,7 +64,7 @@ impl super::Codegen for SwiftCodable {
 }
 
 /// render the definition to a swift file
-pub fn render(def: &Definition) -> anyhow::Result<String> {
+fn render(def: &Definition) -> anyhow::Result<String> {
     let meta = def.get_meta("swift_codable");
 
     let package_name = meta
