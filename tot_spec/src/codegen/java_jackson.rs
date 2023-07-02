@@ -1,12 +1,10 @@
 use convert_case::Casing;
 
-use crate::codegen::spec_folder::{SpecFolder};
-use crate::{
-    ConstType, Context, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference,
-};
-use std::{borrow::Cow, fmt::Write, path::PathBuf};
-
+use super::context::Context;
 use super::utils;
+use crate::codegen::spec_folder::SpecFolder;
+use crate::{ConstType, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference};
+use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 #[derive(Default)]
 pub struct JavaJackson {}

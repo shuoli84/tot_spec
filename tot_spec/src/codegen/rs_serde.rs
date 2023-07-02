@@ -1,10 +1,11 @@
 use crate::codegen::spec_folder::SpecFolder;
 use crate::{
-    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, Context, FieldDef,
-    ModelDef, StringOrInteger, StructDef, Type, VariantDef,
+    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
+    StringOrInteger, StructDef, Type, VariantDef,
 };
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
+use super::context::Context;
 use super::{spec_folder::Entry, utils::multiline_prefix_with};
 
 #[derive(Default)]
@@ -600,6 +601,7 @@ fn to_identifier(name: &str) -> (Cow<str>, bool) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::models::*;
 
     #[test]

@@ -1,8 +1,9 @@
-use crate::codegen::spec_folder::{SpecFolder};
-use crate::{Context, Definition, FieldDef, StringOrInteger, Type, TypeReference};
+use crate::codegen::spec_folder::SpecFolder;
+use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 use std::path::PathBuf;
 
+use super::context::Context;
 use super::utils::{indent, multiline_prefix_with};
 
 #[derive(Default)]
