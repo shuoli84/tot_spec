@@ -1,4 +1,4 @@
-use super::context::Context;
+
 use super::Codegen;
 use std::path::PathBuf;
 
@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub struct Swagger {}
 
 impl Codegen for Swagger {
-    fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
+    fn generate_for_folder(&self, _folder: &PathBuf, _output: &PathBuf) -> anyhow::Result<()> {
         // let context = Context::load_from_path()?;
         Ok(())
     }

@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, HashMap},
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    collections::{BTreeMap},
+    path::{Path},
 };
 
 /// Parse context
