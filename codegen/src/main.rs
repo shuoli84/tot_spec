@@ -1,6 +1,7 @@
 use clap::Parser;
 use tot_spec::codegen::{
-    java_jackson::JavaJackson, py_dataclass::PyDataclass, rs_serde::RsSerde, swift_codable::SwiftCodable, Codegen,
+    java_jackson::JavaJackson, py_dataclass::PyDataclass, rs_serde::RsSerde,
+    swift_codable::SwiftCodable, Codegen,
 };
 
 #[derive(Parser, Debug)]
@@ -36,6 +37,8 @@ fn main() -> anyhow::Result<()> {
         _ => anyhow::bail!("unknown codegen name"),
     };
 
-    codegen.generate_for_folder(&args.input, &args.output)?;
+    let output = std::fs::canonicalize(args.output).unwrap();
+
+    codegen.generate_for_folder(&args.input, &output)?;
     Ok(())
 }

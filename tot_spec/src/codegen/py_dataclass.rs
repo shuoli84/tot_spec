@@ -14,6 +14,10 @@ impl super::Codegen for PyDataclass {
 
         context.folder_tree().foreach_entry_recursively(|entry| {
             // python dataclass codegen needs to generate __init__.py for each folder
+            if entry.is_empty() {
+                return;
+            }
+
             let output_folder = output.join(entry.path());
             std::fs::create_dir_all(&output_folder).unwrap();
 
