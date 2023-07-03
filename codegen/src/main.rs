@@ -1,4 +1,5 @@
 use clap::Parser;
+use tot_spec::codegen::swagger::Swagger;
 use tot_spec::codegen::{
     java_jackson::JavaJackson, py_dataclass::PyDataclass, rs_serde::RsSerde,
     swift_codable::SwiftCodable, Codegen,
@@ -34,6 +35,7 @@ fn main() -> anyhow::Result<()> {
         "java_jackson" => Box::new(JavaJackson::default()),
         "swift_codable" => Box::new(SwiftCodable::default()),
         "py_dataclass" => Box::new(PyDataclass::default()),
+        "swagger" => Box::new(Swagger::default()),
         _ => anyhow::bail!("unknown codegen name"),
     };
 
