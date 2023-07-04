@@ -70,12 +70,8 @@ impl Context {
     }
 
     /// get the path for namespace
-    pub fn get_include_path(
-        &self,
-        namespace: &str,
-        def: &Definition,
-        spec_path: &Path,
-    ) -> anyhow::Result<PathBuf> {
+    pub fn get_include_path(&self, namespace: &str, spec_path: &Path) -> anyhow::Result<PathBuf> {
+        let def = self.get_definition(spec_path)?;
         let include = def
             .get_include(namespace)
             .ok_or_else(|| anyhow::anyhow!("{} not found", namespace))?;
@@ -88,10 +84,9 @@ impl Context {
     pub fn load_include_def(
         &self,
         namespace: &str,
-        def: &Definition,
         spec_path: &Path,
     ) -> anyhow::Result<&Definition> {
-        let path = self.get_include_path(namespace, def, spec_path)?;
+        let path = self.get_include_path(namespace, spec_path)?;
         self.get_definition(path)
     }
 }

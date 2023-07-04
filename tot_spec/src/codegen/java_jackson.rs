@@ -321,7 +321,7 @@ fn java_type_for_type_reference(
     let TypeReference { namespace, target } = type_ref;
     let fqdn_target = match namespace {
         Some(namespace) => {
-            let include_def = context.load_include_def(namespace, def, spec_path)?;
+            let include_def = context.load_include_def(namespace, spec_path)?;
             let package = java_package_for_def(&include_def);
             format!("{package}.{target}")
         }

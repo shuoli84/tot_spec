@@ -63,7 +63,7 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
 
     // generate import for includes
     for include in def.includes.iter() {
-        let include_path = context.get_include_path(&include.namespace, def, spec_path)?;
+        let include_path = context.get_include_path(&include.namespace, spec_path)?;
         let relative_path = pathdiff::diff_paths(&include_path, spec_path).unwrap();
 
         let include_name = relative_path

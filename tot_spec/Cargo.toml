@@ -8,14 +8,13 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
-serde_json = "1.0"
 anyhow = "1.0"
 prettyplease = "0.2"
 convert_case = "0.6"
 syn = { version = "2.0.17", features = ["full"] }
 pathdiff = "0.2"
 walkdir = "2.3.3"
-openapi = "0.1.5"
+openapiv3 = "1.0"
 
 [dev-dependencies]
 serde_json = "1.0"

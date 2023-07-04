@@ -1,0 +1,91 @@
+openapi: 3.0.0
+info:
+  title: DCU catalog
+  version: ''
+paths: {}
+components:
+  schemas:
+    SimpleStruct:
+      type: object
+      properties:
+        bool_value:
+          type: boolean
+        i8_value:
+          nullable: true
+          description: I8
+          type: integer
+          format: int32
+        i16_value:
+          nullable: true
+          description: I16
+          type: integer
+          format: int32
+        i32_value:
+          nullable: true
+          description: I32
+          type: integer
+          format: int32
+        i64_value:
+          nullable: true
+          description: I64
+          type: integer
+          format: int64
+        decimal_value:
+          description: Decimal
+          type: string
+        bigint_value:
+          description: BigInt
+          type: string
+        string_value:
+          description: String
+          type: string
+        bytes_value:
+          description: Bytes
+          type: string
+        string_to_string:
+          description: 'Map { value_type: String }'
+          type: object
+          additionalProperties: true
+        key_values:
+          $ref: '#/components/schemas/KeyValue'
+        children_container:
+          $ref: '#/components/schemas/Container'
+        children:
+          description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "SimpleStruct" })) }'
+          type: array
+          items:
+            $ref: '#/components/schemas/SimpleStruct'
+    KeyValue:
+      description: 'Map { value_type: Bytes }'
+      example: |
+        {
+          "foo": "bar"
+        }
+      type: object
+      additionalProperties: true
+    Container:
+      description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "SimpleStruct" })) }'
+      type: array
+      items:
+        $ref: '#/components/schemas/SimpleStruct'
+    RealNumber:
+      type: object
+      properties:
+        real:
+          description: F64
+          type: number
+          format: double
+        imagine:
+          description: F64
+          type: number
+          format: double
+    AddRequest:
+      type: object
+      properties:
+        numbers:
+          description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "Number" })) }'
+          type: array
+          items:
+            $ref: '#/components/schemas/Number'
+    ResetRequest:
+      type: object
