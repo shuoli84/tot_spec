@@ -2,7 +2,41 @@ openapi: 3.0.0
 info:
   title: ''
   version: ''
-paths: {}
+paths:
+  Add:
+    post:
+      summary: Add
+      description: returns sum of numbers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddRequest'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddResponse'
+  Reset:
+    post:
+      summary: Reset
+      description: do nothing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetRequest'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetResponse'
 components:
   schemas:
     SimpleStruct:
@@ -93,5 +127,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Number'
+    AddResponse:
+      type: object
+      properties:
+        result:
+          $ref: '#/components/schemas/Number'
     ResetRequest:
+      type: object
+    ResetResponse:
       type: object

@@ -2,8 +2,10 @@ use super::Codegen;
 use crate::codegen::context::Context;
 use crate::{FieldDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
+use indexmap::IndexMap;
 use openapiv3::{
-    AdditionalProperties, Components, Info, OpenAPI, ReferenceOr, Schema, SchemaData, SchemaKind,
+    AdditionalProperties, Components, Info, MediaType, OpenAPI, Operation, PathItem, ReferenceOr,
+    RequestBody, Response, Responses, Schema, SchemaData, SchemaKind,
 };
 use std::path::{Component, PathBuf};
 
@@ -51,6 +53,75 @@ impl Swagger {
         openapi_spec: &mut OpenAPI,
     ) -> anyhow::Result<()> {
         let def = context.get_definition(spec)?;
+
+        for method in &def.methods {
+            let path_name = method.name.clone();
+
+            let mut response_map = IndexMap::default();
+            response_map.insert(
+                openapiv3::StatusCode::Code(200),
+                ReferenceOr::Item(Response {
+                    description: "".to_string(),
+                    content: {
+                        let mut content_map = IndexMap::new();
+                        content_map.insert(
+                            "application/json".into(),
+                            MediaType {
+                                schema: Some(type_to_schema(
+                                    &method.response.0,
+                                    true,
+                                    spec,
+                                    context,
+                                )?),
+                                example: None,
+                                examples: Default::default(),
+                                ..Default::default()
+                            },
+                        );
+                        content_map
+                    },
+                    ..Default::default()
+                }),
+            );
+
+            let path_item = ReferenceOr::Item(PathItem {
+                post: Some(Operation {
+                    summary: method.name.to_string().into(),
+                    description: method.desc.clone(),
+                    request_body: Some(ReferenceOr::Item(RequestBody {
+                        description: None,
+                        content: {
+                            let mut content_map = IndexMap::new();
+                            content_map.insert(
+                                "application/json".into(),
+                                MediaType {
+                                    schema: Some(type_to_schema(
+                                        &method.request.0,
+                                        true,
+                                        spec,
+                                        context,
+                                    )?),
+                                    ..Default::default()
+                                },
+                            );
+                            content_map
+                        },
+                        required: true,
+                        ..Default::default()
+                    })),
+                    responses: Responses {
+                        default: None,
+                        responses: response_map,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }),
+                servers: vec![],
+                ..Default::default()
+            });
+
+            openapi_spec.paths.paths.insert(path_name, path_item);
+        }
 
         for model in def.models.iter() {
             let model_desc = model.desc.clone();

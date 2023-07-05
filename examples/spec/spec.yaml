@@ -126,10 +126,23 @@ models:
       attributes: {}
       required: false
 
+- name: AddResponse
+  type:
+    name: struct
+    fields:
+      - name: result
+        type: Number
+        required: true
+
 - name: ResetRequest
   type:
     name: struct
     extend: BaseRequest
+
+- name: ResetResponse
+  type:
+    name: struct
+    fields: []
 
 - name: ConstInteger
   type:
@@ -140,3 +153,14 @@ models:
         value: 1
       - name: Value2
         value: 2
+
+methods:
+  - name: Add
+    desc: returns sum of numbers
+    request: AddRequest
+    response: AddResponse
+
+  - name: Reset
+    desc: do nothing
+    request: ResetRequest
+    response: ResetResponse

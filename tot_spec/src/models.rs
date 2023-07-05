@@ -1,17 +1,20 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap},
-    path::{Path},
-};
+use std::{collections::BTreeMap, path::Path};
 
 /// Parse context
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Definition {
+    /// includes, one spec can include any number of other specs,
+    /// and use type reference in the included spec
     pub includes: Vec<Include>,
-    /// meta can provide keyvalue metadata for codegen
+    /// meta can provide Key Value metadata for codegen
     pub meta: BTreeMap<String, BTreeMap<String, String>>,
+    /// model definitions
     pub models: Vec<ModelDef>,
+    /// method definitions
+    /// NOTE: each codegen can decide whether generate code for `methods`
+    pub methods: Vec<MethodDef>,
 }
 
 impl Definition {
@@ -63,6 +66,19 @@ pub struct Include {
     ///   "use {rs_mod} as {namespace};"
     #[serde(default)]
     pub attributes: BTreeMap<String, String>,
+}
+
+/// Method
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodDef {
+    /// name of the method
+    pub name: String,
+    /// description of the method
+    pub desc: Option<String>,
+    /// request type
+    pub request: serde_helper::StringOrStruct<Type>,
+    /// response type
+    pub response: serde_helper::StringOrStruct<Type>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
