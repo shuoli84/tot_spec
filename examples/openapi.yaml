@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: DCU catalog
+  title: ''
   version: ''
 paths: {}
 components:
@@ -57,10 +57,6 @@ components:
             $ref: '#/components/schemas/SimpleStruct'
     KeyValue:
       description: 'Map { value_type: Bytes }'
-      example: |
-        {
-          "foo": "bar"
-        }
       type: object
       additionalProperties: true
     Container:
@@ -79,6 +75,16 @@ components:
           description: F64
           type: number
           format: double
+    Number:
+      title: Number
+      oneOf:
+      - description: I64
+        type: integer
+        format: int64
+      - description: F64
+        type: number
+        format: double
+      - $ref: '#/components/schemas/RealNumber'
     AddRequest:
       type: object
       properties:

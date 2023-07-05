@@ -1,6 +1,6 @@
 use super::Codegen;
 use crate::codegen::context::Context;
-use crate::{ModelType, Type, TypeReference};
+use crate::{FieldDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use openapiv3::{
     AdditionalProperties, Components, Info, OpenAPI, ReferenceOr, Schema, SchemaData, SchemaKind,
@@ -18,8 +18,9 @@ impl Codegen for Swagger {
             openapi: "3.0.0".to_string(),
             ..OpenAPI::default()
         };
+        // load info from config
         openapi_spec.info = Info {
-            title: "DCU catalog".to_string(),
+            title: "".to_string(),
             description: None,
             terms_of_service: None,
             contact: None,
@@ -53,23 +54,15 @@ impl Swagger {
 
         for model in def.models.iter() {
             let model_desc = model.desc.clone();
+            let model_name = &model.name;
 
             let schema = match &model.type_ {
                 ModelType::Struct(st_) => {
                     let mut object_type = openapiv3::ObjectType::default();
 
-                    for field in st_.fields.iter() {
-                        let field_schema =
-                            type_to_schema(&field.type_, field.required, spec, context)?;
-                        object_type.properties.insert(
-                            field.name.to_string(),
-                            match field_schema {
-                                ReferenceOr::Reference { reference } => {
-                                    ReferenceOr::Reference { reference }
-                                }
-                                ReferenceOr::Item(item) => ReferenceOr::boxed_item(item),
-                            },
-                        );
+                    let properties = fields_to_properties(&st_.fields, spec, context)?;
+                    for (name, property_schema) in properties {
+                        object_type.properties.insert(name, property_schema);
                     }
 
                     ReferenceOr::Item(Schema {
@@ -81,10 +74,24 @@ impl Swagger {
                     })
                 }
                 ModelType::Enum { ref variants } => {
-                    // let mut variants = vec![];
-                    // for variant in variants.iter() {}
+                    let mut variant_schemas = vec![];
+                    for variant in variants.iter() {
+                        // todo: enum variant embeded should converge to a separate model def
+                        let payload_type = variant.payload_type.as_ref().unwrap();
+                        let variant_schema = type_to_schema(&payload_type.0, true, spec, context)?;
+                        variant_schemas.push(variant_schema);
+                    }
 
-                    continue;
+                    ReferenceOr::Item(Schema {
+                        schema_kind: SchemaKind::OneOf {
+                            one_of: variant_schemas,
+                        },
+                        schema_data: SchemaData {
+                            title: Some(model_name.clone()),
+                            description: model_desc,
+                            ..Default::default()
+                        },
+                    })
                 }
                 ModelType::Virtual(_) => {
                     continue;
@@ -247,4 +254,25 @@ fn model_fqdn(spec_path: &PathBuf, model_name: &str) -> String {
     } else {
         model_name.to_string()
     }
+}
+
+fn fields_to_properties(
+    fields: &[FieldDef],
+    spec: &PathBuf,
+    context: &Context,
+) -> anyhow::Result<Vec<(String, ReferenceOr<Box<Schema>>)>> {
+    let mut properties = vec![];
+
+    for field in fields.iter() {
+        let field_schema = type_to_schema(&field.type_, field.required, spec, context)?;
+        properties.push((
+            field.name.to_string(),
+            match field_schema {
+                ReferenceOr::Reference { reference } => ReferenceOr::Reference { reference },
+                ReferenceOr::Item(item) => ReferenceOr::boxed_item(item),
+            },
+        ));
+    }
+
+    Ok(properties)
 }
