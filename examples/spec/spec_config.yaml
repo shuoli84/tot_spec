@@ -9,3 +9,14 @@ codegen:
 
       - url: https://demo.com/api
         description: demo site
+
+    method:
+      # spec as method is a convention based method def
+      # each spec file exposes Request and Response, and method
+      # name is determined by relative path
+      spec_as_method:
+        enable: true
+        path_separator: .
+        request_model: Request
+        response_model: Response
+        desc_path: api.desc

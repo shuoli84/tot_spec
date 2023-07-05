@@ -10,6 +10,23 @@ servers:
 - url: https://demo.com/api
   description: demo site
 paths:
+  /:
+    post:
+      summary: ''
+      description: default api's description
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Request'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
   /Add:
     post:
       summary: Add
@@ -143,3 +160,19 @@ components:
       type: object
     ResetResponse:
       type: object
+    Request:
+      description: used as swagger's spec_ad_method request
+      type: object
+      properties:
+        value:
+          description: I64
+          type: integer
+          format: int64
+    Response:
+      description: used as swagger's spec_ad_method response
+      type: object
+      properties:
+        value:
+          description: I64
+          type: integer
+          format: int64

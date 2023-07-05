@@ -1,6 +1,6 @@
 use super::Codegen;
 use crate::codegen::context::Context;
-use crate::{FieldDef, ModelType, Type, TypeReference};
+use crate::{FieldDef, MethodDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use openapiv3::{
@@ -20,6 +20,51 @@ struct CodegenConfig {
 
     /// servers
     servers: Vec<openapiv3::Server>,
+
+    /// method related config
+    method: MethodConfig,
+}
+
+#[derive(Default, Debug, Deserialize, Serialize)]
+pub struct MethodConfig {
+    #[serde(default)]
+    spec_as_method: SpecAsMethodConfig,
+}
+
+#[derive(Default, Debug, Deserialize, Serialize)]
+pub struct SpecAsMethodConfig {
+    #[serde(default = "serde_default::bool_false")]
+    enable: bool,
+
+    #[serde(default = "serde_default::default_path_separator")]
+    path_separator: String,
+
+    #[serde(default = "serde_default::default_request_model")]
+    request_model: String,
+
+    #[serde(default = "serde_default::default_response_model")]
+    response_model: String,
+
+    /// the path to retrieve method desc
+    desc_path: Option<String>,
+}
+
+mod serde_default {
+    pub(super) fn bool_false() -> bool {
+        false
+    }
+
+    pub(super) fn default_path_separator() -> String {
+        "/".into()
+    }
+
+    pub(super) fn default_request_model() -> String {
+        "Request".into()
+    }
+
+    pub(super) fn default_response_model() -> String {
+        "Response".into()
+    }
 }
 
 #[derive(Default)]
@@ -59,6 +104,7 @@ impl Codegen for Swagger {
             servers: config.servers.clone(),
             ..OpenAPI::default()
         };
+
         // load info from config
         openapi_spec.info = Info {
             title: config.title.clone(),
@@ -90,11 +136,52 @@ impl Swagger {
         spec: &PathBuf,
         context: &Context,
         openapi_spec: &mut OpenAPI,
-        _config: &CodegenConfig,
+        config: &CodegenConfig,
     ) -> anyhow::Result<()> {
         let def = context.get_definition(spec)?;
 
-        for method in &def.methods {
+        let mut methods = def.methods.clone();
+
+        // construct methods dynamically
+        if config.method.spec_as_method.enable {
+            let mut method_desc: Option<String> = None;
+            if let Some(desc_path) = &config.method.spec_as_method.desc_path {
+                let mut components = desc_path.split('.');
+                let c1 = components
+                    .next()
+                    .expect("path should in format meta_name.field_name");
+                let c2 = components
+                    .next()
+                    .expect("path should in format meta_name.field_name");
+
+                if let Some(desc) = def.get_meta(c1).get(c2) {
+                    method_desc = desc.clone().into();
+                }
+            }
+
+            let components = spec.components().collect::<Vec<_>>();
+            let method_name = components
+                .iter()
+                .take(components.len() - 1)
+                .map(|c| match c {
+                    Component::Normal(name) => name.to_string_lossy(),
+                    _ => {
+                        unimplemented!()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(&config.method.spec_as_method.path_separator);
+
+            let method_value = serde_json::json!({
+                "name": method_name,
+                "desc": method_desc,
+                "request": config.method.spec_as_method.request_model,
+                "response": config.method.spec_as_method.response_model,
+            });
+            methods.push(serde_json::from_value::<MethodDef>(dbg!(method_value))?);
+        }
+
+        for method in &methods {
             let method_name = method.name.clone();
 
             let mut response_map = IndexMap::default();

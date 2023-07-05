@@ -3,6 +3,8 @@ meta:
     package_name: SpecModel
   java_jackson:
     package: com.tot_spec.example
+  api:
+    desc: default api's description
 
 models:
 - name: SimpleStruct
@@ -153,6 +155,24 @@ models:
         value: 1
       - name: Value2
         value: 2
+
+- name: Request
+  desc: used as swagger's spec_ad_method request
+  type:
+    name: struct
+    fields:
+      - name: value
+        type: i64
+        required: true
+
+- name: Response
+  desc: used as swagger's spec_ad_method response
+  type:
+    name: struct
+    fields:
+      - name: value
+        type: i64
+        required: true
 
 methods:
   - name: Add
