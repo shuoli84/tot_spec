@@ -12,10 +12,14 @@ use std::path::{Component, PathBuf};
 
 #[derive(Default, Debug, Deserialize, Serialize)]
 struct CodegenConfig {
+    /// title
     title: String,
 
-    /// path prefix
-    path_prefix: String,
+    /// description
+    description: Option<String>,
+
+    /// servers
+    servers: Vec<openapiv3::Server>,
 }
 
 #[derive(Default)]
@@ -52,12 +56,13 @@ impl Codegen for Swagger {
 
         let mut openapi_spec = OpenAPI {
             openapi: "3.0.0".to_string(),
+            servers: config.servers.clone(),
             ..OpenAPI::default()
         };
         // load info from config
         openapi_spec.info = Info {
             title: config.title.clone(),
-            description: None,
+            description: config.description.clone(),
             terms_of_service: None,
             contact: None,
             license: None,
@@ -85,19 +90,12 @@ impl Swagger {
         spec: &PathBuf,
         context: &Context,
         openapi_spec: &mut OpenAPI,
-        config: &CodegenConfig,
+        _config: &CodegenConfig,
     ) -> anyhow::Result<()> {
         let def = context.get_definition(spec)?;
 
         for method in &def.methods {
-            let path_name = format!(
-                "{}/{}",
-                config
-                    .path_prefix
-                    .strip_suffix('/')
-                    .unwrap_or(&config.path_prefix),
-                method.name
-            );
+            let method_name = method.name.clone();
 
             let mut response_map = IndexMap::default();
             response_map.insert(
@@ -162,7 +160,10 @@ impl Swagger {
                 ..Default::default()
             });
 
-            openapi_spec.paths.paths.insert(path_name, path_item);
+            openapi_spec
+                .paths
+                .paths
+                .insert(format!("/{method_name}"), path_item);
         }
 
         for model in def.models.iter() {

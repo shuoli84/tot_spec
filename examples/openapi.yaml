@@ -1,9 +1,16 @@
 openapi: 3.0.0
 info:
   title: Title for swagger codegen
+  description: |
+    # Description can be input as markdown
   version: ''
+servers:
+- url: https://example.com/api
+  description: example site
+- url: https://demo.com/api
+  description: demo site
 paths:
-  /api/Add:
+  /Add:
     post:
       summary: Add
       description: returns sum of numbers
@@ -20,7 +27,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AddResponse'
-  /api/Reset:
+  /Reset:
     post:
       summary: Reset
       description: do nothing

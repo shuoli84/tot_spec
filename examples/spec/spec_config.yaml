@@ -1,4 +1,11 @@
 codegen:
   swagger:
     title: "Title for swagger codegen"
-    path_prefix: /api/
+    description: |
+      # Description can be input as markdown
+    servers:
+      - url: https://example.com/api
+        description: example site
+
+      - url: https://demo.com/api
+        description: demo site
