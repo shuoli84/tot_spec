@@ -7,13 +7,47 @@ use openapiv3::{
     AdditionalProperties, Components, Info, MediaType, OpenAPI, Operation, PathItem, ReferenceOr,
     RequestBody, Response, Responses, Schema, SchemaData, SchemaKind,
 };
+use serde::{Deserialize, Serialize};
 use std::path::{Component, PathBuf};
+
+#[derive(Default, Debug, Deserialize, Serialize)]
+struct CodegenConfig {
+    title: String,
+
+    /// path prefix
+    path_prefix: String,
+}
 
 #[derive(Default)]
 pub struct Swagger {}
 
+impl Swagger {
+    fn load_config(config_file: &PathBuf) -> anyhow::Result<Option<CodegenConfig>> {
+        let config_content = std::fs::read_to_string(config_file)
+            .map_err(|_| anyhow::anyhow!("not able to read spec_config.yaml from folder"))?;
+        let config_value =
+            serde_yaml::from_str::<serde_json::Map<String, serde_json::Value>>(&config_content)?;
+        let Some(codegen_value) = config_value.get("codegen") else {
+            return Ok(None)
+        };
+
+        assert!(codegen_value.is_object());
+
+        let Some(swagger_value) = codegen_value.as_object().unwrap().get("swagger") else {
+            return Ok(None)
+        };
+
+        let swagger_config = serde_json::from_value::<CodegenConfig>(swagger_value.to_owned())?;
+
+        Ok(Some(swagger_config))
+    }
+}
+
 impl Codegen for Swagger {
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
+        // load codegen config from spec_config.yaml file
+        let config = Swagger::load_config(&folder.join("spec_config.yaml"))?.unwrap_or_default();
+
         let context = Context::new_from_folder(folder)?;
 
         let mut openapi_spec = OpenAPI {
@@ -22,18 +56,18 @@ impl Codegen for Swagger {
         };
         // load info from config
         openapi_spec.info = Info {
-            title: "".to_string(),
+            title: config.title.clone(),
             description: None,
             terms_of_service: None,
             contact: None,
             license: None,
             version: "".to_string(),
-            extensions: Default::default(),
+            ..Default::default()
         };
         openapi_spec.components = Some(Components::default());
 
         for (spec, _) in context.iter_specs() {
-            self.render_one_spec(spec, &context, &mut openapi_spec)?;
+            self.render_one_spec(spec, &context, &mut openapi_spec, &config)?;
         }
 
         let output_file = output.join("openapi.yaml");
@@ -51,11 +85,19 @@ impl Swagger {
         spec: &PathBuf,
         context: &Context,
         openapi_spec: &mut OpenAPI,
+        config: &CodegenConfig,
     ) -> anyhow::Result<()> {
         let def = context.get_definition(spec)?;
 
         for method in &def.methods {
-            let path_name = method.name.clone();
+            let path_name = format!(
+                "{}/{}",
+                config
+                    .path_prefix
+                    .strip_suffix('/')
+                    .unwrap_or(&config.path_prefix),
+                method.name
+            );
 
             let mut response_map = IndexMap::default();
             response_map.insert(

@@ -1,0 +1,4 @@
+codegen:
+  swagger:
+    title: "Title for swagger codegen"
+    path_prefix: /api/

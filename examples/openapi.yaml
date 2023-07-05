@@ -1,9 +1,9 @@
 openapi: 3.0.0
 info:
-  title: ''
+  title: Title for swagger codegen
   version: ''
 paths:
-  Add:
+  /api/Add:
     post:
       summary: Add
       description: returns sum of numbers
@@ -20,7 +20,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AddResponse'
-  Reset:
+  /api/Reset:
     post:
       summary: Reset
       description: do nothing
