@@ -71,6 +71,12 @@ impl BaseRequest for AddRequest {
     }
 }
 
+/// AddResponse
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct AddResponse {
+    pub result: Number,
+}
+
 /// ResetRequest
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ResetRequest {
@@ -87,6 +93,10 @@ impl BaseRequest for ResetRequest {
         std::mem::replace(&mut self.request_id, value)
     }
 }
+
+/// ResetResponse
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ResetResponse {}
 
 /// ConstInteger
 #[derive(
@@ -117,4 +127,16 @@ impl ConstInteger {
 impl ConstInteger {
     pub const VALUE_1: ConstInteger = ConstInteger(1);
     pub const VALUE_2: ConstInteger = ConstInteger(2);
+}
+
+/// used as swagger's spec_ad_method request
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Request {
+    pub value: i64,
+}
+
+/// used as swagger's spec_ad_method response
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Response {
+    pub value: i64,
 }

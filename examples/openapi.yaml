@@ -10,23 +10,6 @@ servers:
 - url: https://demo.com/api
   description: demo site
 paths:
-  /:
-    post:
-      summary: ''
-      description: default api's description
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Request'
-        required: true
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
   /Add:
     post:
       summary: Add
@@ -35,7 +18,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddRequest'
+              $ref: '#/components/schemas/spec_AddRequest'
         required: true
       responses:
         '200':
@@ -43,7 +26,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AddResponse'
+                $ref: '#/components/schemas/spec_AddResponse'
   /Reset:
     post:
       summary: Reset
@@ -52,7 +35,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ResetRequest'
+              $ref: '#/components/schemas/spec_ResetRequest'
         required: true
       responses:
         '200':
@@ -60,10 +43,27 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ResetResponse'
+                $ref: '#/components/schemas/spec_ResetResponse'
+  /spec:
+    post:
+      summary: spec
+      description: default api's description
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/spec_Request'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/spec_Response'
 components:
   schemas:
-    SimpleStruct:
+    spec_SimpleStruct:
       type: object
       properties:
         bool_value:
@@ -105,24 +105,24 @@ components:
           type: object
           additionalProperties: true
         key_values:
-          $ref: '#/components/schemas/KeyValue'
+          $ref: '#/components/schemas/spec_KeyValue'
         children_container:
-          $ref: '#/components/schemas/Container'
+          $ref: '#/components/schemas/spec_Container'
         children:
           description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "SimpleStruct" })) }'
           type: array
           items:
-            $ref: '#/components/schemas/SimpleStruct'
-    KeyValue:
+            $ref: '#/components/schemas/spec_SimpleStruct'
+    spec_KeyValue:
       description: 'Map { value_type: Bytes }'
       type: object
       additionalProperties: true
-    Container:
+    spec_Container:
       description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "SimpleStruct" })) }'
       type: array
       items:
-        $ref: '#/components/schemas/SimpleStruct'
-    RealNumber:
+        $ref: '#/components/schemas/spec_SimpleStruct'
+    spec_RealNumber:
       type: object
       properties:
         real:
@@ -133,8 +133,8 @@ components:
           description: F64
           type: number
           format: double
-    Number:
-      title: Number
+    spec_Number:
+      title: spec_Number
       oneOf:
       - description: I64
         type: integer
@@ -142,25 +142,25 @@ components:
       - description: F64
         type: number
         format: double
-      - $ref: '#/components/schemas/RealNumber'
-    AddRequest:
+      - $ref: '#/components/schemas/spec_RealNumber'
+    spec_AddRequest:
       type: object
       properties:
         numbers:
           description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "Number" })) }'
           type: array
           items:
-            $ref: '#/components/schemas/Number'
-    AddResponse:
+            $ref: '#/components/schemas/spec_Number'
+    spec_AddResponse:
       type: object
       properties:
         result:
-          $ref: '#/components/schemas/Number'
-    ResetRequest:
+          $ref: '#/components/schemas/spec_Number'
+    spec_ResetRequest:
       type: object
-    ResetResponse:
+    spec_ResetResponse:
       type: object
-    Request:
+    spec_Request:
       description: used as swagger's spec_ad_method request
       type: object
       properties:
@@ -168,7 +168,7 @@ components:
           description: I64
           type: integer
           format: int64
-    Response:
+    spec_Response:
       description: used as swagger's spec_ad_method response
       type: object
       properties:

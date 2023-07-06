@@ -159,26 +159,21 @@ impl Swagger {
                 }
             }
 
-            let components = spec.components().collect::<Vec<_>>();
-            let method_name = components
-                .iter()
-                .take(components.len() - 1)
-                .map(|c| match c {
-                    Component::Normal(name) => name.to_string_lossy(),
-                    _ => {
-                        unimplemented!()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(&config.method.spec_as_method.path_separator);
+            let components = to_components(spec);
+            let method_name = components.join(&config.method.spec_as_method.path_separator);
 
-            let method_value = serde_json::json!({
-                "name": method_name,
-                "desc": method_desc,
-                "request": config.method.spec_as_method.request_model,
-                "response": config.method.spec_as_method.response_model,
-            });
-            methods.push(serde_json::from_value::<MethodDef>(dbg!(method_value))?);
+            if def
+                .get_model(&config.method.spec_as_method.request_model)
+                .is_some()
+            {
+                let method_value = serde_json::json!({
+                    "name": method_name,
+                    "desc": method_desc,
+                    "request": config.method.spec_as_method.request_model,
+                    "response": config.method.spec_as_method.response_model,
+                });
+                methods.push(serde_json::from_value::<MethodDef>(method_value)?);
+            }
         }
 
         for method in &methods {
@@ -288,7 +283,7 @@ impl Swagger {
                             one_of: variant_schemas,
                         },
                         schema_data: SchemaData {
-                            title: Some(model_name.clone()),
+                            title: Some(model_fqdn(spec, model_name)),
                             description: model_desc,
                             ..Default::default()
                         },
@@ -311,7 +306,7 @@ impl Swagger {
                 .as_mut()
                 .unwrap()
                 .schemas
-                .insert(model.name.clone(), schema);
+                .insert(model_fqdn(spec, model_name), schema);
         }
 
         Ok(())
@@ -436,19 +431,8 @@ fn type_to_schema(
 fn model_fqdn(spec_path: &PathBuf, model_name: &str) -> String {
     assert!(spec_path.is_relative());
 
-    let components = spec_path.components().collect::<Vec<_>>();
-    let type_path_prefix = components
-        .iter()
-        // skip the last element
-        .take(components.len() - 1)
-        .map(|c| match c {
-            Component::Normal(name) => name.to_str().unwrap().to_string(),
-            _ => {
-                unimplemented!()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("_");
+    let components = to_components(spec_path);
+    let type_path_prefix = components.join("_");
 
     if !type_path_prefix.is_empty() {
         format!("{type_path_prefix}_{model_name}")
@@ -476,4 +460,24 @@ fn fields_to_properties(
     }
 
     Ok(properties)
+}
+
+fn to_components(path: &PathBuf) -> Vec<String> {
+    assert!(path.is_relative());
+
+    let components = path.components().collect::<Vec<_>>();
+    components
+        .iter()
+        .map(|c| match c {
+            Component::Normal(name) => {
+                let name = name.to_string_lossy().to_string();
+                name.strip_suffix(".yaml")
+                    .map(|s| s.to_string())
+                    .unwrap_or(name)
+            }
+            _ => {
+                unimplemented!()
+            }
+        })
+        .collect::<Vec<_>>()
 }

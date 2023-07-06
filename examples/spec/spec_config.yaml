@@ -12,8 +12,7 @@ codegen:
 
     method:
       # spec as method is a convention based method def
-      # each spec file exposes Request and Response, and method
-      # name is determined by relative path
+      # each spec file exposes Request and Response
       spec_as_method:
         enable: true
         path_separator: .

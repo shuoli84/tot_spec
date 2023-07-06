@@ -1,5 +1,6 @@
 use crate::codegen::spec_folder::FolderTree;
 use crate::Definition;
+use path_absolutize::Absolutize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -16,6 +17,9 @@ pub struct Context {
 
 impl Context {
     pub fn new_from_folder(folder: &PathBuf) -> anyhow::Result<Self> {
+        let folder = folder.absolutize().unwrap().as_ref().to_path_buf();
+        let folder = &folder;
+
         let mut definitions = HashMap::new();
         let mut spec_folder = FolderTree::new();
 
@@ -61,7 +65,8 @@ impl Context {
     /// get a ref to definition for spec path, the spec should already loaded
     /// panic if path not loaded
     pub fn get_definition(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
-        Ok(self.definitions.get(path.as_ref()).unwrap())
+        let path = self.to_relative_path(path.as_ref());
+        Ok(self.definitions.get(&path).unwrap())
     }
 
     /// get an iterator for all specs
@@ -78,7 +83,7 @@ impl Context {
 
         let relative_path = &include.path;
         let included_def_path = spec_path.parent().unwrap().join(relative_path);
-        Ok(included_def_path)
+        Ok(self.to_relative_path(&included_def_path))
     }
 
     pub fn load_include_def(
@@ -88,5 +93,12 @@ impl Context {
     ) -> anyhow::Result<&Definition> {
         let path = self.get_include_path(namespace, spec_path)?;
         self.get_definition(path)
+    }
+
+    fn to_relative_path(&self, path: &Path) -> PathBuf {
+        use path_absolutize::*;
+
+        let path = path.absolutize_virtually(&self.root_folder).unwrap();
+        pathdiff::diff_paths(path, &self.root_folder).unwrap()
     }
 }

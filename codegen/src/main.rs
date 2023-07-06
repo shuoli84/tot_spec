@@ -1,4 +1,6 @@
 use clap::Parser;
+use path_absolutize::Absolutize;
+use std::path::PathBuf;
 use tot_spec::codegen::swagger::Swagger;
 use tot_spec::codegen::{
     java_jackson::JavaJackson, py_dataclass::PyDataclass, rs_serde::RsSerde,
@@ -11,9 +13,15 @@ struct Args {
     #[arg(
         short,
         long,
-        help = "root folder for all spec, will scan all specs in the folder recursivly"
+        help = "root folder for all spec, will scan all specs in the folder recursively"
     )]
-    input: std::path::PathBuf,
+    input: Option<std::path::PathBuf>,
+
+    #[arg(
+        long,
+        help = "root folder for all spec, will scan all specs in the folder recursively, deprecated, use --input instead"
+    )]
+    spec_folder: Option<std::path::PathBuf>,
 
     #[arg(short, long, default_value = "rs_serde")]
     codegen: String,
@@ -39,8 +47,13 @@ fn main() -> anyhow::Result<()> {
         _ => anyhow::bail!("unknown codegen name"),
     };
 
-    let output = std::fs::canonicalize(args.output).unwrap();
+    let input = args.input.or(args.spec_folder).unwrap();
+    let output = absolute(&args.output);
 
-    codegen.generate_for_folder(&args.input, &output)?;
+    codegen.generate_for_folder(&input, &output)?;
     Ok(())
+}
+
+fn absolute(p: &PathBuf) -> PathBuf {
+    p.absolutize().unwrap().to_path_buf()
 }
