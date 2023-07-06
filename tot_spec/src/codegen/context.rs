@@ -1,14 +1,14 @@
 use crate::codegen::spec_folder::FolderTree;
 use crate::Definition;
+use indexmap::IndexMap;
 use path_absolutize::Absolutize;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Context stores use info for a codegen pass
 pub struct Context {
     /// All loaded definitions
-    definitions: HashMap<PathBuf, Definition>,
+    definitions: IndexMap<PathBuf, Definition>,
 
     folder_tree: FolderTree,
 
@@ -20,10 +20,10 @@ impl Context {
         let folder = folder.absolutize().unwrap().as_ref().to_path_buf();
         let folder = &folder;
 
-        let mut definitions = HashMap::new();
+        let mut definitions = IndexMap::new();
         let mut spec_folder = FolderTree::new();
 
-        for entry in WalkDir::new(folder) {
+        for entry in WalkDir::new(folder).sort_by_file_name() {
             let entry = entry.unwrap();
             let spec = entry.path();
 
