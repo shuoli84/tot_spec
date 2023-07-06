@@ -38,6 +38,15 @@ impl Context {
                 continue;
             }
 
+            if spec
+                .file_stem()
+                .map(|s| s.to_string_lossy().eq("spec_config"))
+                .unwrap_or_default()
+            {
+                // skip spec config file
+                continue;
+            }
+
             let relative_path = spec.strip_prefix(folder).unwrap();
             spec_folder.insert(relative_path);
 

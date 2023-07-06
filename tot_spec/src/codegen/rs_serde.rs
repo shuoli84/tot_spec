@@ -20,6 +20,9 @@ impl super::Codegen for RsSerde {
             for (file_relative_path, content) in outputs {
                 let file_path = output.join(file_relative_path);
                 println!("write output to {:?}", file_path);
+                if let Some(parent) = file_path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
                 std::fs::write(file_path, content).unwrap();
             }
         });

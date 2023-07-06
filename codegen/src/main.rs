@@ -50,6 +50,9 @@ fn main() -> anyhow::Result<()> {
     let input = args.input.or(args.spec_folder).unwrap();
     let output = absolute(&args.output);
 
+    // create output folder
+    std::fs::create_dir_all(&output)?;
+
     codegen.generate_for_folder(&input, &output)?;
     Ok(())
 }
