@@ -448,7 +448,10 @@ mod tests {
         ];
 
         for (spec, package_folder) in specs.iter() {
-            let context = Context::new();
+            let spec = spec.strip_prefix("src/codegen/fixtures/specs/").unwrap();
+            let context =
+                Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
+
             render(
                 &PathBuf::from(spec),
                 &context,

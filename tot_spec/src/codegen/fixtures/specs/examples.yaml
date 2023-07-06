@@ -1,0 +1,16 @@
+models:
+  - name: TestStruct
+    type:
+      name: struct
+      fields:
+        - name: value_1
+          type: string
+          required: true
+
+    examples:
+      - name: example_0
+        format: json
+        value: |
+          {
+            "value_1": "hello"
+          }

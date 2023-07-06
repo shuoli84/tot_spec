@@ -92,6 +92,9 @@ pub struct ModelDef {
     /// attributes for model
     #[serde(default)]
     pub attributes: BTreeMap<String, String>,
+    /// Optional examples for the model
+    #[serde(default)]
+    pub examples: Vec<ModelExample>,
 }
 
 impl ModelDef {
@@ -412,6 +415,17 @@ pub struct VariantDef {
 pub enum StringOrInteger {
     String(String),
     Integer(i64),
+}
+
+/// Example for model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelExample {
+    /// name of the example
+    pub name: String,
+    /// value
+    pub value: String,
+    /// format of value
+    pub format: String,
 }
 
 // code copied from: https://serde.rs/string-or-struct.html

@@ -68,10 +68,16 @@ mod serde_default {
 }
 
 #[derive(Default)]
-pub struct Swagger {}
+pub struct Swagger {
+    skip_failed: bool,
+}
 
 impl Swagger {
     fn load_config(config_file: &PathBuf) -> anyhow::Result<Option<CodegenConfig>> {
+        if !config_file.exists() {
+            return Ok(None);
+        }
+
         let config_content = std::fs::read_to_string(config_file)
             .map_err(|_| anyhow::anyhow!("not able to read spec_config.yaml from folder"))?;
         let config_value =
@@ -118,7 +124,12 @@ impl Codegen for Swagger {
         openapi_spec.components = Some(Components::default());
 
         for (spec, _) in context.iter_specs() {
-            self.render_one_spec(spec, &context, &mut openapi_spec, &config)?;
+            println!("swagger rendering {spec:?}");
+            match self.render_one_spec(spec, &context, &mut openapi_spec, &config) {
+                Ok(_) => continue,
+                Err(_) if self.skip_failed => continue,
+                Err(e) => return Err(e),
+            }
         }
 
         let output_file = output.join("openapi.yaml");
@@ -273,7 +284,11 @@ impl Swagger {
                     let mut variant_schemas = vec![];
                     for variant in variants.iter() {
                         // todo: enum variant embeded should converge to a separate model def
-                        let payload_type = variant.payload_type.as_ref().unwrap();
+
+                        let payload_type = variant
+                            .payload_type
+                            .as_ref()
+                            .ok_or_else(|| anyhow!("swagger enum now only support payload_type"))?;
                         let variant_schema = type_to_schema(&payload_type.0, true, spec, context)?;
                         variant_schemas.push(variant_schema);
                     }
@@ -480,4 +495,18 @@ fn to_components(path: &PathBuf) -> Vec<String> {
             }
         })
         .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_swagger() {
+        let codegen = Swagger { skip_failed: true };
+        let _ = codegen.generate_for_folder(
+            &PathBuf::from("src/codegen/fixtures/specs"),
+            &PathBuf::from("src/codegen/fixtures/swagger"),
+        );
+    }
 }

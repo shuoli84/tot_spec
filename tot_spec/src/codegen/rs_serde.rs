@@ -583,8 +583,10 @@ mod tests {
     #[test]
     fn test_render() {
         fn test_def(spec: &Path, code_path: &str) {
-            println!("{spec:?}");
-            let context = Context::new();
+            let spec = spec.strip_prefix("src/codegen/fixtures/specs/").unwrap();
+            let context =
+                Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs/")).unwrap();
+
             let rendered = super::render(spec, &context).unwrap();
             let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
 

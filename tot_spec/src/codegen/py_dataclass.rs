@@ -685,7 +685,9 @@ mod tests {
         ];
 
         for (spec, expected) in specs.iter() {
-            let context = Context::new();
+            let spec = spec.strip_prefix("src/codegen/fixtures/specs/").unwrap();
+            let context =
+                Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
             let rendered = render(PathBuf::from(spec).as_path(), &context).unwrap();
 
             let expected_code = std::fs::read_to_string(expected).unwrap();
