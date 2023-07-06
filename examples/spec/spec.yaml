@@ -3,6 +3,8 @@ meta:
     package_name: SpecModel
   java_jackson:
     package: com.tot_spec.example
+  api:
+    desc: default api's description
 
 models:
 - name: SimpleStruct
@@ -126,10 +128,23 @@ models:
       attributes: {}
       required: false
 
+- name: AddResponse
+  type:
+    name: struct
+    fields:
+      - name: result
+        type: Number
+        required: true
+
 - name: ResetRequest
   type:
     name: struct
     extend: BaseRequest
+
+- name: ResetResponse
+  type:
+    name: struct
+    fields: []
 
 - name: ConstInteger
   type:
@@ -140,3 +155,32 @@ models:
         value: 1
       - name: Value2
         value: 2
+
+- name: Request
+  desc: used as swagger's spec_ad_method request
+  type:
+    name: struct
+    fields:
+      - name: value
+        type: i64
+        required: true
+
+- name: Response
+  desc: used as swagger's spec_ad_method response
+  type:
+    name: struct
+    fields:
+      - name: value
+        type: i64
+        required: true
+
+methods:
+  - name: Add
+    desc: returns sum of numbers
+    request: AddRequest
+    response: AddResponse
+
+  - name: Reset
+    desc: do nothing
+    request: ResetRequest
+    response: ResetResponse

@@ -174,7 +174,7 @@ Rust side, will generate a NewType wraps i8, also with each values defined as co
 ```rust
 pub struct Code(pub i8);
 
-... from_value to_value
+// ... from_value to_value
 
 impl Code {
     /// Everything is ok

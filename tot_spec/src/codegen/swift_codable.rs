@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use crate::codegen::spec_folder::{Entry, SpecFolder};
-use crate::{Context, Definition, FieldDef, Type, TypeReference};
+use crate::codegen::spec_folder::FolderTree;
+use crate::{Definition, FieldDef, Type, TypeReference};
 
 use super::utils::{indent, multiline_prefix_with};
 
@@ -11,37 +11,16 @@ use super::utils::{indent, multiline_prefix_with};
 pub struct SwiftCodable {}
 
 impl super::Codegen for SwiftCodable {
-    fn generate_for_folder(
-        &self,
-        folder: &PathBuf,
-        codegen: &str,
-        output: &PathBuf,
-    ) -> anyhow::Result<()> {
+    fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
         use walkdir::WalkDir;
 
         std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = SpecFolder::new();
+        let mut spec_folder = FolderTree::new();
 
         for entry in WalkDir::new(folder) {
             let entry = entry.unwrap();
             let spec = entry.path();
 
-            if spec.is_dir() {
-                // move logic to spec stack handling
-                if codegen == "py_dataclass" {
-                    // python dataclass codegen needs to generate __init__.py for each folder
-                    let relative_path = spec.strip_prefix(folder).unwrap();
-                    let output_folder = output.join(relative_path);
-                    std::fs::create_dir_all(output_folder).unwrap();
-                    let init_file = output.join(relative_path).join("__init__.py");
-                    std::fs::OpenOptions::new()
-                        .create(true)
-                        .write(true)
-                        .open(init_file)
-                        .unwrap();
-                }
-                continue;
-            }
             if !spec.is_file() {
                 continue;
             }
@@ -66,7 +45,7 @@ impl super::Codegen for SwiftCodable {
             };
 
             {
-                println!("generating codegen={codegen} spec={spec:?} output={output:?}");
+                println!("generating spec={spec:?} output={output:?}");
                 let spec_content = std::fs::read_to_string(spec).unwrap();
                 let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
 
@@ -85,7 +64,7 @@ impl super::Codegen for SwiftCodable {
 }
 
 /// render the definition to a swift file
-pub fn render(def: &Definition) -> anyhow::Result<String> {
+fn render(def: &Definition) -> anyhow::Result<String> {
     let meta = def.get_meta("swift_codable");
 
     let package_name = meta

@@ -1,84 +1,21 @@
 use crate::{
-    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, Context, FieldDef,
-    ModelDef, StringOrInteger, StructDef, Type, VariantDef,
+    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
+    StringOrInteger, StructDef, Type, VariantDef,
 };
+use std::path::Path;
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
-use crate::codegen::spec_folder::SpecFolder;
 
+use super::context::Context;
 use super::{spec_folder::Entry, utils::multiline_prefix_with};
 
 #[derive(Default)]
-pub struct RsSerde {
-
-}
+pub struct RsSerde {}
 
 impl super::Codegen for RsSerde {
-    fn generate_for_folder(&self, folder: &PathBuf, codegen: &str, output: &PathBuf) -> anyhow::Result<()> {
-        use walkdir::WalkDir;
+    fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
+        let context = Context::new_from_folder(folder)?;
 
-        std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = SpecFolder::new();
-
-        for entry in WalkDir::new(folder) {
-            let entry = entry.unwrap();
-            let spec = entry.path();
-
-            if spec.is_dir() {
-                // move logic to spec stack handling
-                if codegen == "py_dataclass" {
-                    // python dataclass codegen needs to generate __init__.py for each folder
-                    let relative_path = spec.strip_prefix(folder).unwrap();
-                    let output_folder = output.join(relative_path);
-                    std::fs::create_dir_all(output_folder).unwrap();
-                    let init_file = output.join(relative_path).join("__init__.py");
-                    std::fs::OpenOptions::new()
-                        .create(true)
-                        .write(true)
-                        .open(init_file)
-                        .unwrap();
-                }
-                continue;
-            }
-            if !spec.is_file() {
-                continue;
-            }
-            if !spec
-                .extension()
-                .map(|ext| ext == "yaml")
-                .unwrap_or_default()
-            {
-                continue;
-            }
-
-            let relative_path = spec.strip_prefix(folder).unwrap();
-            spec_folder.insert(relative_path);
-
-            let output = {
-                let mut output = output.clone();
-                output.push(relative_path);
-                output.set_extension("rs");
-                output
-            };
-
-            {
-                println!("generating codegen={codegen} spec={spec:?} output={output:?}");
-                let spec_content = std::fs::read_to_string(spec).unwrap();
-                let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
-
-                let parent_folder = output.parent().unwrap();
-                std::fs::create_dir_all(parent_folder).unwrap();
-
-                let code = {
-                    let context = Context::load_from_path(spec).unwrap();
-                    render(&def, &context).unwrap()
-                };
-
-                std::fs::write(&output, code).unwrap();
-                println!("write output to {:?}", output);
-            }
-        }
-
-        spec_folder.foreach_entry_recursively(|entry| {
+        context.folder_tree().foreach_entry_recursively(|entry| {
             let outputs = render_folder(entry).unwrap();
             for (file_relative_path, content) in outputs {
                 let file_path = output.join(file_relative_path);
@@ -87,11 +24,30 @@ impl super::Codegen for RsSerde {
             }
         });
 
+        for (spec, _) in context.iter_specs() {
+            let output = {
+                let mut output = output.clone();
+                output.push(spec);
+                output.set_extension("rs");
+                output
+            };
+
+            println!("generating spec={spec:?} output={output:?}");
+
+            let parent_folder = output.parent().unwrap();
+            std::fs::create_dir_all(parent_folder)?;
+
+            let code = render(&spec, &context)?;
+
+            std::fs::write(&output, code).unwrap();
+            println!("write output to {:?}", output);
+        }
+
         Ok(())
     }
 }
 
-pub fn render_folder(entry: &Entry) -> anyhow::Result<Vec<(PathBuf, String)>> {
+fn render_folder(entry: &Entry) -> anyhow::Result<Vec<(PathBuf, String)>> {
     if entry.is_empty() {
         // this is a leaf node, continue
         return Ok(vec![]);
@@ -115,13 +71,14 @@ pub fn render_folder(entry: &Entry) -> anyhow::Result<Vec<(PathBuf, String)>> {
     Ok(outputs)
 }
 
-pub fn render(def: &Definition, context: &Context) -> anyhow::Result<String> {
+fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
+    let def = context.get_definition(spec_path)?;
+    let def = &def;
     let mut result = String::new();
 
     for include in def.includes.iter() {
-        let include_path = context.get_include_path(&include.namespace, def).unwrap();
-        let working_def_path = context.get_working_def_path();
-        let relative_path = pathdiff::diff_paths(&include_path, working_def_path).unwrap();
+        let include_path = context.get_include_path(&include.namespace, spec_path)?;
+        let relative_path = pathdiff::diff_paths(&include_path, spec_path).unwrap();
 
         let include_name = relative_path.file_stem().unwrap().to_str().unwrap();
 
@@ -618,12 +575,14 @@ fn to_identifier(name: &str) -> (Cow<str>, bool) {
 
 #[cfg(test)]
 mod tests {
-    use crate::models::*;
+    use super::*;
 
     #[test]
     fn test_render() {
-        fn test_def(definition: &Definition, context: &Context, code_path: &str) {
-            let rendered = super::render(definition, context).unwrap();
+        fn test_def(spec: &Path, code_path: &str) {
+            println!("{spec:?}");
+            let context = Context::new();
+            let rendered = super::render(spec, &context).unwrap();
             let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
 
             let code = std::fs::read_to_string(code_path).unwrap();
@@ -705,10 +664,7 @@ mod tests {
                 "src/codegen/fixtures/rs_serde/keyword.rs",
             ),
         ] {
-            println!("{spec}");
-            let context = Context::load_from_path(spec).unwrap();
-            let def = context.load_from_yaml(spec).unwrap();
-            test_def(&def, &context, &expected);
+            test_def(PathBuf::from(spec).as_path(), &expected);
         }
     }
 }

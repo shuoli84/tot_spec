@@ -1,0 +1,21 @@
+codegen:
+  swagger:
+    title: "Title for swagger codegen"
+    description: |
+      # Description can be input as markdown
+    servers:
+      - url: https://example.com/api
+        description: example site
+
+      - url: https://demo.com/api
+        description: demo site
+
+    method:
+      # spec as method is a convention based method def
+      # each spec file exposes Request and Response
+      spec_as_method:
+        enable: true
+        path_separator: .
+        request_model: Request
+        response_model: Response
+        desc_path: api.desc

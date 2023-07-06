@@ -1,82 +1,30 @@
 use convert_case::Casing;
 
-use crate::codegen::spec_folder::{Entry, SpecFolder};
-use crate::{
-    ConstType, Context, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference,
-};
-use std::{borrow::Cow, fmt::Write, path::PathBuf};
-
+use super::context::Context;
 use super::utils;
+use crate::{ConstType, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference};
+use std::path::Path;
+use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 #[derive(Default)]
 pub struct JavaJackson {}
 
 impl super::Codegen for JavaJackson {
-    fn generate_for_folder(
-        &self,
-        folder: &PathBuf,
-        codegen: &str,
-        output: &PathBuf,
-    ) -> anyhow::Result<()> {
-        use walkdir::WalkDir;
+    fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
+        let context = Context::new_from_folder(folder)?;
 
-        std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = SpecFolder::new();
-
-        for entry in WalkDir::new(folder) {
-            let entry = entry.unwrap();
-            let spec = entry.path();
-
-            if spec.is_dir() {
-                // move logic to spec stack handling
-                if codegen == "py_dataclass" {
-                    // python dataclass codegen needs to generate __init__.py for each folder
-                    let relative_path = spec.strip_prefix(folder).unwrap();
-                    let output_folder = output.join(relative_path);
-                    std::fs::create_dir_all(output_folder).unwrap();
-                    let init_file = output.join(relative_path).join("__init__.py");
-                    std::fs::OpenOptions::new()
-                        .create(true)
-                        .write(true)
-                        .open(init_file)?;
-                }
-                continue;
-            }
-            if !spec.is_file() {
-                continue;
-            }
-            if !spec
-                .extension()
-                .map(|ext| ext == "yaml")
-                .unwrap_or_default()
-            {
-                continue;
-            }
-
-            let relative_path = spec.strip_prefix(folder)?;
-            spec_folder.insert(relative_path);
-
-            let output = output.clone();
-
-            {
-                println!("generating codegen={codegen} spec={spec:?} output={output:?}");
-
-                let parent_folder = output.parent().unwrap();
-                std::fs::create_dir_all(parent_folder).unwrap();
-
-                let spec_content = std::fs::read_to_string(spec).unwrap();
-                let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
-
-                let context = Context::load_from_path(spec).unwrap();
-                return render(&def, &context, &output);
-            }
+        for (spec_path, _) in context.iter_specs() {
+            render(&spec_path, &context, &output)?;
         }
+
         Ok(())
     }
 }
 
 /// java does not export to a file, instead, it exports to a folder
-pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
+fn render(spec_path: &Path, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
+    let def = context.get_definition(spec_path)?;
+
     std::fs::create_dir_all(target_folder)?;
 
     let package_name = def
@@ -107,7 +55,7 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
 
                 writeln!(result, "")?;
 
-                let model_code = render_model(model, false, def, context)?;
+                let model_code = render_model(model, false, def, spec_path, context)?;
 
                 writeln!(result, "{}", model_code.trim_end())?;
 
@@ -132,7 +80,7 @@ pub fn render(def: &Definition, context: &Context, target_folder: &PathBuf) -> a
             writeln!(result, "")?;
 
             for (idx, model) in def.models.iter().enumerate() {
-                let model_code = render_model(model, true, def, context)?;
+                let model_code = render_model(model, true, def, spec_path, context)?;
                 let model_code = utils::indent(&model_code, 1);
                 if idx + 1 < def.models.len() {
                     writeln!(result, "{}", model_code)?;
@@ -154,6 +102,7 @@ pub fn render_model(
     model: &ModelDef,
     is_nested: bool,
     def: &Definition,
+    spec_path: &Path,
     context: &Context,
 ) -> anyhow::Result<String> {
     let mut result = "".to_string();
@@ -190,7 +139,8 @@ pub fn render_model(
             match st.extend.as_ref() {
                 Some(base) => {
                     if let Some(type_ref) = TypeReference::try_parse(base) {
-                        let java_type = java_type_for_type_reference(&type_ref, def, context)?;
+                        let java_type =
+                            java_type_for_type_reference(&type_ref, def, spec_path, context)?;
                         writeln!(
                             result,
                             "public {class_modifier}class {name} extends {base} {{",
@@ -205,7 +155,7 @@ pub fn render_model(
             }
 
             for field in st.fields.iter() {
-                result.push_str(&render_field(field, def, context)?);
+                result.push_str(&render_field(field, def, spec_path, context)?);
             }
 
             writeln!(result, "}}")?;
@@ -248,7 +198,7 @@ pub fn render_model(
                         writeln!(
                             result,
                             "        private {} payload;",
-                            java_type(payload_type, def, context)?,
+                            java_type(payload_type, def, spec_path, context)?,
                         )?;
                     }
                     None => todo!(),
@@ -272,7 +222,7 @@ pub fn render_model(
                 Some(_) => todo!(),
                 None => {
                     for field in st.fields.iter() {
-                        result.push_str(&render_field(field, def, context)?);
+                        result.push_str(&render_field(field, def, spec_path, context)?);
                     }
                 }
             }
@@ -285,7 +235,7 @@ pub fn render_model(
             }
 
             writeln!(result, "public {class_modifier}class {model_name} {{")?;
-            let java_type = java_type(&inner_type, def, context)?;
+            let java_type = java_type(&inner_type, def, spec_path, context)?;
 
             writeln!(result, "    private {java_type} value;",)?;
 
@@ -332,7 +282,12 @@ pub fn render_model(
     Ok(result)
 }
 
-fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<String> {
+fn java_type(
+    ty: &Type,
+    def: &Definition,
+    spec_path: &Path,
+    context: &Context,
+) -> anyhow::Result<String> {
     Ok(match ty {
         Type::Bool => "Boolean".into(),
         Type::I8 | Type::I16 | Type::I32 | Type::I64 => "Integer".into(),
@@ -340,12 +295,17 @@ fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<S
         Type::Bytes => "byte[]".into(),
         Type::String => "String".into(),
         Type::List { item_type } => {
-            format!("List<{}>", java_type(item_type, def, context)?)
+            format!("List<{}>", java_type(item_type, def, spec_path, context)?)
         }
         Type::Map { value_type } => {
-            format!("Map<String, {}>", java_type(value_type, def, context)?)
+            format!(
+                "Map<String, {}>",
+                java_type(value_type, def, spec_path, context)?
+            )
         }
-        Type::Reference(type_ref) => java_type_for_type_reference(type_ref, def, context)?,
+        Type::Reference(type_ref) => {
+            java_type_for_type_reference(type_ref, def, spec_path, context)?
+        }
         Type::Json => "com.fasterxml.jackson.databind.JsonNode".to_string(),
         Type::Decimal => "java.math.BigDecimal".into(),
         Type::BigInt => "java.math.BigInteger".into(),
@@ -355,12 +315,13 @@ fn java_type(ty: &Type, def: &Definition, context: &Context) -> anyhow::Result<S
 fn java_type_for_type_reference(
     type_ref: &TypeReference,
     def: &Definition,
+    spec_path: &Path,
     context: &Context,
 ) -> anyhow::Result<String> {
     let TypeReference { namespace, target } = type_ref;
     let fqdn_target = match namespace {
         Some(namespace) => {
-            let include_def = context.load_include_def(namespace, def)?;
+            let include_def = context.load_include_def(namespace, spec_path)?;
             let package = java_package_for_def(&include_def);
             format!("{package}.{target}")
         }
@@ -402,7 +363,12 @@ fn java_package_for_def(def: &Definition) -> String {
     }
 }
 
-fn render_field(field: &FieldDef, def: &Definition, context: &Context) -> anyhow::Result<String> {
+fn render_field(
+    field: &FieldDef,
+    def: &Definition,
+    spec_path: &Path,
+    context: &Context,
+) -> anyhow::Result<String> {
     let mut result = "".to_string();
     if let Some(desc) = &field.desc {
         writeln!(result, "    // {}", desc)?;
@@ -422,7 +388,7 @@ fn render_field(field: &FieldDef, def: &Definition, context: &Context) -> anyhow
     writeln!(
         result,
         "    private {java_type} {name};",
-        java_type = java_type(&field.type_, def, context)?,
+        java_type = java_type(&field.type_, def, spec_path, context)?,
         name = java_field_name
     )?;
     Ok(result)
@@ -482,9 +448,13 @@ mod tests {
         ];
 
         for (spec, package_folder) in specs.iter() {
-            let context = Context::load_from_path(spec).unwrap();
-            let def = context.load_from_yaml(spec).unwrap();
-            render(&def, &context, &std::path::PathBuf::from(package_folder)).unwrap();
+            let context = Context::new();
+            render(
+                &PathBuf::from(spec),
+                &context,
+                &std::path::PathBuf::from(package_folder),
+            )
+            .unwrap();
         }
     }
 }

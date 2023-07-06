@@ -1,0 +1,178 @@
+openapi: 3.0.0
+info:
+  title: Title for swagger codegen
+  description: |
+    # Description can be input as markdown
+  version: ''
+servers:
+- url: https://example.com/api
+  description: example site
+- url: https://demo.com/api
+  description: demo site
+paths:
+  /Add:
+    post:
+      summary: Add
+      description: returns sum of numbers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/spec_AddRequest'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/spec_AddResponse'
+  /Reset:
+    post:
+      summary: Reset
+      description: do nothing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/spec_ResetRequest'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/spec_ResetResponse'
+  /spec:
+    post:
+      summary: spec
+      description: default api's description
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/spec_Request'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/spec_Response'
+components:
+  schemas:
+    spec_SimpleStruct:
+      type: object
+      properties:
+        bool_value:
+          type: boolean
+        i8_value:
+          nullable: true
+          description: I8
+          type: integer
+          format: int32
+        i16_value:
+          nullable: true
+          description: I16
+          type: integer
+          format: int32
+        i32_value:
+          nullable: true
+          description: I32
+          type: integer
+          format: int32
+        i64_value:
+          nullable: true
+          description: I64
+          type: integer
+          format: int64
+        decimal_value:
+          description: Decimal
+          type: string
+        bigint_value:
+          description: BigInt
+          type: string
+        string_value:
+          description: String
+          type: string
+        bytes_value:
+          description: Bytes
+          type: string
+        string_to_string:
+          description: 'Map { value_type: String }'
+          type: object
+          additionalProperties: true
+        key_values:
+          $ref: '#/components/schemas/spec_KeyValue'
+        children_container:
+          $ref: '#/components/schemas/spec_Container'
+        children:
+          description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "SimpleStruct" })) }'
+          type: array
+          items:
+            $ref: '#/components/schemas/spec_SimpleStruct'
+    spec_KeyValue:
+      description: 'Map { value_type: Bytes }'
+      type: object
+      additionalProperties: true
+    spec_Container:
+      description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "SimpleStruct" })) }'
+      type: array
+      items:
+        $ref: '#/components/schemas/spec_SimpleStruct'
+    spec_RealNumber:
+      type: object
+      properties:
+        real:
+          description: F64
+          type: number
+          format: double
+        imagine:
+          description: F64
+          type: number
+          format: double
+    spec_Number:
+      title: spec_Number
+      oneOf:
+      - description: I64
+        type: integer
+        format: int64
+      - description: F64
+        type: number
+        format: double
+      - $ref: '#/components/schemas/spec_RealNumber'
+    spec_AddRequest:
+      type: object
+      properties:
+        numbers:
+          description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "Number" })) }'
+          type: array
+          items:
+            $ref: '#/components/schemas/spec_Number'
+    spec_AddResponse:
+      type: object
+      properties:
+        result:
+          $ref: '#/components/schemas/spec_Number'
+    spec_ResetRequest:
+      type: object
+    spec_ResetResponse:
+      type: object
+    spec_Request:
+      description: used as swagger's spec_ad_method request
+      type: object
+      properties:
+        value:
+          description: I64
+          type: integer
+          format: int64
+    spec_Response:
+      description: used as swagger's spec_ad_method response
+      type: object
+      properties:
+        value:
+          description: I64
+          type: integer
+          format: int64

@@ -1,78 +1,20 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, HashMap},
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
-};
+use std::{collections::BTreeMap, path::Path};
 
 /// Parse context
-pub struct Context {
-    /// All loaded definitions
-    definitions: Mutex<HashMap<PathBuf, Arc<Definition>>>,
-
-    /// The path for working definition
-    working_definition_path: PathBuf,
-}
-
-impl Context {
-    pub fn load_from_path(path: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let path = path.as_ref();
-
-        Ok(Self {
-            definitions: Default::default(),
-            working_definition_path: path.to_owned(),
-        })
-    }
-
-    pub fn load_from_yaml<'a>(&self, path: impl Into<PathBuf>) -> anyhow::Result<Arc<Definition>> {
-        let path = path.into();
-
-        let mut definitions = self.definitions.lock().unwrap();
-
-        if !definitions.contains_key(&path) {
-            let def = Definition::load_from_yaml(&path)?;
-            definitions.insert(path.clone(), Arc::new(def));
-        }
-
-        Ok(definitions.get(&path).unwrap().clone())
-    }
-
-    pub fn get_working_def_path(&self) -> PathBuf {
-        self.working_definition_path.clone()
-    }
-
-    /// get the path for namespace
-    pub fn get_include_path(&self, namespace: &str, def: &Definition) -> anyhow::Result<PathBuf> {
-        let include = def
-            .get_include(namespace)
-            .ok_or_else(|| anyhow::anyhow!("{} not found", namespace))?;
-
-        let relative_path = &include.path;
-        let included_def_path = self
-            .working_definition_path
-            .parent()
-            .unwrap()
-            .join(relative_path);
-        Ok(included_def_path)
-    }
-
-    pub fn load_include_def(
-        &self,
-        namespace: &str,
-        def: &Definition,
-    ) -> anyhow::Result<Arc<Definition>> {
-        let path = self.get_include_path(namespace, def)?;
-        self.load_from_yaml(path)
-    }
-}
-
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Definition {
+    /// includes, one spec can include any number of other specs,
+    /// and use type reference in the included spec
     pub includes: Vec<Include>,
-    /// meta can provide keyvalue metadata for codegen
+    /// meta can provide Key Value metadata for codegen
     pub meta: BTreeMap<String, BTreeMap<String, String>>,
+    /// model definitions
     pub models: Vec<ModelDef>,
+    /// method definitions
+    /// NOTE: each codegen can decide whether generate code for `methods`
+    pub methods: Vec<MethodDef>,
 }
 
 impl Definition {
@@ -124,6 +66,19 @@ pub struct Include {
     ///   "use {rs_mod} as {namespace};"
     #[serde(default)]
     pub attributes: BTreeMap<String, String>,
+}
+
+/// Method
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodDef {
+    /// name of the method
+    pub name: String,
+    /// description of the method
+    pub desc: Option<String>,
+    /// request type
+    pub request: serde_helper::StringOrStruct<Type>,
+    /// response type
+    pub response: serde_helper::StringOrStruct<Type>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
