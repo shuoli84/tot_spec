@@ -2,7 +2,31 @@ openapi: 3.0.0
 info:
   title: ''
   version: ''
-paths: {}
+paths:
+  /TestMethod:
+    post:
+      summary: TestMethod
+      description: test method
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/examples_TestRequest'
+            examples:
+              foo_bar:
+                value:
+                  foo: bar
+              hello_world:
+                value:
+                  hello: world
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/examples_TestResponse'
 components:
   schemas:
     bigint_TestBigInt:
@@ -10,6 +34,7 @@ components:
       type: object
       properties:
         value:
+          nullable: true
           description: BigInt
           type: string
     decimal_TestDecimal:
@@ -17,6 +42,7 @@ components:
       type: object
       properties:
         value:
+          nullable: true
           description: Decimal
           type: string
     enum_Number:
@@ -33,10 +59,12 @@ components:
       type: object
       properties:
         part_0:
+          nullable: true
           description: F64
           type: number
           format: double
         part_1:
+          nullable: true
           description: F64
           type: number
           format: double
@@ -50,11 +78,17 @@ components:
         type: number
         format: double
     examples_TestStruct:
+      example:
+        value_1: hello
       type: object
       properties:
         value_1:
           description: String
           type: string
+    examples_TestRequest:
+      $ref: '#/components/schemas/examples_TestStruct'
+    examples_TestResponse:
+      type: object
     extend_Child:
       type: object
       properties:
@@ -98,6 +132,7 @@ components:
       type: object
       properties:
         value:
+          nullable: true
           description: Decimal
           type: string
     json_TestJsonStruct:
@@ -105,6 +140,7 @@ components:
       type: object
       properties:
         json_value:
+          nullable: true
           description: Json
           type: object
           additionalProperties: true
@@ -116,6 +152,7 @@ components:
       type: object
       properties:
         fn:
+          nullable: true
           description: String
           type: string
         const:
@@ -128,6 +165,7 @@ components:
       type: object
       properties:
         bool_value:
+          description: Bool
           type: boolean
         i8_value:
           description: I8
@@ -149,16 +187,20 @@ components:
           type: integer
           format: int64
         string_value:
+          nullable: true
           description: String
           type: string
         bytes_value:
+          nullable: true
           description: Bytes
           type: string
         string_to_string:
+          nullable: true
           description: 'Map { value_type: String }'
           type: object
           additionalProperties: true
         children:
+          nullable: true
           description: 'List { item_type: StringOrStruct(Reference(TypeReference { namespace: None, target: "SimpleStruct" })) }'
           type: array
           items:

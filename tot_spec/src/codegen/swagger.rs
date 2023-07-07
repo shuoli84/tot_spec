@@ -1,11 +1,11 @@
 use super::Codegen;
 use crate::codegen::context::Context;
-use crate::{FieldDef, MethodDef, ModelType, Type, TypeReference};
+use crate::{FieldDef, MethodDef, ModelDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use openapiv3::{
-    AdditionalProperties, Components, Info, MediaType, OpenAPI, Operation, PathItem, ReferenceOr,
-    RequestBody, Response, Responses, Schema, SchemaData, SchemaKind,
+    AdditionalProperties, Components, Example, Info, MediaType, OpenAPI, Operation, PathItem,
+    ReferenceOr, RequestBody, Response, Responses, Schema, SchemaData, SchemaKind,
 };
 use serde::{Deserialize, Serialize};
 use std::path::{Component, PathBuf};
@@ -201,7 +201,7 @@ impl Swagger {
                             "application/json".into(),
                             MediaType {
                                 schema: Some(type_to_schema(
-                                    &method.response.0,
+                                    &Type::Reference(method.response.0.clone()),
                                     true,
                                     spec,
                                     context,
@@ -229,11 +229,30 @@ impl Swagger {
                                 "application/json".into(),
                                 MediaType {
                                     schema: Some(type_to_schema(
-                                        &method.request.0,
+                                        &Type::Reference(method.request.0.clone()),
                                         true,
                                         spec,
                                         context,
                                     )?),
+                                    examples: {
+                                        let request_model_def = context
+                                            .get_model_def_for_reference(&method.request.0, spec)?;
+
+                                        let examples = load_json_examples(request_model_def)?;
+
+                                        examples
+                                            .into_iter()
+                                            .map(|(k, v)| {
+                                                (
+                                                    k,
+                                                    ReferenceOr::Item(Example {
+                                                        value: Some(v),
+                                                        ..Default::default()
+                                                    }),
+                                                )
+                                            })
+                                            .collect()
+                                    },
                                     ..Default::default()
                                 },
                             );
@@ -272,10 +291,13 @@ impl Swagger {
                         object_type.properties.insert(name, property_schema);
                     }
 
+                    let example = load_one_json_example(model)?;
+
                     ReferenceOr::Item(Schema {
                         schema_kind: SchemaKind::Type(openapiv3::Type::Object(object_type)),
                         schema_data: SchemaData {
                             description: model_desc,
+                            example,
                             ..Default::default()
                         },
                     })
@@ -334,14 +356,8 @@ fn type_to_schema(
     spec_path: &PathBuf,
     context: &Context,
 ) -> anyhow::Result<ReferenceOr<Schema>> {
-    Ok(match ty_ {
-        Type::Bool => ReferenceOr::Item(Schema {
-            schema_kind: SchemaKind::Type(openapiv3::Type::Boolean {}),
-            schema_data: SchemaData {
-                nullable: !required,
-                ..Default::default()
-            },
-        }),
+    let schema_kind = match ty_ {
+        Type::Bool => SchemaKind::Type(openapiv3::Type::Boolean {}),
         Type::I8 | Type::I16 | Type::I32 | Type::I64 => {
             let number_format = if matches!(ty_, Type::I64) {
                 openapiv3::IntegerFormat::Int64
@@ -349,38 +365,21 @@ fn type_to_schema(
                 openapiv3::IntegerFormat::Int32
             };
 
-            ReferenceOr::Item(Schema {
-                schema_kind: SchemaKind::Type(openapiv3::Type::Integer(openapiv3::IntegerType {
-                    format: openapiv3::VariantOrUnknownOrEmpty::Item(number_format),
-                    ..Default::default()
-                })),
-                schema_data: SchemaData {
-                    nullable: !required,
-                    description: format!("{ty_:?}").into(),
-                    ..Default::default()
-                },
-            })
+            SchemaKind::Type(openapiv3::Type::Integer(openapiv3::IntegerType {
+                format: openapiv3::VariantOrUnknownOrEmpty::Item(number_format),
+                ..Default::default()
+            }))
         }
-        Type::F64 => ReferenceOr::Item(Schema {
-            schema_kind: SchemaKind::Type(openapiv3::Type::Number(openapiv3::NumberType {
-                format: openapiv3::VariantOrUnknownOrEmpty::Item(openapiv3::NumberFormat::Double),
-                ..Default::default()
-            })),
-            schema_data: SchemaData {
-                description: format!("{ty_:?}").into(),
-                ..Default::default()
-            },
-        }),
-        Type::Decimal | Type::BigInt | Type::Bytes | Type::String => ReferenceOr::Item(Schema {
-            schema_kind: SchemaKind::Type(openapiv3::Type::String(openapiv3::StringType {
+        Type::F64 => SchemaKind::Type(openapiv3::Type::Number(openapiv3::NumberType {
+            format: openapiv3::VariantOrUnknownOrEmpty::Item(openapiv3::NumberFormat::Double),
+            ..Default::default()
+        })),
+        Type::Decimal | Type::BigInt | Type::Bytes | Type::String => {
+            SchemaKind::Type(openapiv3::Type::String(openapiv3::StringType {
                 format: Default::default(),
                 ..Default::default()
-            })),
-            schema_data: SchemaData {
-                description: format!("{ty_:?}").into(),
-                ..Default::default()
-            },
-        }),
+            }))
+        }
         Type::List { item_type } => {
             let item_type_ref = &item_type.as_ref().0;
             let item_schema = match type_to_schema(item_type_ref, false, spec_path, context)? {
@@ -388,29 +387,21 @@ fn type_to_schema(
                 ReferenceOr::Item(item) => ReferenceOr::Item(Box::new(item)),
             };
 
-            ReferenceOr::Item(Schema {
-                schema_kind: SchemaKind::Type(openapiv3::Type::Array(openapiv3::ArrayType {
-                    items: Some(item_schema),
-                    min_items: None,
-                    max_items: None,
-                    unique_items: false,
-                })),
-                schema_data: SchemaData {
-                    description: format!("{ty_:?}").into(),
-                    ..Default::default()
-                },
-            })
+            SchemaKind::Type(openapiv3::Type::Array(openapiv3::ArrayType {
+                items: Some(item_schema),
+                min_items: None,
+                max_items: None,
+                unique_items: false,
+            }))
         }
-        Type::Map { .. } => ReferenceOr::Item(Schema {
-            schema_kind: SchemaKind::Type(openapiv3::Type::Object(openapiv3::ObjectType {
-                additional_properties: Some(AdditionalProperties::Any(true)),
-                ..Default::default()
-            })),
-            schema_data: SchemaData {
-                description: format!("{ty_:?}").into(),
-                ..Default::default()
-            },
-        }),
+        Type::Map { .. } => SchemaKind::Type(openapiv3::Type::Object(openapiv3::ObjectType {
+            additional_properties: Some(AdditionalProperties::Any(true)),
+            ..Default::default()
+        })),
+        Type::Json => SchemaKind::Type(openapiv3::Type::Object(openapiv3::ObjectType {
+            additional_properties: Some(AdditionalProperties::Any(true)),
+            ..Default::default()
+        })),
         Type::Reference(TypeReference { namespace, target }) => {
             let spec = match namespace {
                 None => spec_path.to_owned(),
@@ -426,21 +417,22 @@ fn type_to_schema(
                 }
             };
 
-            ReferenceOr::Reference {
+            return Ok(ReferenceOr::Reference {
                 reference: format!("#/components/schemas/{}", model_fqdn(&spec, target)),
-            }
+            });
         }
-        Type::Json => ReferenceOr::Item(Schema {
-            schema_kind: SchemaKind::Type(openapiv3::Type::Object(openapiv3::ObjectType {
-                additional_properties: Some(AdditionalProperties::Any(true)),
-                ..Default::default()
-            })),
-            schema_data: SchemaData {
-                description: format!("{ty_:?}").into(),
-                ..Default::default()
-            },
-        }),
-    })
+    };
+
+    Ok(ReferenceOr::Item(Schema {
+        schema_kind,
+        schema_data: SchemaData {
+            nullable: !required,
+            example: None,
+            title: None,
+            description: format!("{ty_:?}").into(),
+            ..Default::default()
+        },
+    }))
 }
 
 fn model_fqdn(spec_path: &PathBuf, model_name: &str) -> String {
@@ -495,6 +487,33 @@ fn to_components(path: &PathBuf) -> Vec<String> {
             }
         })
         .collect::<Vec<_>>()
+}
+
+/// load the first json example defined in ModelDef
+fn load_one_json_example(model_def: &ModelDef) -> anyhow::Result<Option<serde_json::Value>> {
+    model_def
+        .examples
+        .iter()
+        .filter(|e| e.format.eq("json"))
+        .nth(0)
+        .map(|e| {
+            let example_value = serde_json::from_str::<serde_json::Value>(e.value.as_str())?;
+            Ok(example_value)
+        })
+        .transpose()
+}
+
+/// load the first json example defined in ModelDef
+fn load_json_examples(model_def: &ModelDef) -> anyhow::Result<IndexMap<String, serde_json::Value>> {
+    model_def
+        .examples
+        .iter()
+        .filter(|e| e.format.eq("json"))
+        .map(|e| {
+            let example_value = serde_json::from_str::<serde_json::Value>(e.value.as_str())?;
+            Ok((e.name.clone(), example_value))
+        })
+        .collect()
 }
 
 #[cfg(test)]

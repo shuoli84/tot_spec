@@ -1,5 +1,6 @@
 use crate::codegen::spec_folder::FolderTree;
-use crate::Definition;
+use crate::{Definition, ModelDef, TypeReference};
+use anyhow::anyhow;
 use indexmap::IndexMap;
 use path_absolutize::Absolutize;
 use std::path::{Path, PathBuf};
@@ -76,6 +77,26 @@ impl Context {
     pub fn get_definition(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
         let path = self.to_relative_path(path.as_ref());
         Ok(self.definitions.get(&path).unwrap())
+    }
+
+    /// get model def of the type_ref
+    pub fn get_model_def_for_reference(
+        &self,
+        type_ref: &TypeReference,
+        spec_path: &Path,
+    ) -> anyhow::Result<&ModelDef> {
+        match &type_ref.namespace {
+            Some(namespace) => {
+                let namespace_spec = self.get_include_path(namespace, spec_path)?;
+                let def = self.get_definition(namespace_spec)?;
+                def.get_model(&type_ref.target)
+            }
+            None => {
+                let def = self.get_definition(spec_path)?;
+                def.get_model(&type_ref.target)
+            }
+        }
+        .ok_or_else(|| anyhow!("model {:?} not find", type_ref))
     }
 
     /// get an iterator for all specs

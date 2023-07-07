@@ -14,3 +14,30 @@ models:
           {
             "value_1": "hello"
           }
+
+  - name: TestRequest
+    type:
+      name: new_type
+      inner_type: TestStruct
+    examples:
+      - name: foo_bar
+        value: |
+          {
+            "foo": "bar"
+          }
+
+      - name: hello_world
+        value: |
+          {
+            "hello": "world"
+          }
+
+  - name: TestResponse
+    type:
+      name: struct
+
+methods:
+  - name: TestMethod
+    desc: test method
+    request: TestRequest
+    response: TestResponse

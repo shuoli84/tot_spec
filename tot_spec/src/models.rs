@@ -76,9 +76,9 @@ pub struct MethodDef {
     /// description of the method
     pub desc: Option<String>,
     /// request type
-    pub request: serde_helper::StringOrStruct<Type>,
+    pub request: serde_helper::StringOrStruct<TypeReference>,
     /// response type
-    pub response: serde_helper::StringOrStruct<Type>,
+    pub response: serde_helper::StringOrStruct<TypeReference>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -99,23 +99,8 @@ pub struct ModelDef {
 
 impl ModelDef {
     /// get attribute
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use tot_spec::{ModelDef, Type};
-    ///
-    /// let field = ModelDef::default()
-    ///     .with_attribute("test_attr", "attr_value");
-    /// assert!(field.attribute("test_attr").is_some());
-    /// ```
     pub fn attribute(&self, name: &str) -> Option<&String> {
         self.attributes.get(name)
-    }
-
-    pub fn with_attribute(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        self.attributes.insert(name.into(), value.into());
-        self
     }
 }
 
@@ -425,13 +410,14 @@ pub struct ModelExample {
     /// value
     pub value: String,
     /// format of value
+    #[serde(default = "serde_helper::json")]
     pub format: String,
 }
 
 // code copied from: https://serde.rs/string-or-struct.html
 mod serde_helper {
     use super::*;
-    use anyhow::bail;
+    use anyhow::{anyhow, bail};
     use serde::{de::Visitor, Deserialize, Deserializer};
     use std::{fmt, marker::PhantomData, ops::Deref};
 
@@ -602,6 +588,23 @@ mod serde_helper {
         }
     }
 
+    impl FromStr for TypeReference {
+        fn from_str(s: &str) -> anyhow::Result<Self> {
+            if let Some(((namespace, identifier), rest)) = if_identifier(s) {
+                if rest.is_empty() {
+                    Ok(TypeReference {
+                        namespace: namespace.map(|s| s.to_string()),
+                        target: identifier.to_string(),
+                    })
+                } else {
+                    Err(anyhow!("s is not identifier"))
+                }
+            } else {
+                Err(anyhow!("s is not identifier"))
+            }
+        }
+    }
+
     /// A wrapper struct which enables parse from string or struct behavior
     /// requires T to impl both FromStr and Deserialize
     pub struct StringOrStruct<T>(pub(crate) T);
@@ -734,8 +737,12 @@ mod serde_helper {
         }
     }
 
+    pub fn json() -> String {
+        "json".to_string()
+    }
+
     #[cfg(test)]
-    mod test {
+    mod tests {
         use super::if_identifier;
         #[test]
         fn test_if_identifier() {
