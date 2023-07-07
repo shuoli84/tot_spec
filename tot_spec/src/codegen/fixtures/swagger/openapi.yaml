@@ -27,7 +27,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/examples_TestResponse'
+                type: object
+                properties:
+                  code:
+                    nullable: true
+                    description: I32
+                    type: integer
+                    format: int32
+                  data:
+                    $ref: '#/components/schemas/examples_TestResponse'
+                  message:
+                    nullable: true
+                    description: String
+                    type: string
   /java_namespace:
     post:
       summary: java_namespace
@@ -43,7 +55,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/java_namespace_Response'
+                type: object
+                properties:
+                  code:
+                    nullable: true
+                    description: I32
+                    type: integer
+                    format: int32
+                  data:
+                    $ref: '#/components/schemas/java_namespace_Response'
+                  message:
+                    nullable: true
+                    description: String
+                    type: string
   /spec_as_method:
     post:
       summary: spec_as_method
@@ -69,7 +93,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/spec_as_method_Response'
+                type: object
+                properties:
+                  code:
+                    nullable: true
+                    description: I32
+                    type: integer
+                    format: int32
+                  data:
+                    $ref: '#/components/schemas/spec_as_method_Response'
+                  message:
+                    nullable: true
+                    description: String
+                    type: string
 components:
   schemas:
     bigint_TestBigInt:

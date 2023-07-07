@@ -30,6 +30,20 @@ struct CodegenConfig {
 pub struct MethodConfig {
     #[serde(default)]
     spec_as_method: SpecAsMethodConfig,
+
+    /// Response config
+    #[serde(default)]
+    response: Option<ResponseConfig>,
+}
+
+/// It is common that all response shares a template definition
+#[derive(Default, Debug, Deserialize, Serialize)]
+pub struct ResponseConfig {
+    /// field name for the FieldDef holds the real response
+    data_field: String,
+
+    /// extra fields
+    fields: Vec<FieldDef>,
 }
 
 #[derive(Default, Debug, Deserialize, Serialize)]
@@ -256,11 +270,8 @@ impl Swagger {
                                         content_map.insert(
                                             "application/json".into(),
                                             MediaType {
-                                                schema: Some(type_to_schema(
-                                                    &Type::Reference(method.response.0.clone()),
-                                                    true,
-                                                    spec,
-                                                    context,
+                                                schema: Some(response_schema(
+                                                    method, spec, context, config,
                                                 )?),
                                                 example: None,
                                                 examples: Default::default(),
@@ -555,6 +566,50 @@ fn get_meta_value(path: &str, def: &Definition) -> Option<String> {
         Some(value.to_string())
     } else {
         None
+    }
+}
+
+/// construct the response schema for method's response
+fn response_schema(
+    method: &MethodDef,
+    spec: &PathBuf,
+    context: &Context,
+    config: &CodegenConfig,
+) -> anyhow::Result<ReferenceOr<Schema>> {
+    match &config.method.response {
+        None => type_to_schema(
+            &Type::Reference(method.response.0.clone()),
+            true,
+            spec,
+            context,
+        ),
+        Some(response_template) => {
+            let field_name = &response_template.data_field;
+
+            // dup the fields, we will update the real Response def into the data field
+            let mut fields = response_template.fields.clone();
+            let data_field = fields
+                .iter_mut()
+                .filter(|f| f.name.eq(field_name))
+                .nth(0)
+                .ok_or_else(|| anyhow!("data field not defined in fields"))?;
+            // update the field type
+            data_field.type_ = Type::Reference(method.response.0.clone()).into();
+
+            let mut object_type = openapiv3::ObjectType::default();
+
+            let properties = fields_to_properties(&fields, spec, context)?;
+            for (name, property_schema) in properties {
+                object_type.properties.insert(name, property_schema);
+            }
+
+            Ok(ReferenceOr::Item(Schema {
+                schema_kind: SchemaKind::Type(openapiv3::Type::Object(object_type)),
+                schema_data: SchemaData {
+                    ..Default::default()
+                },
+            }))
+        }
     }
 }
 

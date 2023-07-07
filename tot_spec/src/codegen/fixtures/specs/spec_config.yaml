@@ -16,3 +16,20 @@ codegen:
           - api.request
           - api.request_1
 
+      # defines the common payload of response
+      response:
+        data_field: data
+        fields:
+          - name: code
+            type: i32
+            desc: response code
+
+          - name: data
+            type: json
+            desc: |
+              if succeeded, it holds the real response data, this field will be replaced by 
+              the real Response type def
+
+          - name: message
+            type: string
+            desc: if failed, this field contains detailed error message
