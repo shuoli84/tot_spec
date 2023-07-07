@@ -545,8 +545,12 @@ fn load_spec_examples(
     let mut examples = IndexMap::<String, serde_json::Value>::new();
     for path in example_paths {
         if let Some(p) = get_meta_value(path, def) {
-            let example_value = serde_json::from_str::<serde_json::Value>(p.as_str())?;
-            examples.insert(path.to_string(), example_value);
+            // parse to validate it is valid json
+            let _ = serde_json::from_str::<serde_json::Value>(p.as_str())?;
+            // we have to wrap p in String, even it is valid json
+            // reason: serde_yaml output string without quote, which caused some trouble
+            //         e.g: "0x11111111111111111" will be converted to number
+            examples.insert(path.to_string(), serde_json::Value::String(p));
         }
     }
 
