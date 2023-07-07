@@ -1,0 +1,18 @@
+codegen:
+  swagger:
+    title: "swagger test"
+    description: "testing"
+    servers: []
+    method:
+      # spec as method is a convention based method def
+      # each spec file exposes Request and Response
+      spec_as_method:
+        enable: true
+        path_separator: .
+        request_model: Request
+        response_model: Response
+        desc_path: api.desc
+        request_example_path:
+          - api.request
+          - api.request_1
+

@@ -1,6 +1,6 @@
 use super::Codegen;
 use crate::codegen::context::Context;
-use crate::{FieldDef, MethodDef, ModelDef, ModelType, Type, TypeReference};
+use crate::{Definition, FieldDef, MethodDef, ModelDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use openapiv3::{
@@ -8,6 +8,7 @@ use openapiv3::{
     ReferenceOr, RequestBody, Response, Responses, Schema, SchemaData, SchemaKind,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::{Component, PathBuf};
 
 #[derive(Default, Debug, Deserialize, Serialize)]
@@ -45,8 +46,15 @@ pub struct SpecAsMethodConfig {
     #[serde(default = "serde_default::default_response_model")]
     response_model: String,
 
-    /// the path to retrieve method desc
+    /// meta path to retrieve method desc
     desc_path: Option<String>,
+
+    /// relative meta path to request example
+    /// e.g:
+    /// api.request
+    /// api.request_1
+    #[serde(default)]
+    request_example_path: Vec<String>,
 }
 
 mod serde_default {
@@ -152,20 +160,13 @@ impl Swagger {
         let def = context.get_definition(spec)?;
 
         let mut methods = def.methods.clone();
+        let mut name_to_example = HashMap::<String, IndexMap<String, serde_json::Value>>::default();
 
         // construct methods dynamically
         if config.method.spec_as_method.enable {
             let mut method_desc: Option<String> = None;
             if let Some(desc_path) = &config.method.spec_as_method.desc_path {
-                let mut components = desc_path.split('.');
-                let c1 = components
-                    .next()
-                    .expect("path should in format meta_name.field_name");
-                let c2 = components
-                    .next()
-                    .expect("path should in format meta_name.field_name");
-
-                if let Some(desc) = def.get_meta(c1).get(c2) {
+                if let Some(desc) = get_meta_value(desc_path, def) {
                     method_desc = desc.clone().into();
                 }
             }
@@ -178,44 +179,22 @@ impl Swagger {
                 .is_some()
             {
                 let method_value = serde_json::json!({
-                    "name": method_name,
+                    "name": method_name.clone(),
                     "desc": method_desc,
                     "request": config.method.spec_as_method.request_model,
                     "response": config.method.spec_as_method.response_model,
                 });
                 methods.push(serde_json::from_value::<MethodDef>(method_value)?);
             }
+
+            let method_examples =
+                load_spec_examples(&config.method.spec_as_method.request_example_path, def)?;
+
+            name_to_example.insert(method_name, method_examples);
         }
 
         for method in &methods {
             let method_name = method.name.clone();
-
-            let mut response_map = IndexMap::default();
-            response_map.insert(
-                openapiv3::StatusCode::Code(200),
-                ReferenceOr::Item(Response {
-                    description: "".to_string(),
-                    content: {
-                        let mut content_map = IndexMap::new();
-                        content_map.insert(
-                            "application/json".into(),
-                            MediaType {
-                                schema: Some(type_to_schema(
-                                    &Type::Reference(method.response.0.clone()),
-                                    true,
-                                    spec,
-                                    context,
-                                )?),
-                                example: None,
-                                examples: Default::default(),
-                                ..Default::default()
-                            },
-                        );
-                        content_map
-                    },
-                    ..Default::default()
-                }),
-            );
 
             let path_item = ReferenceOr::Item(PathItem {
                 post: Some(Operation {
@@ -238,7 +217,10 @@ impl Swagger {
                                         let request_model_def = context
                                             .get_model_def_for_reference(&method.request.0, spec)?;
 
-                                        let examples = load_json_examples(request_model_def)?;
+                                        let mut examples = name_to_example
+                                            .remove(&method_name)
+                                            .unwrap_or_default();
+                                        examples.extend(load_json_examples(request_model_def)?);
 
                                         examples
                                             .into_iter()
@@ -263,7 +245,36 @@ impl Swagger {
                     })),
                     responses: Responses {
                         default: None,
-                        responses: response_map,
+                        responses: {
+                            let mut response_map = IndexMap::default();
+                            response_map.insert(
+                                openapiv3::StatusCode::Code(200),
+                                ReferenceOr::Item(Response {
+                                    description: "".to_string(),
+                                    content: {
+                                        let mut content_map = IndexMap::new();
+                                        content_map.insert(
+                                            "application/json".into(),
+                                            MediaType {
+                                                schema: Some(type_to_schema(
+                                                    &Type::Reference(method.response.0.clone()),
+                                                    true,
+                                                    spec,
+                                                    context,
+                                                )?),
+                                                example: None,
+                                                examples: Default::default(),
+                                                ..Default::default()
+                                            },
+                                        );
+                                        content_map
+                                    },
+                                    ..Default::default()
+                                }),
+                            );
+
+                            response_map
+                        },
                         ..Default::default()
                     },
                     ..Default::default()
@@ -516,6 +527,37 @@ fn load_json_examples(model_def: &ModelDef) -> anyhow::Result<IndexMap<String, s
         .collect()
 }
 
+fn load_spec_examples(
+    example_paths: &[String],
+    def: &Definition,
+) -> anyhow::Result<IndexMap<String, serde_json::Value>> {
+    let mut examples = IndexMap::<String, serde_json::Value>::new();
+    for path in example_paths {
+        if let Some(p) = get_meta_value(path, def) {
+            let example_value = serde_json::from_str::<serde_json::Value>(p.as_str())?;
+            examples.insert(path.to_string(), example_value);
+        }
+    }
+
+    Ok(examples)
+}
+
+fn get_meta_value(path: &str, def: &Definition) -> Option<String> {
+    let mut components = path.split('.');
+    let c1 = components
+        .next()
+        .expect("path should in format meta_name.field_name");
+    let c2 = components
+        .next()
+        .expect("path should in format meta_name.field_name");
+
+    if let Some(value) = def.get_meta(c1).get(c2) {
+        Some(value.to_string())
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -523,9 +565,11 @@ mod tests {
     #[test]
     fn test_swagger() {
         let codegen = Swagger { skip_failed: true };
-        let _ = codegen.generate_for_folder(
-            &PathBuf::from("src/codegen/fixtures/specs"),
-            &PathBuf::from("src/codegen/fixtures/swagger"),
-        );
+        codegen
+            .generate_for_folder(
+                &PathBuf::from("src/codegen/fixtures/specs"),
+                &PathBuf::from("src/codegen/fixtures/swagger"),
+            )
+            .unwrap();
     }
 }

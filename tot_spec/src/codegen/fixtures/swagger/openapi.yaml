@@ -1,6 +1,7 @@
 openapi: 3.0.0
 info:
-  title: ''
+  title: swagger test
+  description: testing
   version: ''
 paths:
   /TestMethod:
@@ -27,6 +28,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/examples_TestResponse'
+  /java_namespace:
+    post:
+      summary: java_namespace
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/java_namespace_Request'
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/java_namespace_Response'
+  /spec_as_method:
+    post:
+      summary: spec_as_method
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/spec_as_method_Request'
+            examples:
+              api.request:
+                value:
+                  meta: true
+              foo_bar:
+                value:
+                  foo: bar
+              hello_world:
+                value:
+                  hello: world
+        required: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/spec_as_method_Response'
 components:
   schemas:
     bigint_TestBigInt:
@@ -208,3 +251,13 @@ components:
         required_str_value:
           description: String
           type: string
+    spec_as_method_TestStruct:
+      type: object
+      properties:
+        value_1:
+          description: String
+          type: string
+    spec_as_method_Request:
+      $ref: '#/components/schemas/spec_as_method_TestStruct'
+    spec_as_method_Response:
+      type: object

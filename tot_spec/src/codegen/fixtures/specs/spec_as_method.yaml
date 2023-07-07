@@ -1,0 +1,36 @@
+meta:
+  api:
+    request: |
+      {
+        "meta": true
+      }
+
+models:
+  - name: TestStruct
+    type:
+      name: struct
+      fields:
+        - name: value_1
+          type: string
+          required: true
+
+  - name: Request
+    type:
+      name: new_type
+      inner_type: TestStruct
+    examples:
+      - name: foo_bar
+        value: |
+          {
+            "foo": "bar"
+          }
+
+      - name: hello_world
+        value: |
+          {
+            "hello": "world"
+          }
+
+  - name: Response
+    type:
+      name: struct
