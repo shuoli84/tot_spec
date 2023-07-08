@@ -212,7 +212,15 @@ impl Swagger {
 
             let path_item = ReferenceOr::Item(PathItem {
                 post: Some(Operation {
-                    summary: method.name.to_string().into(),
+                    summary: {
+                        // use first line of desc as summary
+                        method
+                            .desc
+                            .as_ref()
+                            .map(|desc| desc.lines().nth(0))
+                            .flatten()
+                            .map(str::to_string)
+                    },
                     description: method.desc.clone(),
                     request_body: Some(ReferenceOr::Item(RequestBody {
                         description: None,

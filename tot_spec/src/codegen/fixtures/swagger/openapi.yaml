@@ -6,7 +6,7 @@ info:
 paths:
   /TestMethod:
     post:
-      summary: TestMethod
+      summary: test method
       description: test method
       requestBody:
         content:
@@ -42,7 +42,6 @@ paths:
                     type: string
   /java_namespace:
     post:
-      summary: java_namespace
       requestBody:
         content:
           application/json:
@@ -70,7 +69,6 @@ paths:
                     type: string
   /spec_as_method:
     post:
-      summary: spec_as_method
       requestBody:
         content:
           application/json:
@@ -78,8 +76,10 @@ paths:
               $ref: '#/components/schemas/spec_as_method_Request'
             examples:
               api.request:
-                value:
-                  meta: true
+                value: |
+                  {
+                    "meta": true
+                  }
               foo_bar:
                 value:
                   foo: bar
