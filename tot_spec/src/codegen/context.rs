@@ -1,4 +1,5 @@
 use crate::codegen::spec_folder::FolderTree;
+use crate::codegen::style::Style;
 use crate::{Definition, ModelDef, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
@@ -14,12 +15,27 @@ pub struct Context {
     folder_tree: FolderTree,
 
     root_folder: PathBuf,
+
+    /// optional style config
+    style: Option<Style>,
 }
 
 impl Context {
     pub fn new_from_folder(folder: &PathBuf) -> anyhow::Result<Self> {
         let folder = folder.absolutize().unwrap().as_ref().to_path_buf();
         let folder = &folder;
+
+        let config_value = Self::load_spec_config(folder)?;
+        let style = {
+            let mut style: Option<Style> = None;
+            if let Some(config) = config_value.as_ref() {
+                if let Some(style_value) = config.get("style").cloned() {
+                    let style_value = serde_json::from_value::<Style>(style_value)?;
+                    style = Some(style_value)
+                }
+            }
+            style
+        };
 
         let mut definitions = IndexMap::new();
         let mut spec_folder = FolderTree::new();
@@ -54,12 +70,23 @@ impl Context {
             let def = Definition::load_from_yaml(&spec)?;
             definitions.insert(relative_path.to_owned(), def);
         }
-
-        Ok(Self {
+        let context = Self {
             definitions,
             folder_tree: spec_folder,
             root_folder: folder.clone(),
-        })
+            style,
+        };
+
+        // validate styles
+        let violations = context.validate_style();
+        if !violations.is_empty() {
+            for violation in violations {
+                println!("{violation}");
+            }
+            anyhow::bail!("style validate failed");
+        }
+
+        Ok(context)
     }
 
     /// get a ref to spec's root folder
@@ -130,5 +157,49 @@ impl Context {
 
         let path = path.absolutize_virtually(&self.root_folder).unwrap();
         pathdiff::diff_paths(path, &self.root_folder).unwrap()
+    }
+
+    /// validate all definitions against styles, return violations
+    fn validate_style(&self) -> Vec<String> {
+        let mut violations = vec![];
+        let Some(style) = self.style.as_ref() else {
+            return violations;
+        };
+
+        for (spec, def) in self.definitions.iter() {
+            for model in def.models.iter() {
+                let model_violations = style.validate_model(model);
+                if model_violations.is_empty() {
+                    continue;
+                }
+
+                for model_violation in model_violations {
+                    violations.push(format!(
+                        "spec:{:?} model:{} {}",
+                        spec, model.name, model_violation
+                    ));
+                }
+            }
+        }
+
+        violations
+    }
+}
+
+// private methods
+impl Context {
+    fn load_spec_config(
+        spec_folder: &PathBuf,
+    ) -> anyhow::Result<Option<serde_json::Map<String, serde_json::Value>>> {
+        let config_file = spec_folder.join("spec_config.yaml");
+        if !config_file.exists() {
+            return Ok(None);
+        }
+
+        let config_content = std::fs::read_to_string(config_file)
+            .map_err(|_| anyhow::anyhow!("not able to read spec_config.yaml from folder"))?;
+        let config_value =
+            serde_yaml::from_str::<serde_json::Map<String, serde_json::Value>>(&config_content)?;
+        Ok(Some(config_value))
     }
 }

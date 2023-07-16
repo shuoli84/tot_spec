@@ -1,3 +1,6 @@
+style:
+  field_name_case: snake
+
 codegen:
   swagger:
     title: "swagger test"
