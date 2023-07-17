@@ -1,5 +1,8 @@
 style:
   field_name_case: snake
+  ignores:
+    - ignore_style.yaml
+    - ignore_styles/**/*.yaml
 
 codegen:
   swagger:

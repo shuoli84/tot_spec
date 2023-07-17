@@ -167,6 +167,10 @@ impl Context {
         };
 
         for (spec, def) in self.definitions.iter() {
+            if style.is_excluded(spec) {
+                continue;
+            }
+
             for model in def.models.iter() {
                 let model_violations = style.validate_model(model);
                 if model_violations.is_empty() {

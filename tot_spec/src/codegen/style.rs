@@ -1,11 +1,15 @@
 use crate::{FieldDef, ModelDef, ModelType};
 use convert_case::{Boundary, Case as ConvertCase, Casing};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Style {
     #[serde(default)]
     field_name_case: Case,
+
+    #[serde(default)]
+    ignores: Vec<String>,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]
@@ -43,6 +47,18 @@ impl Case {
 }
 
 impl Style {
+    /// Checks whether path should be excluded
+    pub fn is_excluded(&self, path: impl AsRef<Path>) -> bool {
+        for exclude in &self.ignores {
+            let pattern = glob::Pattern::new(exclude).unwrap();
+            if pattern.matches_path(path.as_ref()) {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub fn validate_model(&self, model: &ModelDef) -> Vec<String> {
         match &model.type_ {
             ModelType::Struct(st_) => self.validate_field_name(&st_.fields),
@@ -81,5 +97,17 @@ mod tests {
         assert_eq!(Case::Snake.convert("i8Value"), "i8_value");
         assert_eq!(Case::Snake.convert("i64Value"), "i64_value");
         assert_eq!(Case::Snake.convert("HTTPRequest"), "http_request");
+    }
+
+    #[test]
+    fn test_exclude() {
+        let style = Style {
+            field_name_case: Default::default(),
+            ignores: vec!["ignore_me.yaml".into(), "ignore_dir/**/*.yaml".into()],
+        };
+
+        assert!(style.is_excluded("ignore_me.yaml"));
+        assert!(!style.is_excluded("not_ignore_me.yaml"));
+        assert!(style.is_excluded("ignore_dir/a/b.yaml"));
     }
 }

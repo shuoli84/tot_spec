@@ -1,0 +1,9 @@
+models:
+  - name: TestStruct
+    type:
+      name: struct
+      fields:
+        - name: valueString
+          desc: camel case to test ignore style
+          type: string
+          required: true
