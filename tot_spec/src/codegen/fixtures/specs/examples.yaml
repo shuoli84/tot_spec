@@ -23,13 +23,13 @@ models:
       - name: foo_bar
         value: |
           {
-            "foo": "bar"
+            "value_1": "bar"
           }
 
       - name: hello_world
         value: |
           {
-            "hello": "world"
+            "value_1": "world"
           }
 
   - name: TestResponse

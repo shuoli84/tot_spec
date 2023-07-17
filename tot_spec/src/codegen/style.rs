@@ -91,6 +91,7 @@ mod tests {
     #[test]
     fn test_case() {
         assert!(Case::Snake.is_case("i8_value"));
+        assert!(Case::Snake.is_case("i_8_value"));
         assert!(Case::Snake.is_case("i64_value"));
         assert!(Case::Snake.is_case("http_request"));
 

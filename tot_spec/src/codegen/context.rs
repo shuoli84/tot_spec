@@ -1,6 +1,6 @@
 use crate::codegen::spec_folder::FolderTree;
 use crate::codegen::style::Style;
-use crate::{Definition, ModelDef, TypeReference};
+use crate::{Definition, ModelDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use path_absolutize::Absolutize;
@@ -77,13 +77,15 @@ impl Context {
             style,
         };
 
-        // validate styles
-        let violations = context.validate_style();
+        // validate
+        let mut violations = context.validate_style();
+        violations.extend(context.validate_examples());
+
         if !violations.is_empty() {
             for violation in violations {
                 println!("{violation}");
             }
-            anyhow::bail!("style validate failed");
+            anyhow::bail!("validation failed");
         }
 
         Ok(context)
@@ -185,8 +187,194 @@ impl Context {
                 }
             }
         }
+        violations
+    }
+
+    fn validate_examples(&self) -> Vec<String> {
+        let mut violations = vec![];
+        for (spec, def) in self.definitions.iter() {
+            for model in def.models.iter() {
+                violations.extend(
+                    self.validate_example_for_model(model, spec)
+                        .into_iter()
+                        .map(|v| format!("{spec:?} {} {v}", model.name)),
+                );
+            }
+        }
+        violations
+    }
+
+    fn validate_example_for_model(&self, model: &ModelDef, spec: &PathBuf) -> Vec<String> {
+        let mut violations = vec![];
+
+        for example in model.examples.iter() {
+            if example.format.ne("json") {
+                // only support validate for json
+                continue;
+            }
+
+            match serde_json::from_str::<serde_json::Value>(&example.value) {
+                Err(e) => {
+                    violations.push(format!("{} invalid json: {e:?}", model.name));
+                }
+                Ok(value) => {
+                    violations.extend(self.validate_example_for_model_type(
+                        &model.type_,
+                        value,
+                        spec,
+                    ));
+                }
+            }
+        }
 
         violations
+    }
+
+    fn validate_example_for_model_type(
+        &self,
+        model_type: &ModelType,
+        value: serde_json::Value,
+        spec: &PathBuf,
+    ) -> Vec<String> {
+        match &model_type {
+            crate::ModelType::Enum { .. } => {
+                // todo: support example validate for enum
+            }
+            crate::ModelType::Struct(st_) => {
+                let mut violations = vec![];
+                // todo: support extend
+                for field in &st_.fields {
+                    violations.extend(
+                        self.validate_value_for_type(
+                            value.get(&field.name).cloned().unwrap_or_default(),
+                            &field.type_,
+                            field.required,
+                            spec,
+                        )
+                        .into_iter()
+                        .map(|v| format!("field:{} {v}", field.name)),
+                    );
+                }
+                return violations;
+            }
+            crate::ModelType::Virtual(_) => {
+                // skip example validate for virtual model
+            }
+            crate::ModelType::NewType { inner_type } => {
+                return self.validate_value_for_type(value, &inner_type.0, true, spec)
+            }
+            crate::ModelType::Const { .. } => {
+                // skip validate for const
+            }
+        }
+
+        vec![]
+    }
+
+    fn validate_value_for_type(
+        &self,
+        value: serde_json::Value,
+        ty_: &Type,
+        required: bool,
+        spec: &PathBuf,
+    ) -> Vec<String> {
+        if !required && value.is_null() {
+            return vec![];
+        }
+
+        match ty_ {
+            Type::Bool => {
+                if !value.is_boolean() {
+                    return vec![format!("expect bool, got {:?}", value)];
+                }
+            }
+            Type::I8 => {
+                if !value.is_i64() || value.as_i64().unwrap() > i8::MAX as i64 {
+                    return vec![format!("expect i8, got {:?}", value)];
+                }
+            }
+            Type::I16 => {
+                if !value.is_i64() || value.as_i64().unwrap() > i16::MAX as i64 {
+                    return vec![format!("expect i16, got {:?}", value)];
+                }
+            }
+            Type::I32 => {
+                if !value.is_i64() || value.as_i64().unwrap() > i32::MAX as i64 {
+                    return vec![format!("expect i32, got {:?}", value)];
+                }
+            }
+            Type::I64 => {
+                if !value.is_i64() {
+                    return vec![format!("expect i64, got {:?}", value)];
+                }
+            }
+            Type::F64 => {
+                if !value.is_f64() {
+                    return vec![format!("expect f64, got {:?}", value)];
+                }
+            }
+            Type::Decimal => {
+                if !value.is_string() {
+                    return vec![format!("expect decimal in string, got {:?}", value)];
+                }
+            }
+            Type::BigInt => {
+                if !value.is_string() {
+                    return vec![format!("expect bigint in string, got {:?}", value)];
+                }
+            }
+            Type::Bytes => {
+                if !value.is_string() {
+                    return vec![format!("expect bytes in string, got {:?}", value)];
+                }
+            }
+            Type::String => {
+                if !value.is_string() {
+                    return vec![format!("expect string, got {:?}", value)];
+                }
+            }
+            Type::List { item_type } => {
+                if !value.is_array() {
+                    return vec![format!("expect array, got {:?}", value)];
+                }
+
+                let mut violations = vec![];
+                for item in value.as_array().unwrap() {
+                    violations.extend(self.validate_value_for_type(
+                        item.clone(),
+                        &item_type,
+                        true,
+                        spec,
+                    ));
+                }
+                return violations;
+            }
+            Type::Map { value_type } => {
+                if !value.is_object() {
+                    return vec![format!("expect object, got {:?}", value)];
+                }
+
+                let mut violations = vec![];
+                for (_key, item) in value.as_object().unwrap() {
+                    violations.extend(self.validate_value_for_type(
+                        item.clone(),
+                        &value_type,
+                        true,
+                        spec,
+                    ));
+                }
+                return violations;
+            }
+            Type::Reference(type_ref) => {
+                let model_def = self.get_model_def_for_reference(type_ref, spec).unwrap();
+                return self.validate_example_for_model_type(&model_def.type_, value, spec);
+            }
+            Type::Json => {
+                // always valid
+            }
+        }
+
+        vec![]
     }
 }
 
