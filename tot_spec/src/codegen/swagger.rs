@@ -244,13 +244,37 @@ impl Swagger {
                                             .unwrap_or_default();
                                         examples.extend(load_json_examples(request_model_def)?);
 
+                                        {
+                                            let mut violations = vec![];
+                                            for (example_name, example) in examples.iter() {
+                                                violations.extend(context.validate_value_for_type(
+                                                    example,
+                                                    &Type::Reference(method.request.0.clone()),
+                                                    true,
+                                                    spec,
+                                                ).into_iter().map(|v| format!("example:{example_name} {v}")));
+                                            }
+                                            if !violations.is_empty() {
+                                                for violate in violations {
+                                                    println!(
+                                                        "violate: sepc:{spec:?} method:{method_name:?} {violate:?}",
+                                                        method_name = method_name,
+                                                        violate = violate
+                                                    );
+                                                }
+                                                anyhow::bail!(
+                                                    "swagger method example validate failed"
+                                                )
+                                            }
+                                        }
+
                                         examples
                                             .into_iter()
                                             .map(|(k, v)| {
                                                 (
                                                     k,
                                                     ReferenceOr::Item(Example {
-                                                        value: Some(v),
+                                                        value: Some(serde_json::Value::String(serde_json::to_string(&v).unwrap())),
                                                         ..Default::default()
                                                     }),
                                                 )
@@ -554,11 +578,11 @@ fn load_spec_examples(
     for path in example_paths {
         if let Some(p) = get_meta_value(path, def) {
             // parse to validate it is valid json
-            let _ = serde_json::from_str::<serde_json::Value>(p.as_str())?;
+            let parsed_value = serde_json::from_str::<serde_json::Value>(p.as_str())?;
             // we have to wrap p in String, even it is valid json
             // reason: serde_yaml output string without quote, which caused some trouble
             //         e.g: "0x11111111111111111" will be converted to number
-            examples.insert(path.to_string(), serde_json::Value::String(p));
+            examples.insert(path.to_string(), parsed_value);
         }
     }
 

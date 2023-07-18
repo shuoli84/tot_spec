@@ -220,7 +220,7 @@ impl Context {
                 Ok(value) => {
                     violations.extend(self.validate_example_for_model_type(
                         &model.type_,
-                        value,
+                        &value,
                         spec,
                     ));
                 }
@@ -233,7 +233,7 @@ impl Context {
     fn validate_example_for_model_type(
         &self,
         model_type: &ModelType,
-        value: serde_json::Value,
+        value: &serde_json::Value,
         spec: &PathBuf,
     ) -> Vec<String> {
         match &model_type {
@@ -246,7 +246,7 @@ impl Context {
                 for field in &st_.fields {
                     violations.extend(
                         self.validate_value_for_type(
-                            value.get(&field.name).cloned().unwrap_or_default(),
+                            &value.get(&field.name).cloned().unwrap_or_default(),
                             &field.type_,
                             field.required,
                             spec,
@@ -261,7 +261,7 @@ impl Context {
                 // skip example validate for virtual model
             }
             crate::ModelType::NewType { inner_type } => {
-                return self.validate_value_for_type(value, &inner_type.0, true, spec)
+                return self.validate_value_for_type(&value, &inner_type.0, true, spec)
             }
             crate::ModelType::Const { .. } => {
                 // skip validate for const
@@ -271,9 +271,9 @@ impl Context {
         vec![]
     }
 
-    fn validate_value_for_type(
+    pub fn validate_value_for_type(
         &self,
-        value: serde_json::Value,
+        value: &serde_json::Value,
         ty_: &Type,
         required: bool,
         spec: &PathBuf,
@@ -340,12 +340,7 @@ impl Context {
 
                 let mut violations = vec![];
                 for item in value.as_array().unwrap() {
-                    violations.extend(self.validate_value_for_type(
-                        item.clone(),
-                        &item_type,
-                        true,
-                        spec,
-                    ));
+                    violations.extend(self.validate_value_for_type(item, &item_type, true, spec));
                 }
                 return violations;
             }
@@ -356,12 +351,7 @@ impl Context {
 
                 let mut violations = vec![];
                 for (_key, item) in value.as_object().unwrap() {
-                    violations.extend(self.validate_value_for_type(
-                        item.clone(),
-                        &value_type,
-                        true,
-                        spec,
-                    ));
+                    violations.extend(self.validate_value_for_type(item, &value_type, true, spec));
                 }
                 return violations;
             }
