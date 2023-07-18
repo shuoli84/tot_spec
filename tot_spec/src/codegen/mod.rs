@@ -4,7 +4,6 @@ mod context;
 pub mod java_jackson;
 pub mod py_dataclass;
 pub mod rs_serde;
-pub mod spec_folder;
 pub mod style;
 pub mod swagger;
 pub mod swift_codable;

@@ -1,5 +1,5 @@
-use crate::codegen::spec_folder::FolderTree;
 use crate::codegen::style::Style;
+use crate::codegen::utils::folder_tree::FolderTree;
 use crate::{Definition, ModelDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;

@@ -6,7 +6,7 @@ use std::path::Path;
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 use super::context::Context;
-use super::{spec_folder::Entry, utils::multiline_prefix_with};
+use super::{utils::folder_tree::Entry, utils::multiline_prefix_with};
 
 #[derive(Default)]
 pub struct RsSerde {}

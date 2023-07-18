@@ -1,5 +1,37 @@
 use std::path::PathBuf;
 
+/// Helper to build a tree of folders
+/// makes it easy to iterate over the folders and files in a specific order
+#[derive(Debug, Default)]
+pub struct FolderTree {
+    root: Entry,
+}
+
+impl FolderTree {
+    /// Create a new empty folder tree
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Insert a path into the tree
+    pub fn insert(&mut self, path: impl AsRef<std::path::Path>) {
+        let components = path
+            .as_ref()
+            .components()
+            .map(|c| c.as_os_str().to_owned().to_str().unwrap().to_string())
+            .collect::<Vec<_>>();
+
+        self.root.insert(&components);
+    }
+
+    /// Iterate over all entries in the tree
+    pub fn foreach_entry_recursively(&self, mut f: impl FnMut(&Entry)) {
+        (&mut f)(&self.root);
+        self.root.foreach_entry_recursive(&mut f);
+    }
+}
+
+/// A single entry in the folder tree
 #[derive(Debug, Default)]
 pub struct Entry {
     path: PathBuf,
@@ -61,32 +93,6 @@ impl Entry {
             f(child);
             child.foreach_entry_recursive(f);
         }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct FolderTree {
-    root: Entry,
-}
-
-impl FolderTree {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn insert(&mut self, path: impl AsRef<std::path::Path>) {
-        let components = path
-            .as_ref()
-            .components()
-            .map(|c| c.as_os_str().to_owned().to_str().unwrap().to_string())
-            .collect::<Vec<_>>();
-
-        self.root.insert(&components);
-    }
-
-    pub fn foreach_entry_recursively(&self, mut f: impl FnMut(&Entry)) {
-        (&mut f)(&self.root);
-        self.root.foreach_entry_recursive(&mut f);
     }
 }
 

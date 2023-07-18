@@ -16,10 +16,10 @@ paths:
             examples:
               foo_bar:
                 value:
-                  foo: bar
+                  value_1: bar
               hello_world:
                 value:
-                  hello: world
+                  value_1: world
         required: true
       responses:
         '200':
@@ -82,10 +82,10 @@ paths:
                   }
               foo_bar:
                 value:
-                  foo: bar
+                  value_1: bar
               hello_world:
                 value:
-                  hello: world
+                  value_1: world
         required: true
       responses:
         '200':
