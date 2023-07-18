@@ -274,6 +274,9 @@ impl Swagger {
                                                 (
                                                     k,
                                                     ReferenceOr::Item(Example {
+                                                        // we have to wrap example in String, even it is valid json
+                                                        // reason: serde_yaml output string without quote, which caused some trouble
+                                                        //         e.g: "0x11111111111111111" will be converted to number
                                                         value: Some(serde_json::Value::String(serde_json::to_string(&v).unwrap())),
                                                         ..Default::default()
                                                     }),
@@ -579,9 +582,6 @@ fn load_spec_examples(
         if let Some(p) = get_meta_value(path, def) {
             // parse to validate it is valid json
             let parsed_value = serde_json::from_str::<serde_json::Value>(p.as_str())?;
-            // we have to wrap p in String, even it is valid json
-            // reason: serde_yaml output string without quote, which caused some trouble
-            //         e.g: "0x11111111111111111" will be converted to number
             examples.insert(path.to_string(), parsed_value);
         }
     }
