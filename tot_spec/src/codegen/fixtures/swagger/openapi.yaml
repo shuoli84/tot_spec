@@ -15,11 +15,9 @@ paths:
               $ref: '#/components/schemas/examples_TestRequest'
             examples:
               foo_bar:
-                value:
-                  value_1: bar
+                value: '{"value_1":"bar"}'
               hello_world:
-                value:
-                  value_1: world
+                value: '{"value_1":"world"}'
         required: true
       responses:
         '200':
@@ -63,45 +61,6 @@ paths:
                     format: int32
                   data:
                     $ref: '#/components/schemas/java_namespace_Response'
-                  message:
-                    nullable: true
-                    description: String
-                    type: string
-  /spec_as_method:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/spec_as_method_Request'
-            examples:
-              api.request:
-                value: |
-                  {
-                    "meta": true
-                  }
-              foo_bar:
-                value:
-                  value_1: bar
-              hello_world:
-                value:
-                  value_1: world
-        required: true
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    nullable: true
-                    description: I32
-                    type: integer
-                    format: int32
-                  data:
-                    $ref: '#/components/schemas/spec_as_method_Response'
                   message:
                     nullable: true
                     description: String
@@ -299,13 +258,3 @@ components:
         required_str_value:
           description: String
           type: string
-    spec_as_method_TestStruct:
-      type: object
-      properties:
-        value_1:
-          description: String
-          type: string
-    spec_as_method_Request:
-      $ref: '#/components/schemas/spec_as_method_TestStruct'
-    spec_as_method_Response:
-      type: object
