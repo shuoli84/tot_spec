@@ -2,6 +2,7 @@
 name = "codegen"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/shuoli84/tot_spec"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
