@@ -3,6 +3,8 @@ name = "codegen"
 version = "0.1.1"
 edition = "2021"
 repository = "https://github.com/shuoli84/tot_spec"
+license = "MIT OR Apache-2.0"
+description = "A code generator for json model"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

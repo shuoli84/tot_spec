@@ -3,8 +3,8 @@ name = "tot_spec"
 version = "0.1.1"
 edition = "2021"
 repository = "https://github.com/shuoli84/tot_spec"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "The lib for json model"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -25,7 +25,6 @@ glob = "0.3.1"
 serde_json = "1.0"
 pretty_assertions = "1.3.0"
 rust_decimal = "1.29"
-syn = "*"
 
 
 [features]
