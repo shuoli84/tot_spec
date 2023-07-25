@@ -1,6 +1,7 @@
 use crate::{FieldDef, ModelDef, ModelType};
 use convert_case::{Boundary, Case as ConvertCase, Casing};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,15 +24,15 @@ pub enum Case {
 }
 
 impl Case {
-    fn is_case(&self, name: &str) -> bool {
+    pub fn is_case(&self, name: &str) -> bool {
         self.convert(name).eq(name)
     }
 
-    fn convert(&self, name: &str) -> String {
+    pub fn convert<'a>(&self, name: &'a str) -> Cow<'a, str> {
         let convert_case = match self {
             Case::Snake => ConvertCase::Snake,
             Case::Camel => ConvertCase::Camel,
-            Case::Unspecified => return name.to_string(),
+            Case::Unspecified => return Cow::Borrowed(name),
         };
 
         name.with_boundaries(&[
@@ -43,6 +44,7 @@ impl Case {
             Boundary::LowerUpper,
         ])
         .to_case(convert_case)
+        .into()
     }
 }
 

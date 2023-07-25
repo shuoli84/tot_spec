@@ -15,13 +15,13 @@ struct Args {
         long,
         help = "root folder for all spec, will scan all specs in the folder recursively"
     )]
-    input: Option<std::path::PathBuf>,
+    input: Option<PathBuf>,
 
     #[arg(
         long,
         help = "root folder for all spec, will scan all specs in the folder recursively, deprecated, use --input instead"
     )]
-    spec_folder: Option<std::path::PathBuf>,
+    spec_folder: Option<PathBuf>,
 
     #[arg(short, long, default_value = "rs_serde")]
     codegen: String,
@@ -32,22 +32,23 @@ struct Args {
         default_value = "examples/spec/",
         help = "output path, if input is folder, then output must be folder"
     )]
-    output: std::path::PathBuf,
+    output: PathBuf,
 }
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
+    let input = args.input.or(args.spec_folder).unwrap();
+
     let codegen: Box<dyn Codegen> = match args.codegen.as_str() {
-        "rs_serde" => Box::new(RsSerde::default()),
-        "java_jackson" => Box::new(JavaJackson::default()),
-        "swift_codable" => Box::new(SwiftCodable::default()),
-        "py_dataclass" => Box::new(PyDataclass::default()),
-        "swagger" => Box::new(Swagger::default()),
+        "rs_serde" => Box::new(RsSerde::load_from_folder(&input)?),
+        "java_jackson" => Box::new(JavaJackson::load_from_folder(&input)?),
+        "swift_codable" => Box::new(SwiftCodable::load_from_folder(&input)?),
+        "py_dataclass" => Box::new(PyDataclass::load_from_folder(&input)?),
+        "swagger" => Box::new(Swagger::load_from_folder(&input)?),
         _ => anyhow::bail!("unknown codegen name"),
     };
 
-    let input = args.input.or(args.spec_folder).unwrap();
     let output = absolute(&args.output);
 
     // create output folder

@@ -10,6 +10,10 @@ use std::{borrow::Cow, fmt::Write, path::PathBuf};
 pub struct JavaJackson {}
 
 impl super::Codegen for JavaJackson {
+    fn load_from_folder(_folder: &PathBuf) -> anyhow::Result<Self> {
+        Ok(Self::default())
+    }
+
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
         let context = Context::new_from_folder(folder)?;
 

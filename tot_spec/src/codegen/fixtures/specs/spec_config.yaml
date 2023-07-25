@@ -5,6 +5,11 @@ style:
     - ignore_styles/**/*.yaml
 
 codegen:
+  # globally overwrite type
+  rs_serde:
+    type_overwrites:
+      bigint: tot_spec_util::big_int::BigInt
+
   swagger:
     title: "swagger test"
     description: "testing"

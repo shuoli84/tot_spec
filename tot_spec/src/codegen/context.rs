@@ -101,6 +101,35 @@ impl Context {
         &self.folder_tree
     }
 
+    /// helper to load codegen specific config from spec_config.yaml
+    pub fn load_codegen_config<T: serde::de::DeserializeOwned>(
+        &self,
+        key_name: &str,
+    ) -> anyhow::Result<Option<T>> {
+        let config_file = self.root_folder().join("spec_config.yaml");
+        if !config_file.exists() {
+            return Ok(None);
+        }
+
+        let config_content = std::fs::read_to_string(config_file)
+            .map_err(|_| anyhow::anyhow!("not able to read spec_config.yaml from folder"))?;
+        let config_value =
+            serde_yaml::from_str::<serde_json::Map<String, serde_json::Value>>(&config_content)?;
+        let Some(codegen_value) = config_value.get("codegen") else {
+            return Ok(None)
+        };
+
+        assert!(codegen_value.is_object());
+
+        let Some(config_value) = codegen_value.as_object().unwrap().get(key_name) else {
+            return Ok(None)
+        };
+
+        let config = serde_json::from_value::<T>(config_value.to_owned())?;
+
+        Ok(Some(config))
+    }
+
     /// get a ref to definition for spec path, the spec should already loaded
     /// panic if path not loaded
     pub fn get_definition(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
@@ -261,7 +290,7 @@ impl Context {
                 // skip example validate for virtual model
             }
             crate::ModelType::NewType { inner_type } => {
-                return self.validate_value_for_type(&value, &inner_type.0, true, spec)
+                return self.validate_value_for_type(&value, &inner_type.as_ref().0, true, spec)
             }
             crate::ModelType::Const { .. } => {
                 // skip validate for const

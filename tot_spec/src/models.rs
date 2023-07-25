@@ -227,18 +227,6 @@ impl FieldDef {
         self.attributes.get(name)
     }
 
-    pub fn rs_type(&self) -> String {
-        let ty = self
-            .attribute("rs_type")
-            .map(|s| s.to_string())
-            .unwrap_or(self.type_.rs_type());
-        if self.required {
-            ty
-        } else {
-            format!("std::option::Option<{}>", ty)
-        }
-    }
-
     /// returns attributes for this field
     pub fn rs_attributes(&self) -> Vec<String> {
         vec![]
@@ -260,18 +248,6 @@ pub enum ConstType {
     I32,
     I64,
     String,
-}
-
-impl ConstType {
-    pub fn rs_type(&self) -> &'static str {
-        match self {
-            ConstType::I8 => "i8",
-            ConstType::I16 => "i16",
-            ConstType::I32 => "i32",
-            ConstType::I64 => "i64",
-            ConstType::String => "&'static str",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -349,39 +325,6 @@ impl Type {
             namespace: None,
             target: target.into(),
         })
-    }
-}
-
-impl Type {
-    pub fn rs_type(&self) -> String {
-        match self {
-            Type::Bool => "bool".into(),
-            Type::I8 => "i8".into(),
-            Type::I16 => "i16".into(),
-            Type::I32 => "i32".into(),
-            Type::I64 => "i64".into(),
-            Type::F64 => "f64".into(),
-            Type::Bytes => "std::vec::Vec<u8>".into(),
-            Type::String => "std::string::String".into(),
-            Type::List { item_type } => format!("std::vec::Vec<{}>", item_type.rs_type()),
-            Type::Map { value_type } => {
-                format!(
-                    "std::collections::HashMap<std::string::String, {}>",
-                    value_type.rs_type()
-                )
-            }
-            Type::Reference(TypeReference {
-                namespace: None,
-                target,
-            }) => target.clone(),
-            Type::Reference(TypeReference {
-                namespace: Some(namespace),
-                target,
-            }) => format!("{namespace}::{target}"),
-            Type::Json => "serde_json::Value".to_string(),
-            Type::Decimal => "rust_decimal::Decimal".into(),
-            Type::BigInt => "tot_spec_util::big_int::BigInt".into(),
-        }
     }
 }
 

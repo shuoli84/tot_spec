@@ -11,6 +11,10 @@ use super::utils::{indent, multiline_prefix_with};
 pub struct SwiftCodable {}
 
 impl super::Codegen for SwiftCodable {
+    fn load_from_folder(_folder: &PathBuf) -> anyhow::Result<Self> {
+        Ok(Self::default())
+    }
+
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
         use walkdir::WalkDir;
 

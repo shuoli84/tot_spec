@@ -121,6 +121,10 @@ impl Swagger {
 }
 
 impl Codegen for Swagger {
+    fn load_from_folder(_folder: &PathBuf) -> anyhow::Result<Self> {
+        Ok(Self::default())
+    }
+
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
         // load codegen config from spec_config.yaml file
         let config = Swagger::load_config(&folder.join("spec_config.yaml"))?.unwrap_or_default();
