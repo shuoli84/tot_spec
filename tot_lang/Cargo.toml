@@ -13,3 +13,5 @@ anyhow = "1.0"
 tokio = { version = "1", features = ["full"] }
 tot_spec = { path = "../tot_spec" }
 indexmap = "2.0.0"
+pest = "2.7"
+pest_derive = "2.7"

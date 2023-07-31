@@ -1,0 +1,47 @@
+fn main(req: int) {
+    let h: string = "hello";
+    // hello
+    if hello {
+        print(hello);
+    } else {
+    }
+
+    // good thing
+    for i in hello {
+        print(i);
+    }
+
+    {
+        let h: integer = 123;
+    }
+
+    let h1: a::b::c::Request = a::b::c::Request::new({});
+    let hello = "hello";
+
+    let world = "world";
+    let num_1= 1;
+    let num_2 = 10.1;
+    num_2 = 4;
+
+    let object = {
+      "hello": 1,
+      "world": 2,
+    };
+
+    let object_2 = {
+      "hello_1": object.hello,
+    };
+
+    object.hello = 2;
+
+    let list = [ 1, 2, 3, 4];
+
+    a::b::c(object);
+    let resp = a::b::c(object);
+
+    // return
+    return b::c::d(resp as b::c::d::Request);
+}
+
+fn hello(a: int) {
+}
