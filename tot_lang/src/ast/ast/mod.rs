@@ -29,7 +29,7 @@ pub enum AstNodeKind {
     Block {
         statements: Vec<AstNode>,
     },
-    Expression(Expression),
+    Expression(Box<AstNode>),
     Statement {},
     Literal {
         kind: Literal,
@@ -81,6 +81,20 @@ impl AstNode {
             _ => None,
         }
     }
+
+    pub fn as_expression(&self) -> Option<&AstNode> {
+        match &self.kind {
+            AstNodeKind::Expression(inner) => Some(inner.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_literal(&self) -> Option<(Literal, &str)> {
+        match &self.kind {
+            AstNodeKind::Literal { kind, value } => Some((*kind, value.as_str())),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -98,17 +112,11 @@ impl From<pest::Span<'_>> for Span {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Literal {
     String,
     Number,
     Boolean,
-}
-
-#[derive(Debug)]
-pub enum Expression {
-    Literal(Box<AstNode>),
-    Block(Box<AstNode>),
 }
 
 #[derive(Debug)]
