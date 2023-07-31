@@ -1,27 +1,49 @@
 use crate::ast::grammar::Rule;
 
+mod block;
+mod expression;
 mod func_def;
 mod func_signature;
+mod ident;
+mod literal;
+mod path;
+mod statement;
 
 #[derive(Debug)]
 pub enum AstNodeKind {
+    DeclareAndBind {
+        name: Box<AstNode>,
+        ty_: Box<AstNode>,
+        expression: Box<AstNode>,
+    },
+    Bind {
+        name: Box<AstNode>,
+        expression: Box<AstNode>,
+    },
     Ident {
         value: String,
     },
     Path {
         value: String,
     },
+    Block {
+        statements: Vec<AstNode>,
+    },
+    Expression(Expression),
+    Statement {},
+    Literal {
+        kind: Literal,
+        value: String,
+    },
     FuncDef {
         signature: Box<AstNode>,
         body: Box<AstNode>,
     },
-
     FuncSignature {
         name: Box<AstNode>,
         params: Vec<AstNode>,
         return_ty: Option<Box<AstNode>>,
     },
-
     FuncParam {
         ident: Box<AstNode>,
         ty: Box<AstNode>,
@@ -77,33 +99,21 @@ impl From<pest::Span<'_>> for Span {
 }
 
 #[derive(Debug)]
-pub struct Block {}
+pub enum Literal {
+    String,
+    Number,
+    Boolean,
+}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ast::grammar::{GrammarParser, Rule};
-    use pest::Parser;
+#[derive(Debug)]
+pub enum Expression {
+    Literal(Box<AstNode>),
+    Block(Box<AstNode>),
+}
 
-    #[test]
-    fn test_grammar() {
-        let successful_parse = GrammarParser::parse(Rule::file, "fn hello() {}").unwrap();
-        // for file in successful_parse {
-        //     for func in file.into_inner() {
-        //         match func {
-        //             Rule::func => parse_func_def(func.into_inner()),
-        //         }
-        //         if !matches!(func.as_rule(), Rule::func) {
-        //             continue;
-        //         }
-        //
-        //         let mut inner_rules = func.into_inner();
-        //         let func_signature = inner_rules.next();
-        //         let func_body = inner_rules.next();
-        //
-        //         dbg!(func_signature);
-        //         dbg!(func_body);
-        //     }
-        // }
-    }
+#[derive(Debug)]
+pub enum Statement {
+    DeclareAndBind(Box<AstNode>),
+    Bind(Box<AstNode>),
+    Expression(Box<AstNode>),
 }

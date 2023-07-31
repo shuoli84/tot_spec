@@ -1,6 +1,7 @@
+use crate::ast::ast::ident::parse_ident;
+use crate::ast::ast::path::parse_path;
 use crate::ast::ast::{AstNode, AstNodeKind, Span};
 use crate::ast::grammar::Rule;
-use crate::ast::grammar::Rule::func_signature;
 
 pub fn parse_func_signature(pair: pest::iterators::Pair<Rule>) -> AstNode {
     assert!(matches!(pair.as_rule(), Rule::func_signature));
@@ -33,24 +34,6 @@ pub fn parse_func_signature(pair: pest::iterators::Pair<Rule>) -> AstNode {
             return_ty: ret.map(|i| Box::new(i)),
         },
         span,
-    }
-}
-
-fn parse_ident(pair: pest::iterators::Pair<Rule>) -> AstNode {
-    AstNode {
-        kind: AstNodeKind::Ident {
-            value: pair.as_str().to_string(),
-        },
-        span: pair.as_span().into(),
-    }
-}
-
-fn parse_path(pair: pest::iterators::Pair<Rule>) -> AstNode {
-    AstNode {
-        kind: AstNodeKind::Path {
-            value: pair.as_str().to_string(),
-        },
-        span: pair.as_span().into(),
     }
 }
 

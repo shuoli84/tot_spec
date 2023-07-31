@@ -6,20 +6,20 @@ COMMENT = _{block_comment | line_comment}
 
 keywords = { "let" | "input" | "return" | "if" | "fn" | "for" | "as" }
 
-statement = { (declare_and_assign_local | assign | return_statement ) ~ ";" | expression ~ ";"? }
+statement = { (declare_and_bind | bind | return_statement ) ~ ";" | expression ~ ";"? }
 
 // the last expression is the block's return
 block = { "{" ~ (line_comment | statement)* ~ expression? ~ "}" }
 
-declare_and_assign_local = {
+declare_and_bind = {
   "let" ~ identifier ~ (":" ~ path)? ~ "=" ~ expression
 }
-assign = { reference ~ "=" ~ expression }
+bind = { reference ~ "=" ~ expression }
 return_statement = {
   "return" ~ expression
 }
 
-expression = { literal | call_exp | convert_exp | if_exp | for_exp | reference | block }
+expression = { literal | object_expression | array_expression | call_exp | convert_exp | if_exp | for_exp | reference | block }
 object_expression = { "{" ~ (string_literal ~ ":" ~ expression)?
                    ~ ("," ~ string_literal ~ ":" ~ expression)* ~ ","? ~ "}" }
 array_expression = { "[" ~ expression? ~ ("," ~ expression)* ~ "]" }
@@ -28,9 +28,7 @@ convert_exp = { reference ~ "as" ~ path }
 if_exp = {"if" ~ expression ~ block ~ ("else" ~ block)? }
 for_exp = { "for" ~ identifier ~ "in" ~ expression ~ block }
 
-literal = {
-  string_literal | number_literal | object_expression | array_expression
-}
+literal = { string_literal | number_literal | bool_literal }
 json_char_double_quote = {
     !("\"" | "\\") ~ ANY
     | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
@@ -38,6 +36,7 @@ json_char_double_quote = {
 }
 string_inner_double_quote = @{ json_char_double_quote* }
 string_literal = ${ ("\"" ~ string_inner_double_quote ~ "\"") }
+bool_literal = { "true" | "false" }
 number_literal = @{ "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT* ~ ("E" ~ "-"? ~ ASCII_DIGIT+)? ~ !symbol_char }
 
 identifier = @{ symbol_char+ }
