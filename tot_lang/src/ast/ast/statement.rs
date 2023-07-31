@@ -40,6 +40,14 @@ pub fn parse_statement(pair: Pair<Rule>) -> AstNode {
                 expression: Box::new(expr),
             }
         }
+        Rule::return_statement => {
+            let mut components = inner.into_inner();
+            let expr = parse_expression(components.next().unwrap());
+
+            Statement::Return {
+                expression: Box::new(expr),
+            }
+        }
         _ => {
             unreachable!()
         }
@@ -67,7 +75,7 @@ mod tests {
         let stmt = stmt.as_statement().unwrap();
         let exp = stmt.as_expression().unwrap();
         let exp = exp.as_expression().unwrap();
-        let literal = exp.as_literal().unwrap();
+        let literal = exp.as_literal().unwrap().as_literal().unwrap();
 
         assert!(matches!(literal.0, Literal::Number));
     }
@@ -90,5 +98,15 @@ mod tests {
             .unwrap();
         let stmt = parse_statement(parsed);
         assert!(stmt.as_statement().unwrap().as_bind_ref().is_some());
+    }
+
+    #[test]
+    fn test_parse_statement_return() {
+        let parsed = GrammarParser::parse(Rule::statement, "return x;")
+            .unwrap()
+            .nth(0)
+            .unwrap();
+        let stmt = parse_statement(parsed);
+        assert!(stmt.as_statement().unwrap().as_return().is_some());
     }
 }

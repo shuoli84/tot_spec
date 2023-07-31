@@ -1,5 +1,6 @@
+use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::literal::parse_literal;
-use crate::ast::ast::{AstNode, AstNodeKind};
+use crate::ast::ast::{AstNode, AstNodeKind, Expression};
 use crate::ast::grammar::Rule;
 use pest::iterators::Pair;
 
@@ -9,10 +10,19 @@ pub fn parse_expression(pair: Pair<Rule>) -> AstNode {
     let span = pair.as_span().into();
 
     let inner = pair.into_inner().nth(0).unwrap();
-    let inner = match inner.as_rule() {
-        Rule::literal => parse_literal(inner),
+    let expression = match inner.as_rule() {
+        Rule::literal => Expression::Literal(Box::new(parse_literal(inner))),
         Rule::block => {
             todo!()
+        }
+        Rule::reference => {
+            let span = inner.as_span().into();
+            Expression::Reference(Box::new(AstNode {
+                kind: AstNodeKind::Reference {
+                    identifiers: inner.into_inner().map(|id| parse_ident(id)).collect(),
+                },
+                span,
+            }))
         }
         _ => {
             unreachable!();
@@ -20,7 +30,7 @@ pub fn parse_expression(pair: Pair<Rule>) -> AstNode {
     };
 
     AstNode {
-        kind: AstNodeKind::Expression(Box::new(inner)),
+        kind: AstNodeKind::Expression(expression),
         span,
     }
 }
@@ -39,7 +49,30 @@ mod tests {
             .nth(0)
             .unwrap();
         let exp = parse_expression(parsed);
-        let literal = exp.as_expression().unwrap().as_literal().unwrap();
+        let literal = exp
+            .as_expression()
+            .unwrap()
+            .as_literal()
+            .unwrap()
+            .as_literal()
+            .unwrap();
         assert!(matches!(literal.0, Literal::Number));
+    }
+
+    #[test]
+    fn test_parse_expression_reference() {
+        let parsed = GrammarParser::parse(Rule::expression, "x.y")
+            .unwrap()
+            .nth(0)
+            .unwrap();
+        let exp = parse_expression(parsed);
+        let reference = exp
+            .as_expression()
+            .unwrap()
+            .as_reference()
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        assert_eq!(reference.len(), 2);
     }
 }

@@ -29,11 +29,16 @@ pub enum AstNodeKind {
     Block {
         statements: Vec<AstNode>,
     },
-    Expression(Box<AstNode>),
+    Expression(Expression),
     Statement(Statement),
     Literal {
         kind: Literal,
         value: String,
+    },
+    Reference {
+        /// identifiers separated by .
+        /// a.b.c => ["a", "b", "c"]
+        identifiers: Vec<AstNode>,
     },
     FuncDef {
         signature: Box<AstNode>,
@@ -89,9 +94,9 @@ impl AstNode {
         }
     }
 
-    pub fn as_expression(&self) -> Option<&AstNode> {
+    pub fn as_expression(&self) -> Option<&Expression> {
         match &self.kind {
-            AstNodeKind::Expression(inner) => Some(inner.as_ref()),
+            AstNodeKind::Expression(inner) => Some(inner),
             _ => None,
         }
     }
@@ -99,6 +104,13 @@ impl AstNode {
     pub fn as_literal(&self) -> Option<(Literal, &str)> {
         match &self.kind {
             AstNodeKind::Literal { kind, value } => Some((*kind, value.as_str())),
+            _ => None,
+        }
+    }
+
+    pub fn as_reference(&self) -> Option<&[AstNode]> {
+        match &self.kind {
+            AstNodeKind::Reference { identifiers } => Some(identifiers),
             _ => None,
         }
     }
@@ -127,6 +139,28 @@ pub enum Literal {
 }
 
 #[derive(Debug)]
+pub enum Expression {
+    Literal(Box<AstNode>),
+    Reference(Box<AstNode>),
+}
+
+impl Expression {
+    pub fn as_literal(&self) -> Option<&AstNode> {
+        match self {
+            Expression::Literal(node) => Some(node.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_reference(&self) -> Option<&AstNode> {
+        match self {
+            Expression::Reference(node) => Some(node.as_ref()),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum Statement {
     DeclareAndBind {
         ident: Box<AstNode>,
@@ -135,6 +169,9 @@ pub enum Statement {
     },
     Bind {
         ident: Box<AstNode>,
+        expression: Box<AstNode>,
+    },
+    Return {
         expression: Box<AstNode>,
     },
     Expression(Box<AstNode>),
@@ -172,6 +209,15 @@ impl Statement {
             _ => None,
         }
     }
+
+    pub fn as_return(&self) -> Option<ReturnRef> {
+        match self {
+            Statement::Return { expression } => Some(ReturnRef {
+                expression: expression.as_ref(),
+            }),
+            _ => None,
+        }
+    }
 }
 
 pub struct DeclareAndBind<'a> {
@@ -182,5 +228,9 @@ pub struct DeclareAndBind<'a> {
 
 pub struct BindRef<'a> {
     ident: &'a AstNode,
+    expression: &'a AstNode,
+}
+
+pub struct ReturnRef<'a> {
     expression: &'a AstNode,
 }
