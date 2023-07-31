@@ -247,7 +247,7 @@ impl Context {
                     violations.push(format!("{} invalid json: {e:?}", model.name));
                 }
                 Ok(value) => {
-                    violations.extend(self.validate_example_for_model_type(
+                    violations.extend(self.validate_value_for_model_type(
                         &model.type_,
                         &value,
                         spec,
@@ -259,7 +259,7 @@ impl Context {
         violations
     }
 
-    fn validate_example_for_model_type(
+    fn validate_value_for_model_type(
         &self,
         model_type: &ModelType,
         value: &serde_json::Value,
@@ -386,7 +386,7 @@ impl Context {
             }
             Type::Reference(type_ref) => {
                 let model_def = self.get_model_def_for_reference(type_ref, spec).unwrap();
-                return self.validate_example_for_model_type(&model_def.type_, value, spec);
+                return self.validate_value_for_model_type(&model_def.type_, value, spec);
             }
             Type::Json => {
                 // always valid
