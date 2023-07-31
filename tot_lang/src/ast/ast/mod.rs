@@ -28,6 +28,8 @@ pub enum AstNodeKind {
     },
     Block {
         statements: Vec<AstNode>,
+        /// the last expression is the block's value
+        value_expr: Option<Box<AstNode>>,
     },
     Expression(Expression),
     Statement(Statement),
@@ -111,6 +113,16 @@ impl AstNode {
     pub fn as_reference(&self) -> Option<&[AstNode]> {
         match &self.kind {
             AstNodeKind::Reference { identifiers } => Some(identifiers),
+            _ => None,
+        }
+    }
+
+    pub fn as_block(&self) -> Option<(&[AstNode], Option<&AstNode>)> {
+        match &self.kind {
+            AstNodeKind::Block {
+                statements,
+                value_expr,
+            } => Some((statements, value_expr.as_ref().map(|x| x.as_ref()))),
             _ => None,
         }
     }

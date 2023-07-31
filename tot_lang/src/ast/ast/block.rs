@@ -1,11 +1,38 @@
 use super::*;
+use crate::ast::ast::expression::parse_expression;
+use crate::ast::ast::statement::parse_statement;
 use pest::iterators::Pair;
 
 pub fn parse_block(pair: Pair<Rule>) -> AstNode {
-    let mut inner = pair.into_inner();
+    let span = pair.as_span().into();
+    let inner = pair.into_inner();
 
-    // dbg!(pair);
-    todo!()
+    let mut statements = vec![];
+    let mut value_expr = None;
+
+    for inner in inner {
+        match inner.as_rule() {
+            Rule::statement => {
+                statements.push(parse_statement(inner));
+            }
+            Rule::block_value => {
+                value_expr = Some(Box::new(parse_expression(
+                    inner.into_inner().nth(0).unwrap(),
+                )));
+            }
+            _ => {
+                unreachable!()
+            }
+        }
+    }
+
+    AstNode {
+        kind: AstNodeKind::Block {
+            statements,
+            value_expr,
+        },
+        span,
+    }
 }
 
 #[cfg(test)]
@@ -15,11 +42,45 @@ mod tests {
     use pest::Parser;
 
     #[test]
-    fn test_parse_block() {
+    fn test_parse_block_empty() {
         let parsed = GrammarParser::parse(Rule::block, "{}")
             .unwrap()
             .nth(0)
             .unwrap();
         let block = parse_block(parsed);
+        let (stmts, value_expr) = block.as_block().unwrap();
+        assert!(stmts.is_empty());
+        assert!(!value_expr.is_some());
+    }
+
+    #[test]
+    fn test_parse_block_expr() {
+        let parsed = GrammarParser::parse(Rule::block, "{ 1 }")
+            .unwrap()
+            .nth(0)
+            .unwrap();
+        let block = parse_block(parsed);
+        let (stmts, value_expr) = block.as_block().unwrap();
+        assert!(stmts.is_empty());
+        assert!(value_expr.is_some());
+    }
+
+    #[test]
+    fn test_parse_block_complex() {
+        let parsed = GrammarParser::parse(
+            Rule::block,
+            r#"{ 
+                let a: i32 = 1; 
+                let _b: i32 = 2; 
+                a
+            }"#,
+        )
+        .unwrap()
+        .nth(0)
+        .unwrap();
+        let block = parse_block(parsed);
+        let (stmts, value_expr) = block.as_block().unwrap();
+        assert_eq!(stmts.len(), 2);
+        assert!(value_expr.is_some());
     }
 }

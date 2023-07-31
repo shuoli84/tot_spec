@@ -6,10 +6,12 @@ COMMENT = _{block_comment | line_comment}
 
 keywords = { "let" | "input" | "return" | "if" | "fn" | "for" | "as" }
 
-statement = { (declare_and_bind | bind | return_statement ) ~ ";" | expression ~ ";"? }
+statement = { (declare_and_bind | bind | return_statement | expression) ~ ";" }
 
 // the last expression is the block's return
-block = { "{" ~ (line_comment | statement)* ~ expression? ~ "}" }
+// todo: COMMENT can be omitted?
+block = { "{" ~ (COMMENT | statement)* ~ block_value? ~ "}" }
+block_value = { expression }
 
 declare_and_bind = {
   "let" ~ identifier ~ (":" ~ path)? ~ "=" ~ expression
