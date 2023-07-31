@@ -64,6 +64,10 @@ pub struct AstNode {
 }
 
 impl AstNode {
+    pub fn is_func_def(&self) -> bool {
+        matches!(self.kind, AstNodeKind::FuncDef { .. })
+    }
+
     pub fn as_func_signature(&self) -> Option<(&AstNode, &[AstNode], Option<&AstNode>)> {
         match &self.kind {
             AstNodeKind::FuncSignature {

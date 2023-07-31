@@ -4,6 +4,8 @@ use crate::ast::ast::statement::parse_statement;
 use pest::iterators::Pair;
 
 pub fn parse_block(pair: Pair<Rule>) -> AstNode {
+    assert!(matches!(pair.as_rule(), Rule::block));
+
     let span = pair.as_span().into();
     let inner = pair.into_inner();
 
@@ -21,6 +23,7 @@ pub fn parse_block(pair: Pair<Rule>) -> AstNode {
                 )));
             }
             _ => {
+                dbg!(inner);
                 unreachable!()
             }
         }

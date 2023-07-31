@@ -8,12 +8,16 @@ pub fn parse_func_def(pair: Pair<Rule>) -> AstNode {
     let mut inner = pair.into_inner();
 
     let signature = parse_func_signature(inner.next().unwrap());
-    let block = parse_block(inner.next().unwrap());
+
+    let func_body = inner.next().unwrap();
+    assert!(matches!(func_body.as_rule(), Rule::func_body));
+
+    let body_block = parse_block(func_body.into_inner().nth(0).unwrap());
 
     AstNode {
         kind: AstNodeKind::FuncDef {
             signature: Box::new(signature),
-            body: Box::new(block),
+            body: Box::new(body_block),
         },
         span,
     }
@@ -32,6 +36,7 @@ mod tests {
             .nth(0)
             .unwrap();
 
-        parse_func_def(parsed);
+        let node = parse_func_def(parsed);
+        assert!(node.is_func_def());
     }
 }
