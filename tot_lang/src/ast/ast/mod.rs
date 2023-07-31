@@ -30,7 +30,7 @@ pub enum AstNodeKind {
         statements: Vec<AstNode>,
     },
     Expression(Box<AstNode>),
-    Statement {},
+    Statement(Statement),
     Literal {
         kind: Literal,
         value: String,
@@ -82,6 +82,13 @@ impl AstNode {
         }
     }
 
+    pub fn as_statement(&self) -> Option<&Statement> {
+        match &self.kind {
+            AstNodeKind::Statement(inner) => Some(inner),
+            _ => None,
+        }
+    }
+
     pub fn as_expression(&self) -> Option<&AstNode> {
         match &self.kind {
             AstNodeKind::Expression(inner) => Some(inner.as_ref()),
@@ -121,7 +128,59 @@ pub enum Literal {
 
 #[derive(Debug)]
 pub enum Statement {
-    DeclareAndBind(Box<AstNode>),
-    Bind(Box<AstNode>),
+    DeclareAndBind {
+        ident: Box<AstNode>,
+        path: Box<AstNode>,
+        expression: Box<AstNode>,
+    },
+    Bind {
+        ident: Box<AstNode>,
+        expression: Box<AstNode>,
+    },
     Expression(Box<AstNode>),
+}
+
+impl Statement {
+    pub fn as_expression(&self) -> Option<&AstNode> {
+        match self {
+            Statement::Expression(inner) => Some(inner.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_declare_and_bind(&self) -> Option<DeclareAndBind> {
+        match self {
+            Statement::DeclareAndBind {
+                ident,
+                path,
+                expression,
+            } => Some(DeclareAndBind {
+                ident: ident.as_ref(),
+                path: path.as_ref(),
+                expression: expression.as_ref(),
+            }),
+            _ => None,
+        }
+    }
+
+    pub fn as_bind_ref(&self) -> Option<BindRef> {
+        match self {
+            Statement::Bind { ident, expression } => Some(BindRef {
+                ident: ident.as_ref(),
+                expression: expression.as_ref(),
+            }),
+            _ => None,
+        }
+    }
+}
+
+pub struct DeclareAndBind<'a> {
+    ident: &'a AstNode,
+    path: &'a AstNode,
+    expression: &'a AstNode,
+}
+
+pub struct BindRef<'a> {
+    ident: &'a AstNode,
+    expression: &'a AstNode,
 }
