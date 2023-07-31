@@ -4,6 +4,7 @@ resolver = "2"
 members = [
     "tot_spec",
     "tot_spec_util",
+    "tot_lang",
     "codegen"
 ]
 

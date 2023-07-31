@@ -1,0 +1,15 @@
+[package]
+name = "tot_lang"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+tokio = { version = "1", features = ["full"] }
+tot_spec = { path = "../tot_spec" }
+indexmap = "2.0.0"
