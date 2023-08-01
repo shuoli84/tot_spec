@@ -1,7 +1,7 @@
 use crate::ast::ast::expression::parse_expression;
 use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::path::parse_path;
-use crate::ast::ast::{AstNode, AstNodeKind, Literal, Statement};
+use crate::ast::ast::{AstNode, AstNodeKind, Statement};
 use crate::ast::grammar::Rule;
 use pest::iterators::Pair;
 
@@ -62,7 +62,7 @@ pub fn parse_statement(pair: Pair<Rule>) -> AstNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::grammar::GrammarParser;
+    use crate::ast::{ast::Literal, grammar::GrammarParser};
     use pest::Parser;
 
     #[test]
