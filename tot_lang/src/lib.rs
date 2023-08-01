@@ -50,6 +50,7 @@
 
 pub mod ast;
 pub mod codegen;
+pub mod program;
 pub mod runtime;
 
 /// We need the user to provide A behavior to inject customized logic

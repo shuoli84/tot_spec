@@ -98,7 +98,7 @@ impl RsSerde {
             .unwrap();
         }
 
-        outputs.push((entry.path().join("mod.rs"), code));
+        outputs.push((entry.path().join("program"), code));
 
         Ok(outputs)
     }

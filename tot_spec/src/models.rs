@@ -308,6 +308,10 @@ pub enum Type {
 }
 
 impl Type {
+    pub fn try_parse(v: &str) -> anyhow::Result<Self> {
+        serde_helper::parse_type(v).map(|(ty, _)| ty)
+    }
+
     pub fn list(item_type: Type) -> Self {
         Self::List {
             item_type: Box::new(item_type.into()),
@@ -372,7 +376,7 @@ mod serde_helper {
     }
 
     /// parse type, and return rest of str
-    fn parse_type(s: &str) -> anyhow::Result<(Type, &str)> {
+    pub(super) fn parse_type(s: &str) -> anyhow::Result<(Type, &str)> {
         let s = s.trim();
         if let Some(rest) = s.strip_prefix("bool") {
             Ok((Type::Bool, rest))

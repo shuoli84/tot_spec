@@ -1,4 +1,5 @@
-use crate::ast::grammar::Rule;
+use crate::ast::grammar::{GrammarParser, Rule};
+use pest::Parser;
 
 mod block;
 mod call;
@@ -14,11 +15,6 @@ mod statement;
 
 #[derive(Debug)]
 pub enum AstNodeKind {
-    DeclareAndBind {
-        name: Box<AstNode>,
-        ty_: Box<AstNode>,
-        expression: Box<AstNode>,
-    },
     Bind {
         name: Box<AstNode>,
         expression: Box<AstNode>,
@@ -83,6 +79,25 @@ pub struct AstNode {
 }
 
 impl AstNode {
+    pub fn parse_statement(code: &str) -> anyhow::Result<Self> {
+        let parsed = GrammarParser::parse(Rule::statement, code)
+            .unwrap()
+            .nth(0)
+            .unwrap();
+        let stmt = statement::parse_statement(parsed);
+        Ok(stmt)
+    }
+}
+
+impl AstNode {
+    pub fn kind(&self) -> &AstNodeKind {
+        &self.kind
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
     pub fn is_func_def(&self) -> bool {
         matches!(self.kind, AstNodeKind::FuncDef { .. })
     }
@@ -192,7 +207,7 @@ impl AstNode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Span {
     start: usize,
     end: usize,
