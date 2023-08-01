@@ -218,6 +218,7 @@ pub enum Literal {
 pub enum Expression {
     Literal(Box<AstNode>),
     Reference(Box<AstNode>),
+    Call(Box<AstNode>),
 }
 
 impl Expression {
@@ -231,6 +232,13 @@ impl Expression {
     pub fn as_reference(&self) -> Option<&AstNode> {
         match self {
             Expression::Reference(node) => Some(node.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_call(&self) -> Option<&AstNode> {
+        match self {
+            Expression::Call(node) => Some(node.as_ref()),
             _ => None,
         }
     }

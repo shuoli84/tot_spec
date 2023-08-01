@@ -8,7 +8,6 @@ pub fn parse_for(pair: pest::iterators::Pair<Rule>) -> AstNode {
     assert!(matches!(pair.as_rule(), Rule::for_exp));
     let span = pair.as_span().into();
 
-    dbg!(&pair);
     let mut inner = pair.into_inner();
     let item = inner.next().unwrap();
     let item = parse_ident(item.into_inner().nth(0).unwrap());

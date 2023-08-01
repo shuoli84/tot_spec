@@ -1,3 +1,4 @@
+use crate::ast::ast::call::parse_call;
 use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::literal::parse_literal;
 use crate::ast::ast::{AstNode, AstNodeKind, Expression};
@@ -24,6 +25,7 @@ pub fn parse_expression(pair: Pair<Rule>) -> AstNode {
                 span,
             }))
         }
+        Rule::call_exp => Expression::Call(Box::new(parse_call(inner))),
         _ => {
             unreachable!();
         }
@@ -74,5 +76,15 @@ mod tests {
             .as_reference()
             .unwrap();
         assert_eq!(reference.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_expression_call() {
+        let parsed = GrammarParser::parse(Rule::expression, "a::b()")
+            .unwrap()
+            .nth(0)
+            .unwrap();
+        let exp = parse_expression(parsed);
+        assert!(exp.as_expression().unwrap().as_call().is_some());
     }
 }
