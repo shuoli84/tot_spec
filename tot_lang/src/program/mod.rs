@@ -13,6 +13,7 @@ pub enum Op<'a> {
     Store {
         name: &'a str,
     },
+    /// Load the value to register
     Load(ReferenceOrValue<'a>),
     EnterScope,
     ExitScope,
@@ -135,8 +136,28 @@ fn convert_expression<'a>(exp: &'a AstNode, operations: &mut Vec<Op<'a>>) -> any
         Expression::Call(_) => {}
         Expression::If(_) => {}
         Expression::For(_) => {}
-        Expression::Block(_) => {}
+        Expression::Block(block) => {
+            convert_block(block, operations)?;
+        }
     }
+    Ok(())
+}
+
+fn convert_block<'a>(block: &'a AstNode, operations: &mut Vec<Op<'a>>) -> anyhow::Result<()> {
+    let Some((statements, value_expr)) = block.as_block() else {
+        bail!("node is block");
+    };
+
+    operations.push(Op::EnterScope);
+
+    for statement in statements {
+        convert_statement(statement, operations)?;
+    }
+    if let Some(value_expr) = value_expr {
+        convert_expression(value_expr, operations)?;
+    }
+
+    operations.push(Op::ExitScope);
     Ok(())
 }
 
@@ -179,5 +200,26 @@ mod tests {
             operations,
             vec![Op::Load(ReferenceOrValue::Reference("i".into()))]
         );
+    }
+
+    #[test]
+    fn test_program_block() {
+        let ast = AstNode::parse_statement(
+            r#"{
+            let i: i32 = 1;
+            let j: i64 = 2;
+            let k: i32 = {
+                100
+            };
+            {
+                // do nothing
+            };
+            i
+        };"#,
+        )
+        .unwrap();
+
+        let mut operations = vec![];
+        assert!(convert_statement(&ast, &mut operations).is_ok());
     }
 }
