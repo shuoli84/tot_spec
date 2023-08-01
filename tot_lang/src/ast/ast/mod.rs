@@ -1,6 +1,7 @@
 use crate::ast::grammar::Rule;
 
 mod block;
+mod call;
 mod expression;
 mod expression_for;
 mod expression_if;
@@ -67,6 +68,11 @@ pub enum AstNodeKind {
         item: Box<AstNode>,
         values: Box<AstNode>,
         block: Box<AstNode>,
+    },
+    /// function call
+    Call {
+        path: Box<AstNode>,
+        params: Vec<AstNode>,
     },
 }
 
@@ -170,6 +176,17 @@ impl AstNode {
                 values,
                 block,
             } => Some((item, values, block)),
+            _ => None,
+        }
+    }
+
+    pub fn is_call(&self) -> bool {
+        matches!(self.kind, AstNodeKind::Call { .. })
+    }
+
+    pub fn as_call(&self) -> Option<(&AstNode, &[AstNode])> {
+        match &self.kind {
+            AstNodeKind::Call { path, params } => Some((path, params)),
             _ => None,
         }
     }

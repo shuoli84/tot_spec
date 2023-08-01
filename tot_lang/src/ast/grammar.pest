@@ -24,7 +24,7 @@ expression = { literal | object_expression | array_expression | call_exp | conve
 object_expression = { "{" ~ (string_literal ~ ":" ~ expression)?
                    ~ ("," ~ string_literal ~ ":" ~ expression)* ~ ","? ~ "}" }
 array_expression = { "[" ~ expression? ~ ("," ~ expression)* ~ "]" }
-call_exp = { path ~ "(" ~ expression ~ ")"}
+call_exp = { path ~ "(" ~ expression? ~ ("," ~ expression)* ~ ")"}
 convert_exp = { reference ~ "as" ~ path }
 
 // if related rules
