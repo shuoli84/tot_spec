@@ -219,6 +219,9 @@ pub enum Expression {
     Literal(Box<AstNode>),
     Reference(Box<AstNode>),
     Call(Box<AstNode>),
+    If(Box<AstNode>),
+    For(Box<AstNode>),
+    Block(Box<AstNode>),
 }
 
 impl Expression {
@@ -239,6 +242,27 @@ impl Expression {
     pub fn as_call(&self) -> Option<&AstNode> {
         match self {
             Expression::Call(node) => Some(node.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_if(&self) -> Option<&AstNode> {
+        match self {
+            Expression::If(node) => Some(node.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_for(&self) -> Option<&AstNode> {
+        match self {
+            Expression::For(node) => Some(node.as_ref()),
+            _ => None,
+        }
+    }
+
+    pub fn as_block(&self) -> Option<&AstNode> {
+        match self {
+            Expression::Block(node) => Some(node.as_ref()),
             _ => None,
         }
     }

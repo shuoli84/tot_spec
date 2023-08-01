@@ -20,9 +20,7 @@ return_statement = {
   "return" ~ expression
 }
 
-expression = { literal | object_expression | array_expression | call_exp | convert_exp | if_exp | for_exp | reference | block }
-object_expression = { "{" ~ (string_literal ~ ":" ~ expression)?
-                   ~ ("," ~ string_literal ~ ":" ~ expression)* ~ ","? ~ "}" }
+expression = { literal | array_expression | call_exp | convert_exp | if_exp | for_exp | reference | block }
 array_expression = { "[" ~ expression? ~ ("," ~ expression)* ~ "]" }
 call_exp = { path ~ "(" ~ expression? ~ ("," ~ expression)* ~ ")"}
 convert_exp = { reference ~ "as" ~ path }
