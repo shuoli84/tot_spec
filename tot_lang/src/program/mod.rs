@@ -1,44 +1,50 @@
 use crate::ast::{Ast, AstNode, AstNodeKind, Expression, Literal, Statement};
 use anyhow::bail;
 use serde_json::{Number, Value};
-use std::borrow::Cow;
 use tot_spec::Type;
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum Op<'a> {
+pub enum Op {
     Declare {
-        name: &'a str,
-        ty: Cow<'a, Type>,
+        name: String,
+        ty: Type,
     },
     Store {
-        name: &'a str,
+        name: String,
     },
     /// Load the value to register
-    Load(ReferenceOrValue<'a>),
+    Load(ReferenceOrValue),
     EnterScope,
     ExitScope,
     Call {
-        path: &'a str,
-        params: Vec<ReferenceOrValue<'a>>,
+        path: String,
+        params: Vec<ReferenceOrValue>,
     },
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub enum ReferenceOrValue<'a> {
-    Reference(Cow<'a, str>),
+pub enum ReferenceOrValue {
+    Reference(String),
     Value(Value),
 }
 
 /// program is compact representation for a tot program. It is generated from ast
-pub struct Program<'a> {
-    operations: Vec<Op<'a>>,
+pub struct Program {
+    operations: Vec<Op>,
 }
 
-impl<'a> Program<'a> {
-    pub fn from_ast(ast: &'a Ast) -> anyhow::Result<Self> {
+impl Program {
+    pub fn from_ast(ast: &Ast) -> anyhow::Result<Self> {
         let ast_node = ast.node();
-        let mut operations: Vec<Op<'a>> = vec![];
+        let mut operations: Vec<Op> = vec![];
         convert_ast_to_operations(ast_node, &mut operations)?;
+        Ok(Self { operations })
+    }
+
+    pub fn from_statement(code: &str) -> anyhow::Result<Self> {
+        let ast = AstNode::parse_statement(code.trim())?;
+        let mut operations = vec![];
+        convert_statement(&ast, &mut operations)?;
         Ok(Self { operations })
     }
 
@@ -47,10 +53,7 @@ impl<'a> Program<'a> {
     }
 }
 
-fn convert_ast_to_operations<'a>(
-    ast_node: &'a AstNode,
-    operations: &mut Vec<Op<'a>>,
-) -> anyhow::Result<()> {
+fn convert_ast_to_operations(ast_node: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
     match ast_node.kind() {
         AstNodeKind::Statement(..) => convert_statement(ast_node, operations)?,
         AstNodeKind::Bind { .. } => {}
@@ -71,7 +74,7 @@ fn convert_ast_to_operations<'a>(
     Ok(())
 }
 
-fn convert_statement<'a>(ast: &'a AstNode, operations: &mut Vec<Op<'a>>) -> anyhow::Result<()> {
+fn convert_statement<'a>(ast: &'a AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
     match ast.as_statement().unwrap() {
         Statement::DeclareAndBind {
             ident,
@@ -85,20 +88,20 @@ fn convert_statement<'a>(ast: &'a AstNode, operations: &mut Vec<Op<'a>>) -> anyh
     Ok(())
 }
 
-fn convert_declare_and_bind<'a>(
-    ident: &'a AstNode,
-    path: &'a AstNode,
-    expr: &'a AstNode,
-    operations: &mut Vec<Op<'a>>,
+fn convert_declare_and_bind(
+    ident: &AstNode,
+    path: &AstNode,
+    expr: &AstNode,
+    operations: &mut Vec<Op>,
 ) -> anyhow::Result<()> {
-    let ident = ident.as_ident().unwrap();
+    let ident = ident.as_ident().unwrap().to_string();
 
     let type_path = path.as_path().unwrap();
-    let ty_ = Type::try_parse(type_path)?;
+    let ty = Type::try_parse(type_path)?;
 
     operations.push(Op::Declare {
-        name: ident,
-        ty: Cow::Owned(ty_),
+        name: ident.clone(),
+        ty: ty,
     });
 
     convert_expression(expr, operations)?;
@@ -107,7 +110,7 @@ fn convert_declare_and_bind<'a>(
     Ok(())
 }
 
-fn convert_expression<'a>(exp: &'a AstNode, operations: &mut Vec<Op<'a>>) -> anyhow::Result<()> {
+fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
     let exp = exp.as_expression().unwrap();
     match exp {
         Expression::Literal(literal_node) => {
@@ -143,7 +146,7 @@ fn convert_expression<'a>(exp: &'a AstNode, operations: &mut Vec<Op<'a>>) -> any
     Ok(())
 }
 
-fn convert_block<'a>(block: &'a AstNode, operations: &mut Vec<Op<'a>>) -> anyhow::Result<()> {
+fn convert_block(block: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
     let Some((statements, value_expr)) = block.as_block() else {
         bail!("node is block");
     };
@@ -181,7 +184,7 @@ mod tests {
             vec![
                 Op::Declare {
                     name: "i".into(),
-                    ty: Cow::Owned(Type::I32),
+                    ty: Type::I32,
                 },
                 Op::Load(ReferenceOrValue::Value(Value::Number(Number::from(1)))),
                 Op::Store { name: "i".into() }
