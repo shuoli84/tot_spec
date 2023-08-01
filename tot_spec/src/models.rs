@@ -250,7 +250,7 @@ pub enum ConstType {
     String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TypeReference {
     pub namespace: Option<String>,
     pub target: String,
@@ -270,7 +270,7 @@ impl TypeReference {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(tag = "name")]
 /// All types supported
 pub enum Type {
@@ -554,6 +554,7 @@ mod serde_helper {
 
     /// A wrapper struct which enables parse from string or struct behavior
     /// requires T to impl both FromStr and Deserialize
+    #[derive(Eq, PartialEq)]
     pub struct StringOrStruct<T>(pub(crate) T);
 
     impl<T: Clone> Clone for StringOrStruct<T> {
