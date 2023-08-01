@@ -31,10 +31,16 @@ mod tests {
 
     #[test]
     fn test_parse_func_def() {
-        let parsed = GrammarParser::parse(Rule::func, "fn hello(arg_1: i32, arg_2: i32) -> i32 {}")
-            .unwrap()
-            .nth(0)
-            .unwrap();
+        let parsed = GrammarParser::parse(
+            Rule::func,
+            r#"fn hello(arg_1: i32, arg_2: i32) -> i32 {
+                // just returns 3
+                3
+            }"#,
+        )
+        .unwrap()
+        .nth(0)
+        .unwrap();
 
         let node = parse_func_def(parsed);
         assert!(node.is_func_def());

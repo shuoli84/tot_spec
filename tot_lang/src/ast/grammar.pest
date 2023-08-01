@@ -9,8 +9,7 @@ keywords = { "let" | "input" | "return" | "if" | "fn" | "for" | "as" }
 statement = { (declare_and_bind | bind | return_statement | expression) ~ ";" }
 
 // the last expression is the block's return
-// todo: COMMENT can be omitted?
-block = { "{" ~ (COMMENT | statement)* ~ block_value? ~ "}" }
+block = { "{" ~ statement* ~ block_value? ~ "}" }
 block_value = { expression }
 
 declare_and_bind = {
@@ -41,7 +40,7 @@ string_literal = ${ ("\"" ~ string_inner_double_quote ~ "\"") }
 bool_literal = { "true" | "false" }
 number_literal = @{ "-"? ~ ASCII_DIGIT+ ~ "."? ~ ASCII_DIGIT* ~ ("E" ~ "-"? ~ ASCII_DIGIT+)? ~ !symbol_char }
 
-identifier = @{ symbol_char+ }
+identifier = @{ !keywords ~ symbol_char+ }
 symbol_char = _{ ASCII_ALPHANUMERIC | "_" }
 
 reference = {identifier ~ ("." ~ identifier)*}
