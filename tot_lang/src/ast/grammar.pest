@@ -33,7 +33,9 @@ if_condition = { expression }
 if_block = { block }
 if_else_block = { block }
 
-for_exp = { "for" ~ identifier ~ "in" ~ expression ~ block }
+for_exp = { "for" ~ for_item ~ "in" ~ for_values ~ block }
+for_item = { identifier }
+for_values = { expression }
 
 literal = { string_literal | number_literal | bool_literal }
 json_char_double_quote = {

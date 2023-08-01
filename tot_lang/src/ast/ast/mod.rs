@@ -2,6 +2,7 @@ use crate::ast::grammar::Rule;
 
 mod block;
 mod expression;
+mod expression_for;
 mod expression_if;
 mod func_def;
 mod func_signature;
@@ -60,6 +61,12 @@ pub enum AstNodeKind {
         condition: Box<AstNode>,
         block: Box<AstNode>,
         else_block: Option<Box<AstNode>>,
+    },
+    /// for item in values {}
+    For {
+        item: Box<AstNode>,
+        values: Box<AstNode>,
+        block: Box<AstNode>,
     },
 }
 
@@ -148,6 +155,21 @@ impl AstNode {
                 block,
                 else_block,
             } => Some((condition, block, else_block.as_ref().map(|x| x.as_ref()))),
+            _ => None,
+        }
+    }
+
+    pub fn is_for(&self) -> bool {
+        matches!(self.kind, AstNodeKind::For { .. })
+    }
+
+    pub fn as_for(&self) -> Option<(&AstNode, &AstNode, &AstNode)> {
+        match &self.kind {
+            AstNodeKind::For {
+                item,
+                values,
+                block,
+            } => Some((item, values, block)),
             _ => None,
         }
     }
