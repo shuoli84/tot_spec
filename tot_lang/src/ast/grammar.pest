@@ -26,7 +26,13 @@ object_expression = { "{" ~ (string_literal ~ ":" ~ expression)?
 array_expression = { "[" ~ expression? ~ ("," ~ expression)* ~ "]" }
 call_exp = { path ~ "(" ~ expression ~ ")"}
 convert_exp = { reference ~ "as" ~ path }
-if_exp = {"if" ~ expression ~ block ~ ("else" ~ block)? }
+
+// if related rules
+if_exp = {"if" ~ if_condition ~ if_block ~ ("else" ~ if_else_block)? }
+if_condition = { expression }
+if_block = { block }
+if_else_block = { block }
+
 for_exp = { "for" ~ identifier ~ "in" ~ expression ~ block }
 
 literal = { string_literal | number_literal | bool_literal }

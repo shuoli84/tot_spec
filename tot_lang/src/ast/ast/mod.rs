@@ -2,6 +2,7 @@ use crate::ast::grammar::Rule;
 
 mod block;
 mod expression;
+mod expression_if;
 mod func_def;
 mod func_signature;
 mod ident;
@@ -54,6 +55,11 @@ pub enum AstNodeKind {
     FuncParam {
         ident: Box<AstNode>,
         ty: Box<AstNode>,
+    },
+    If {
+        condition: Box<AstNode>,
+        block: Box<AstNode>,
+        else_block: Option<Box<AstNode>>,
     },
 }
 
@@ -127,6 +133,21 @@ impl AstNode {
                 statements,
                 value_expr,
             } => Some((statements, value_expr.as_ref().map(|x| x.as_ref()))),
+            _ => None,
+        }
+    }
+
+    pub fn is_if(&self) -> bool {
+        matches!(self.kind, AstNodeKind::If { .. })
+    }
+
+    pub fn as_if(&self) -> Option<(&AstNode, &AstNode, Option<&AstNode>)> {
+        match &self.kind {
+            AstNodeKind::If {
+                condition,
+                block,
+                else_block,
+            } => Some((condition, block, else_block.as_ref().map(|x| x.as_ref()))),
             _ => None,
         }
     }
