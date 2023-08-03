@@ -125,6 +125,10 @@ impl AstNode {
         matches!(self.kind, AstNodeKind::FuncDef { .. })
     }
 
+    pub fn is_func_param(&self) -> bool {
+        matches!(self.kind, AstNodeKind::FuncParam { .. })
+    }
+
     pub fn as_file(&self) -> Option<&[AstNode]> {
         match &self.kind {
             AstNodeKind::File { func_defs } => Some(func_defs),
@@ -135,6 +139,13 @@ impl AstNode {
     pub fn as_func_def(&self) -> Option<(&AstNode, &AstNode)> {
         match &self.kind {
             AstNodeKind::FuncDef { signature, body } => Some((signature, body)),
+            _ => None,
+        }
+    }
+
+    pub fn as_func_param(&self) -> Option<(&AstNode, &AstNode)> {
+        match &self.kind {
+            AstNodeKind::FuncParam { ident, ty } => Some((ident, ty)),
             _ => None,
         }
     }

@@ -46,7 +46,15 @@ impl Codegen {
         let (ident, params, ret) = sig.as_func_signature().unwrap();
 
         let ident = ident.as_ident().unwrap();
-        let params = "";
+        let params = {
+            let mut param_code_blocks = vec![];
+            for param in params {
+                param_code_blocks.push(self.generate_func_param(param)?);
+            }
+
+            param_code_blocks.join(", ")
+        };
+
         let return_type = "String";
         writeln!(result, "fn {ident}({params}) -> {return_type}")?;
 
@@ -54,6 +62,24 @@ impl Codegen {
         result.push_str(&body);
 
         Ok(result)
+    }
+
+    fn generate_func_param(&mut self, param: &AstNode) -> anyhow::Result<String> {
+        let Some((ident, path)) = param.as_func_param() else {
+            bail!("ast node is not func param");
+        };
+
+        let mut result = "".to_string();
+
+        let rs_type = self.generate_path(path)?;
+
+        writeln!(result, "{}: {}", ident.as_ident().unwrap(), rs_type)?;
+
+        Ok(result)
+    }
+
+    fn generate_path(&mut self, path: &AstNode) -> anyhow::Result<String> {
+        Ok(format!("{}", path.as_path().unwrap().to_string()))
     }
 
     fn generate_statement(&mut self, ast: &AstNode) -> anyhow::Result<String> {
@@ -239,7 +265,7 @@ mod tests {
     fn test_codegen() {
         let mut codegen = Codegen::new(Box::new(TestBehavior::default()));
         let ast = AstNode::parse_file(
-            r#"fn hello() -> String {
+            r#"fn hello(i: String) -> String {
                 let i: String = "hello";
                 i = "world";
                 let j: String = i;
@@ -256,6 +282,8 @@ mod tests {
         )
         .unwrap();
         let code = codegen.generate_file(&ast).unwrap();
+
+        println!("{code}");
 
         let code_ast = syn::parse_file(&code).unwrap();
         let formatted_code = prettyplease::unparse(&code_ast);
