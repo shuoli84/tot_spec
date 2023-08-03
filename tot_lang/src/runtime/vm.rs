@@ -1,5 +1,7 @@
 use super::frame::Frame;
 use crate::program::{Op, Program, ReferenceOrValue};
+use crate::Behavior;
+use anyhow::anyhow;
 use serde_json::Value;
 
 /// The virtual machine, which stores all runtime state for one run
@@ -7,6 +9,7 @@ use serde_json::Value;
 pub struct Vm {
     frame: Frame,
     register: Option<Value>,
+    behavior: Option<Box<dyn Behavior>>,
 }
 
 impl Vm {
@@ -24,9 +27,12 @@ impl Vm {
                     // store a null value, so the store op will modify the one for current scope
                     self.frame.store(name.to_string(), Value::Null);
                 }
-                Op::Store { name } => self
-                    .frame
-                    .store(name.to_string(), self.register.take().unwrap()),
+                Op::Store { name } => self.frame.store(
+                    name.to_string(),
+                    self.register
+                        .take()
+                        .ok_or_else(|| anyhow!("register has no value"))?,
+                ),
                 Op::Load(ReferenceOrValue::Value(value)) => {
                     self.register = Some(value.clone());
                 }
@@ -58,8 +64,12 @@ impl Vm {
                             print!("{} ", param);
                         }
                         println!();
+                    } else if let Some(behavior) = self.behavior.as_mut() {
+                        let result = behavior.execute(path, &loaded_params).await?;
+                        self.register = Some(result);
                     } else {
                         println!("calling {path} with params: {loaded_params:?}");
+                        self.register = Some(Value::Null);
                     }
                 }
             }
@@ -71,13 +81,32 @@ impl Vm {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use async_trait::async_trait;
+
+    #[derive(Debug, Default)]
+    struct TestBehavior {}
+
+    #[async_trait::async_trait]
+    impl Behavior for TestBehavior {
+        async fn execute(&mut self, method: &str, params: &[Value]) -> anyhow::Result<Value> {
+            match method {
+                "foo" => return Ok(Value::String("foo".into())),
+                "bar" => return Ok(Value::String("bar".into())),
+                _ => anyhow::bail!("{method} not supported"),
+            }
+        }
+    }
 
     #[tokio::test]
     async fn test_execute() {
         let mut vm = Vm::default();
+        vm.behavior = Some(Box::new(TestBehavior::default()));
         vm.eval("let i: i32 = 1;").await.unwrap();
         vm.eval("let j: i32 = 2;").await.unwrap();
         vm.eval("let k: i32 = 3;").await.unwrap();
         vm.eval("debug(\"hello\", i, j, k);").await.unwrap();
+        vm.eval("let f: String = foo();").await.unwrap();
+        vm.eval("let g: String = bar();").await.unwrap();
+        dbg!(vm);
     }
 }

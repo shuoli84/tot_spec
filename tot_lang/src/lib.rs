@@ -48,11 +48,18 @@
 //!
 //! ```
 
+use std::fmt;
+
 pub mod ast;
 pub mod codegen;
 pub mod program;
 pub mod runtime;
 
+pub use serde_json::Value;
+
 /// We need the user to provide A behavior to inject customized logic
 #[async_trait::async_trait]
-pub trait Behavior {}
+pub trait Behavior: fmt::Debug {
+    /// Execute an method with name
+    async fn execute(&mut self, method: &str, params: &[Value]) -> anyhow::Result<Value>;
+}
