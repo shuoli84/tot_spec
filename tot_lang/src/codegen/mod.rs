@@ -17,6 +17,41 @@ impl Codegen {
     }
 }
 
+fn generate_file(ast: &AstNode) -> anyhow::Result<String> {
+    let Some((func_defs)) = ast.as_file() else {
+        bail!("ast is not file");
+    };
+
+    let mut result = "".to_string();
+
+    for func_def in func_defs {
+        let func_code = generate_func_def(func_def)?;
+        writeln!(result, "{}", func_code)?;
+    }
+
+    Ok(result)
+}
+
+fn generate_func_def(ast: &AstNode) -> anyhow::Result<String> {
+    let Some((sig, body)) = ast.as_func_def() else  {
+        bail!("ast is not func_def");
+    };
+
+    let mut result = "".to_string();
+
+    let (ident, params, ret) = sig.as_func_signature().unwrap();
+
+    let ident = ident.as_ident().unwrap();
+    let params = "";
+    let return_type = "String";
+    writeln!(result, "fn {ident}({params}) -> {return_type}")?;
+
+    let body = generate_block(body)?;
+    result.push_str(&body);
+
+    Ok(result)
+}
+
 fn generate_statement(ast: &AstNode) -> anyhow::Result<String> {
     let statement = ast
         .as_statement()
@@ -151,9 +186,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_codegen_statement() {
-        let ast = AstNode::parse_statement(
-            r#"{
+    fn test_codegen() {
+        let ast = AstNode::parse_file(
+            r#"fn hello() -> String {
                 let i: String = "hello";
                 i = "world";
                 let j: String = i;
@@ -164,10 +199,13 @@ mod tests {
                         "bar"
                     }
                 };
-        };"#,
+                k
+        }"#,
         )
         .unwrap();
-        let code = generate_statement(&ast).unwrap();
+        let code = generate_file(&ast).unwrap();
+
+        println!("{code}");
 
         let code_ast = syn::parse_file(&code).unwrap();
         let formatted_code = prettyplease::unparse(&code_ast);

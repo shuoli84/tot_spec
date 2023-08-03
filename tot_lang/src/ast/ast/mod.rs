@@ -132,6 +132,13 @@ impl AstNode {
         }
     }
 
+    pub fn as_func_def(&self) -> Option<(&AstNode, &AstNode)> {
+        match &self.kind {
+            AstNodeKind::FuncDef { signature, body } => Some((signature, body)),
+            _ => None,
+        }
+    }
+
     pub fn as_func_signature(&self) -> Option<(&AstNode, &[AstNode], Option<&AstNode>)> {
         match &self.kind {
             AstNodeKind::FuncSignature {
