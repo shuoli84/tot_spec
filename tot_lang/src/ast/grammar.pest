@@ -35,6 +35,9 @@ for_exp = { "for" ~ for_item ~ "in" ~ for_values ~ block }
 for_item = { identifier }
 for_values = { expression }
 
+while_exp = { "while" ~ while_condition ~ block }
+while_condition = { expression }
+
 literal = { string_literal | number_literal | bool_literal }
 json_char_double_quote = {
     !("\"" | "\\") ~ ANY

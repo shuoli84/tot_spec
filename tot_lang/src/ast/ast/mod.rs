@@ -6,6 +6,7 @@ mod call;
 mod expression;
 mod expression_for;
 mod expression_if;
+mod expression_while;
 mod func_def;
 mod func_signature;
 mod ident;
@@ -63,6 +64,11 @@ pub enum AstNodeKind {
     For {
         item: Box<AstNode>,
         values: Box<AstNode>,
+        block: Box<AstNode>,
+    },
+    /// while condition {}
+    While {
+        condition: Box<AstNode>,
         block: Box<AstNode>,
     },
     /// function call
@@ -184,6 +190,10 @@ impl AstNode {
         matches!(self.kind, AstNodeKind::For { .. })
     }
 
+    pub fn is_while(&self) -> bool {
+        matches!(self.kind, AstNodeKind::While { .. })
+    }
+
     pub fn as_for(&self) -> Option<(&AstNode, &AstNode, &AstNode)> {
         match &self.kind {
             AstNodeKind::For {
@@ -191,6 +201,13 @@ impl AstNode {
                 values,
                 block,
             } => Some((item, values, block)),
+            _ => None,
+        }
+    }
+
+    pub fn as_while(&self) -> Option<(&AstNode, &AstNode)> {
+        match &self.kind {
+            AstNodeKind::While { condition, block } => Some((condition, block)),
             _ => None,
         }
     }
