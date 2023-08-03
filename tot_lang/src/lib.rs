@@ -62,4 +62,14 @@ pub use serde_json::Value;
 pub trait Behavior: fmt::Debug {
     /// Execute an method with name
     async fn execute(&mut self, method: &str, params: &[Value]) -> anyhow::Result<Value>;
+
+    /// convert tot path to rust path
+    /// e.g: print => println!
+    fn codegen_code_for_path(&mut self, path: &str) -> anyhow::Result<String> {
+        if path.eq("debug") {
+            return Ok("dbg!".to_string());
+        }
+
+        Ok(path.to_string())
+    }
 }
