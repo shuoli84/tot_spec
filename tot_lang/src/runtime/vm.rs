@@ -21,7 +21,13 @@ impl Vm {
 
     /// Execute the ast
     pub async fn execute(&mut self, program: &Program) -> anyhow::Result<()> {
+        let mut skip_count: usize = 0;
         for op in program.operations() {
+            if skip_count > 0 {
+                skip_count -= 1;
+                continue;
+            }
+
             match op {
                 Op::Declare { name, .. } => {
                     // store a null value, so the store op will modify the one for current scope
@@ -77,6 +83,13 @@ impl Vm {
                         self.frame.pop_scope();
                     }
                 }
+                Op::Jump(ops_to_skip) => skip_count = *ops_to_skip,
+                Op::JumpIfFalse(ops_to_skip) => {
+                    let value = self.register.take();
+                    if !bool_for_value(&value) {
+                        skip_count = *ops_to_skip
+                    }
+                }
             }
         }
         Ok(())
@@ -90,6 +103,31 @@ impl Vm {
     /// consume self and return the value
     pub fn into_value(self) -> Option<Value> {
         self.register
+    }
+}
+
+/// convert value to bool value
+/// e.g, 0 -> false  null -> false  "" -> false
+fn bool_for_value(value: &Option<Value>) -> bool {
+    let Some(value) = value else { return false };
+
+    match value {
+        Value::Null => false,
+        Value::Bool(v) => *v,
+        Value::Number(num) => {
+            if let Some(v) = num.as_i64() {
+                v != 0
+            } else if let Some(v) = num.as_u64() {
+                v != 0
+            } else if let Some(v) = num.as_f64() {
+                v != 0.0
+            } else {
+                false
+            }
+        }
+        Value::String(s) => !s.is_empty(),
+        Value::Array(l) => !l.is_empty(),
+        Value::Object(o) => !o.is_empty(),
     }
 }
 
@@ -124,7 +162,7 @@ mod tests {
         vm.eval("return g;").await.unwrap();
         let result = vm.into_value();
         assert!(result.is_some());
-        assert!(result.unwrap().as_str().unwrap().eq("bar"))
+        assert!(result.unwrap().as_str().unwrap().eq("bar"));
     }
 
     #[tokio::test]
@@ -142,6 +180,62 @@ mod tests {
         .await
         .unwrap();
         let result = vm.into_value();
-        assert!(result.unwrap().as_str().unwrap().eq("hello"))
+        assert!(result.unwrap().as_str().unwrap().eq("hello"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_if_else_true() {
+        let mut vm = Vm::default();
+        vm.behavior = Some(Box::new(TestBehavior::default()));
+        vm.eval(
+            r#"{
+            if 1 {
+                return 100;
+            } else { 
+                return 200;
+            };
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_i64().unwrap(), 100);
+    }
+
+    #[tokio::test]
+    async fn test_execute_if_else_false() {
+        let mut vm = Vm::default();
+        vm.behavior = Some(Box::new(TestBehavior::default()));
+        vm.eval(
+            r#"{
+            if 0 {
+                return 100;
+            } else { 
+                return 200;
+            };
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_i64().unwrap(), 200);
+    }
+
+    #[tokio::test]
+    async fn test_execute_if_no_else() {
+        let mut vm = Vm::default();
+        vm.behavior = Some(Box::new(TestBehavior::default()));
+        vm.eval(
+            r#"{
+            if 0 {
+                return 100;
+            };
+            200
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_i64().unwrap(), 200);
     }
 }
