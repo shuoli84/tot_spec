@@ -20,7 +20,10 @@ impl Vm {
     pub async fn execute(&mut self, program: &Program) -> anyhow::Result<()> {
         for op in program.operations() {
             match op {
-                Op::Declare { name, ty } => {}
+                Op::Declare { name, .. } => {
+                    // store a null value, so the store op will modify the one for current scope
+                    self.frame.store(name.to_string(), Value::Null);
+                }
                 Op::Store { name } => self
                     .frame
                     .store(name.to_string(), self.register.take().unwrap()),
@@ -28,7 +31,8 @@ impl Vm {
                     self.register = Some(value.clone());
                 }
                 Op::Load(ReferenceOrValue::Reference(reference)) => {
-                    todo!()
+                    let value = self.frame.load_required(reference)?;
+                    self.register = Some(value.clone());
                 }
                 Op::EnterScope => {
                     self.frame.push_scope();
@@ -36,7 +40,28 @@ impl Vm {
                 Op::ExitScope => {
                     self.frame.pop_scope();
                 }
-                Op::Call { .. } => {}
+                Op::Call { path, params } => {
+                    let mut loaded_params = vec![];
+                    for param in params {
+                        match param {
+                            ReferenceOrValue::Reference(reference) => {
+                                loaded_params.push(self.frame.load_required(reference)?.clone());
+                            }
+                            ReferenceOrValue::Value(value) => {
+                                loaded_params.push(value.clone());
+                            }
+                        }
+                    }
+
+                    if path.eq("debug") {
+                        for param in loaded_params {
+                            print!("{} ", param);
+                        }
+                        println!();
+                    } else {
+                        println!("calling {path} with params: {loaded_params:?}");
+                    }
+                }
             }
         }
         Ok(())
@@ -51,6 +76,8 @@ mod tests {
     async fn test_execute() {
         let mut vm = Vm::default();
         vm.eval("let i: i32 = 1;").await.unwrap();
-        vm.eval("let j: i32 = 1;").await.unwrap();
+        vm.eval("let j: i32 = 2;").await.unwrap();
+        vm.eval("let k: i32 = 3;").await.unwrap();
+        vm.eval("debug(\"hello\", i, j, k);").await.unwrap();
     }
 }

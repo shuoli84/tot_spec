@@ -1,4 +1,4 @@
-use crate::ast::{Ast, AstNode, AstNodeKind, Expression, Literal, Statement};
+use crate::ast::{AstNode, Expression, Literal, Statement};
 use anyhow::bail;
 use serde_json::{Number, Value};
 use tot_spec::Type;
@@ -34,13 +34,6 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn from_ast(ast: &Ast) -> anyhow::Result<Self> {
-        let ast_node = ast.node();
-        let mut operations: Vec<Op> = vec![];
-        convert_ast_to_operations(ast_node, &mut operations)?;
-        Ok(Self { operations })
-    }
-
     pub fn from_statement(code: &str) -> anyhow::Result<Self> {
         let ast = AstNode::parse_statement(code.trim())?;
         let mut operations = vec![];
@@ -51,27 +44,6 @@ impl Program {
     pub fn operations(&self) -> &[Op] {
         &self.operations
     }
-}
-
-fn convert_ast_to_operations(ast_node: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
-    match ast_node.kind() {
-        AstNodeKind::Statement(..) => convert_statement(ast_node, operations)?,
-        AstNodeKind::Bind { .. } => {}
-        AstNodeKind::Ident { .. } => {}
-        AstNodeKind::Path { .. } => {}
-        AstNodeKind::Block { .. } => {}
-        AstNodeKind::Expression(_) => {}
-        AstNodeKind::Literal { .. } => {}
-        AstNodeKind::Reference { .. } => {}
-        AstNodeKind::FuncDef { .. } => {}
-        AstNodeKind::FuncSignature { .. } => {}
-        AstNodeKind::FuncParam { .. } => {}
-        AstNodeKind::If { .. } => {}
-        AstNodeKind::For { .. } => {}
-        AstNodeKind::Call { .. } => {}
-    }
-
-    Ok(())
 }
 
 fn convert_statement<'a>(ast: &'a AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
@@ -116,7 +88,7 @@ fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result
         Expression::Literal(literal_node) => {
             let (literal_type, literal_value) = literal_node.as_literal().unwrap();
             let value = match literal_type {
-                Literal::String => Value::String(literal_value.to_string()),
+                Literal::String => Value::String(snailquote::unescape(literal_value)?),
                 Literal::Number => Value::Number(Number::from(literal_value.parse::<i64>()?)),
                 Literal::Boolean => Value::Bool(match literal_value {
                     "true" => true,
@@ -136,7 +108,36 @@ fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result
                 .join(".")
                 .into(),
         ))),
-        Expression::Call(_) => {}
+        Expression::Call(call) => {
+            // each call creates a new scope
+            operations.push(Op::EnterScope);
+            let (path, params) = call.as_call().unwrap();
+
+            let mut param_references: Vec<String> = vec![];
+
+            for (idx, param) in params.iter().enumerate() {
+                convert_expression(param, operations)?;
+
+                let param_name = format!("_{idx}");
+                operations.push(Op::Declare {
+                    name: param_name.clone(),
+                    ty: Type::Json,
+                });
+
+                param_references.push(param_name.clone());
+                operations.push(Op::Store { name: param_name });
+            }
+
+            operations.push(Op::Call {
+                path: path.as_path().unwrap().to_string(),
+                params: param_references
+                    .into_iter()
+                    .map(|p| ReferenceOrValue::Reference(p))
+                    .collect(),
+            });
+
+            operations.push(Op::ExitScope);
+        }
         Expression::If(_) => {}
         Expression::For(_) => {}
         Expression::Block(block) => {
@@ -169,7 +170,6 @@ mod tests {
     use crate::ast::AstNode;
     use crate::program::{convert_statement, Op, ReferenceOrValue};
     use serde_json::{Number, Value};
-    use std::borrow::Cow;
     use tot_spec::Type;
 
     #[test]
@@ -190,6 +190,19 @@ mod tests {
                 Op::Store { name: "i".into() }
             ]
         )
+    }
+
+    #[test]
+    fn test_program_load_literal() {
+        let ast = AstNode::parse_statement("\"hello\";").unwrap();
+
+        let mut operations = vec![];
+        convert_statement(&ast, &mut operations).unwrap();
+
+        assert_eq!(
+            operations,
+            vec![Op::Load(ReferenceOrValue::Value("hello".into()))]
+        );
     }
 
     #[test]
@@ -224,5 +237,14 @@ mod tests {
 
         let mut operations = vec![];
         assert!(convert_statement(&ast, &mut operations).is_ok());
+    }
+
+    #[test]
+    fn test_program_call() {
+        let ast = AstNode::parse_statement(r#"a(1, 2, 3);"#).unwrap();
+
+        let mut operations = vec![];
+        assert!(convert_statement(&ast, &mut operations).is_ok());
+        dbg!(operations);
     }
 }
