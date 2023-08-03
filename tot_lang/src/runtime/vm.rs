@@ -126,4 +126,22 @@ mod tests {
         assert!(result.is_some());
         assert!(result.unwrap().as_str().unwrap().eq("bar"))
     }
+
+    #[tokio::test]
+    async fn test_execute_return_from_inner() {
+        let mut vm = Vm::default();
+        vm.behavior = Some(Box::new(TestBehavior::default()));
+        vm.eval(
+            r#"{
+            let i: String = "hello";
+            {
+                return i;
+            };
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert!(result.unwrap().as_str().unwrap().eq("hello"))
+    }
 }
