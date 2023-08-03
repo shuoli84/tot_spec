@@ -7,6 +7,7 @@ mod expression;
 mod expression_for;
 mod expression_if;
 mod expression_while;
+mod file;
 mod func_def;
 mod func_signature;
 mod ident;
@@ -76,6 +77,9 @@ pub enum AstNodeKind {
         path: Box<AstNode>,
         params: Vec<AstNode>,
     },
+    File {
+        func_defs: Vec<AstNode>,
+    },
 }
 
 #[derive(Debug)]
@@ -85,6 +89,15 @@ pub struct AstNode {
 }
 
 impl AstNode {
+    pub fn parse_file(code: &str) -> anyhow::Result<Self> {
+        let parsed = GrammarParser::parse(Rule::file, code)
+            .unwrap()
+            .nth(0)
+            .unwrap();
+        let file = file::parse_file(parsed);
+        Ok(file)
+    }
+
     pub fn parse_statement(code: &str) -> anyhow::Result<Self> {
         let parsed = GrammarParser::parse(Rule::statement, code)
             .unwrap()
@@ -104,8 +117,19 @@ impl AstNode {
         self.span
     }
 
+    pub fn is_file(&self) -> bool {
+        matches!(self.kind, AstNodeKind::File { .. })
+    }
+
     pub fn is_func_def(&self) -> bool {
         matches!(self.kind, AstNodeKind::FuncDef { .. })
+    }
+
+    pub fn as_file(&self) -> Option<&[AstNode]> {
+        match &self.kind {
+            AstNodeKind::File { func_defs } => Some(func_defs),
+            _ => None,
+        }
     }
 
     pub fn as_func_signature(&self) -> Option<(&AstNode, &[AstNode], Option<&AstNode>)> {
