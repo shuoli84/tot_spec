@@ -39,5 +39,6 @@ mod tests {
 
         let node = parse_file(parsed);
         assert!(node.is_file());
+        assert_eq!(node.as_file().unwrap().len(), 1)
     }
 }
