@@ -17,6 +17,11 @@ impl Default for Frame {
 }
 
 impl Frame {
+    /// Returns the depth for current scope
+    pub fn depth(&self) -> usize {
+        self.scopes.len()
+    }
+
     /// push a new scope to the frame
     pub fn push_scope(&mut self) {
         self.scopes.push(Scope::default());
@@ -25,9 +30,6 @@ impl Frame {
     /// pop the scope
     pub fn pop_scope(&mut self) {
         self.scopes.pop();
-        // should not pop the root scope, the root scope should be dropped with
-        // frame
-        assert!(!self.scopes.is_empty());
     }
 
     /// Store to current scope

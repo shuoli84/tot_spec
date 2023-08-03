@@ -20,6 +20,7 @@ pub enum Op {
         path: String,
         params: Vec<ReferenceOrValue>,
     },
+    Return,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -54,7 +55,11 @@ fn convert_statement<'a>(ast: &'a AstNode, operations: &mut Vec<Op>) -> anyhow::
             expression,
         } => convert_declare_and_bind(ident, path, expression, operations)?,
         Statement::Bind { .. } => {}
-        Statement::Return { .. } => {}
+        Statement::Return { expression: expr } => {
+            convert_expression(expr, operations)?;
+            // with the expr's value stored at register. Now return
+            operations.push(Op::Return);
+        }
         Statement::Expression(exp) => convert_expression(exp, operations)?,
     }
     Ok(())

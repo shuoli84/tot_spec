@@ -72,16 +72,30 @@ impl Vm {
                         self.register = Some(Value::Null);
                     }
                 }
+                Op::Return => {
+                    while self.frame.depth() > 0 {
+                        self.frame.pop_scope();
+                    }
+                }
             }
         }
         Ok(())
+    }
+
+    /// get current value at register, it is the way to get the result
+    pub fn value(&self) -> Option<&Value> {
+        self.register.as_ref()
+    }
+
+    /// consume self and return the value
+    pub fn into_value(self) -> Option<Value> {
+        self.register
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
 
     #[derive(Debug, Default)]
     struct TestBehavior {}
@@ -107,6 +121,9 @@ mod tests {
         vm.eval("debug(\"hello\", i, j, k);").await.unwrap();
         vm.eval("let f: String = foo();").await.unwrap();
         vm.eval("let g: String = bar();").await.unwrap();
-        dbg!(vm);
+        vm.eval("return g;").await.unwrap();
+        let result = vm.into_value();
+        assert!(result.is_some());
+        assert!(result.unwrap().as_str().unwrap().eq("bar"))
     }
 }
