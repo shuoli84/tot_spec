@@ -1,7 +1,16 @@
 use crate::ast::{AstNode, Expression, Literal, Statement};
+use crate::program::block::convert_block;
+use crate::program::expression::convert_expression;
+use crate::program::statement::convert_statement;
 use anyhow::{anyhow, bail};
 use serde_json::{Number, Value};
 use tot_spec::Type;
+
+mod block;
+mod expression;
+mod expression_if;
+mod statement;
+mod statement_declare_and_store;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Op {
@@ -52,166 +61,6 @@ impl Program {
     pub fn operations(&self) -> &[Op] {
         &self.operations
     }
-}
-
-fn convert_statement<'a>(ast: &'a AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
-    match ast.as_statement().unwrap() {
-        Statement::DeclareAndBind {
-            ident,
-            path,
-            expression,
-        } => convert_declare_and_bind(ident, path, expression, operations)?,
-        Statement::Bind { .. } => {}
-        Statement::Return { expression: expr } => {
-            convert_expression(expr, operations)?;
-            // with the expr's value stored at register. Now return
-            operations.push(Op::Return);
-        }
-        Statement::Expression(exp) => convert_expression(exp, operations)?,
-    }
-    Ok(())
-}
-
-fn convert_declare_and_bind(
-    ident: &AstNode,
-    path: &AstNode,
-    expr: &AstNode,
-    operations: &mut Vec<Op>,
-) -> anyhow::Result<()> {
-    let ident = ident.as_ident().unwrap().to_string();
-
-    let type_path = path.as_path().unwrap();
-    let ty = Type::try_parse(type_path)?;
-
-    operations.push(Op::Declare {
-        name: ident.clone(),
-        ty: ty,
-    });
-
-    convert_expression(expr, operations)?;
-    operations.push(Op::Store { name: ident });
-
-    Ok(())
-}
-
-fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
-    let exp = exp.as_expression().unwrap();
-    match exp {
-        Expression::Literal(literal_node) => {
-            let (literal_type, literal_value) = literal_node.as_literal().unwrap();
-            let value = match literal_type {
-                Literal::String => Value::String(snailquote::unescape(literal_value)?),
-                Literal::Number => Value::Number(Number::from(literal_value.parse::<i64>()?)),
-                Literal::Boolean => Value::Bool(match literal_value {
-                    "true" => true,
-                    "false" => false,
-                    _ => bail!("invalid bool literal, {literal_value}"),
-                }),
-            };
-            operations.push(Op::Load(ReferenceOrValue::Value(value)));
-        }
-        Expression::Reference(reference) => operations.push(Op::Load(ReferenceOrValue::Reference(
-            reference
-                .as_reference()
-                .unwrap()
-                .iter()
-                .map(|i| i.as_ident().unwrap())
-                .collect::<Vec<_>>()
-                .join(".")
-                .into(),
-        ))),
-        Expression::Call(call) => {
-            // each call creates a new scope
-            operations.push(Op::EnterScope);
-            let (path, params) = call.as_call().unwrap();
-
-            let mut param_references: Vec<String> = vec![];
-
-            for (idx, param) in params.iter().enumerate() {
-                convert_expression(param, operations)?;
-
-                let param_name = format!("_{idx}");
-                operations.push(Op::Declare {
-                    name: param_name.clone(),
-                    ty: Type::Json,
-                });
-
-                param_references.push(param_name.clone());
-                operations.push(Op::Store { name: param_name });
-            }
-
-            operations.push(Op::Call {
-                path: path.as_path().unwrap().to_string(),
-                params: param_references
-                    .into_iter()
-                    .map(|p| ReferenceOrValue::Reference(p))
-                    .collect(),
-            });
-
-            operations.push(Op::ExitScope);
-        }
-        Expression::If(if_exp) => {
-            convert_if(if_exp, operations)?;
-        }
-        Expression::For(_) => {}
-        Expression::Block(block) => {
-            convert_block(block, operations)?;
-        }
-    }
-    Ok(())
-}
-
-fn convert_if(if_exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
-    let (condition_exp, block, else_block) = if_exp
-        .as_if()
-        .ok_or_else(|| anyhow!("expression is not if"))?;
-
-    operations.push(Op::EnterScope);
-
-    convert_expression(condition_exp, operations)?;
-
-    // the count will be updated after block generated
-    operations.push(Op::JumpIfFalse(0));
-
-    let current_len = operations.len();
-    let jump_idx = current_len - 1;
-    convert_block(block, operations)?;
-    // add an op to jump else block
-    operations.push(Op::Jump(0));
-
-    let block_op_count = operations.len() - current_len;
-
-    operations[jump_idx] = Op::JumpIfFalse(block_op_count);
-
-    if let Some(else_block) = else_block {
-        let jump_else_op_idx = operations.len() - 1;
-        let current_len = operations.len();
-        convert_block(else_block, operations)?;
-        let else_block_len = operations.len() - current_len;
-        operations[jump_else_op_idx] = Op::Jump(else_block_len);
-    }
-
-    operations.push(Op::ExitScope);
-
-    Ok(())
-}
-
-fn convert_block(block: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
-    let Some((statements, value_expr)) = block.as_block() else {
-        bail!("node is block");
-    };
-
-    operations.push(Op::EnterScope);
-
-    for statement in statements {
-        convert_statement(statement, operations)?;
-    }
-    if let Some(value_expr) = value_expr {
-        convert_expression(value_expr, operations)?;
-    }
-
-    operations.push(Op::ExitScope);
-    Ok(())
 }
 
 #[cfg(test)]
@@ -265,45 +114,6 @@ mod tests {
             operations,
             vec![Op::Load(ReferenceOrValue::Reference("i".into()))]
         );
-    }
-
-    #[test]
-    fn test_program_block() {
-        let ast = AstNode::parse_statement(
-            r#"{
-            let i: i32 = 1;
-            let j: i64 = 2;
-            let k: i32 = {
-                100
-            };
-            {
-                // do nothing
-            };
-            i
-        };"#,
-        )
-        .unwrap();
-
-        let mut operations = vec![];
-        assert!(convert_statement(&ast, &mut operations).is_ok());
-    }
-
-    #[test]
-    fn test_program_if() {
-        let ast = AstNode::parse_statement(
-            r#"{
-            if 1 {
-                100
-            } else {
-                200
-            };
-        };"#,
-        )
-        .unwrap();
-
-        let mut operations = vec![];
-        assert!(convert_statement(&ast, &mut operations).is_ok());
-        dbg!(operations);
     }
 
     #[test]
