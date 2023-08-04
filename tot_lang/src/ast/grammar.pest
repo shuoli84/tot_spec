@@ -20,7 +20,7 @@ return_statement = {
   "return" ~ expression
 }
 
-expression = { literal | array_expression | call_exp | convert_exp | if_exp | for_exp | reference | block }
+expression = { literal | array_expression | call_exp | convert_exp | if_exp | reference | block }
 array_expression = { "[" ~ expression? ~ ("," ~ expression)* ~ "]" }
 call_exp = { path ~ "(" ~ expression? ~ ("," ~ expression)* ~ ")"}
 convert_exp = { reference ~ "as" ~ path }
@@ -30,13 +30,6 @@ if_exp = {"if" ~ if_condition ~ if_block ~ ("else" ~ if_else_block)? }
 if_condition = { expression }
 if_block = { block }
 if_else_block = { block }
-
-for_exp = { "for" ~ for_item ~ "in" ~ for_values ~ block }
-for_item = { identifier }
-for_values = { expression }
-
-while_exp = { "while" ~ while_condition ~ block }
-while_condition = { expression }
 
 literal = { string_literal | number_literal | bool_literal }
 json_char_double_quote = {

@@ -169,9 +169,6 @@ impl Codegen {
                 let if_code = self.generate_if(if_exp)?;
                 writeln!(result, "{if_code}")?;
             }
-            Expression::For(_) => {
-                todo!()
-            }
             Expression::Block(block) => {
                 let block_code = self.generate_block(block, false)?;
                 writeln!(result, "{block_code}")?;

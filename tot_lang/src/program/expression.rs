@@ -60,7 +60,6 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
         Expression::If(if_exp) => {
             convert_if(if_exp, operations)?;
         }
-        Expression::For(_) => {}
         Expression::Block(block) => {
             convert_block(block, operations)?;
         }

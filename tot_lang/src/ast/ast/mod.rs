@@ -4,9 +4,7 @@ use pest::Parser;
 mod block;
 mod call;
 mod expression;
-mod expression_for;
 mod expression_if;
-mod expression_while;
 mod file;
 mod func_def;
 mod func_signature;
@@ -60,17 +58,6 @@ pub enum AstNodeKind {
         condition: Box<AstNode>,
         block: Box<AstNode>,
         else_block: Option<Box<AstNode>>,
-    },
-    /// for item in values {}
-    For {
-        item: Box<AstNode>,
-        values: Box<AstNode>,
-        block: Box<AstNode>,
-    },
-    /// while condition {}
-    While {
-        condition: Box<AstNode>,
-        block: Box<AstNode>,
     },
     /// function call
     Call {
@@ -228,32 +215,6 @@ impl AstNode {
         }
     }
 
-    pub fn is_for(&self) -> bool {
-        matches!(self.kind, AstNodeKind::For { .. })
-    }
-
-    pub fn is_while(&self) -> bool {
-        matches!(self.kind, AstNodeKind::While { .. })
-    }
-
-    pub fn as_for(&self) -> Option<(&AstNode, &AstNode, &AstNode)> {
-        match &self.kind {
-            AstNodeKind::For {
-                item,
-                values,
-                block,
-            } => Some((item, values, block)),
-            _ => None,
-        }
-    }
-
-    pub fn as_while(&self) -> Option<(&AstNode, &AstNode)> {
-        match &self.kind {
-            AstNodeKind::While { condition, block } => Some((condition, block)),
-            _ => None,
-        }
-    }
-
     pub fn is_call(&self) -> bool {
         matches!(self.kind, AstNodeKind::Call { .. })
     }
@@ -294,7 +255,6 @@ pub enum Expression {
     Reference(Box<AstNode>),
     Call(Box<AstNode>),
     If(Box<AstNode>),
-    For(Box<AstNode>),
     Block(Box<AstNode>),
 }
 
@@ -323,13 +283,6 @@ impl Expression {
     pub fn as_if(&self) -> Option<&AstNode> {
         match self {
             Expression::If(node) => Some(node.as_ref()),
-            _ => None,
-        }
-    }
-
-    pub fn as_for(&self) -> Option<&AstNode> {
-        match self {
-            Expression::For(node) => Some(node.as_ref()),
             _ => None,
         }
     }

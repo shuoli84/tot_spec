@@ -1,6 +1,5 @@
 use crate::ast::ast::block::parse_block;
 use crate::ast::ast::call::parse_call;
-use crate::ast::ast::expression_for::parse_for;
 use crate::ast::ast::expression_if::parse_if;
 use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::literal::parse_literal;
@@ -28,7 +27,6 @@ pub fn parse_expression(pair: Pair<Rule>) -> AstNode {
         }
         Rule::call_exp => Expression::Call(Box::new(parse_call(inner))),
         Rule::if_exp => Expression::If(Box::new(parse_if(inner))),
-        Rule::for_exp => Expression::For(Box::new(parse_for(inner))),
         _ => {
             unreachable!();
         }
@@ -99,16 +97,6 @@ mod tests {
             .unwrap();
         let exp = parse_expression(parsed);
         assert!(exp.as_expression().unwrap().as_if().is_some());
-    }
-
-    #[test]
-    fn test_parse_expression_for() {
-        let parsed = GrammarParser::parse(Rule::expression, "for i in values {}")
-            .unwrap()
-            .nth(0)
-            .unwrap();
-        let exp = parse_expression(parsed);
-        assert!(exp.as_expression().unwrap().as_for().is_some());
     }
 
     #[test]
