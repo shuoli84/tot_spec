@@ -71,7 +71,7 @@ impl Vm {
                         }
                         println!();
                     } else if let Some(behavior) = self.behavior.as_mut() {
-                        let result = behavior.execute(path, &loaded_params).await?;
+                        let result = behavior.runtime_call_method(path, &loaded_params).await?;
                         self.register = Some(result);
                     } else {
                         println!("calling {path} with params: {loaded_params:?}");
@@ -140,7 +140,11 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Behavior for TestBehavior {
-        async fn execute(&mut self, method: &str, params: &[Value]) -> anyhow::Result<Value> {
+        async fn runtime_call_method(
+            &mut self,
+            method: &str,
+            params: &[Value],
+        ) -> anyhow::Result<Value> {
             match method {
                 "foo" => return Ok(Value::String("foo".into())),
                 "bar" => return Ok(Value::String("bar".into())),

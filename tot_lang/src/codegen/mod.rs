@@ -33,8 +33,6 @@ impl Codegen {
             bail!("ast is not func_def");
         };
 
-        let mut result = "".to_string();
-
         let (ident, params, ret) = sig.as_func_signature().unwrap();
 
         let ident = ident.as_ident().unwrap();
@@ -44,17 +42,23 @@ impl Codegen {
                 param_code_blocks.push(self.generate_func_param(param)?);
             }
 
-            param_code_blocks.join(", ")
+            param_code_blocks
         };
 
-        if let Some(ret_type) = ret {
-            let ret_type = self.generate_type(ret_type)?;
-            writeln!(result, "fn {ident}({params}) -> {ret_type}")?;
+        let ret_type = if let Some(ret_type) = ret {
+            Some(self.generate_type(ret_type)?)
         } else {
-            writeln!(result, "fn {ident}({params}")?;
-        }
+            None
+        };
 
-        let body = self.generate_block(body)?;
+        let body = self.generate_block(body, true)?;
+        let func_signature = self.behavior.codegen_for_func_signature(
+            ident,
+            &params,
+            ret_type.as_ref().map(|s| s.as_str()),
+        )?;
+
+        let mut result = func_signature;
         result.push_str(&body);
 
         Ok(result)
@@ -104,7 +108,11 @@ impl Codegen {
                 let expr_code = self.generate_expression(expression)?;
                 writeln!(result, "{ident} = {expr_code};")?;
             }
-            Statement::Return { .. } => {}
+            Statement::Return { expression } => {
+                let expr_code = self.generate_expression(expression)?;
+                let ret_code = self.behavior.codegen_for_return(&expr_code, false)?;
+                writeln!(result, "{ret_code}")?;
+            }
             Statement::Expression(expr) => {
                 let expr_code = self.generate_expression(expr)?;
                 result.push_str(&expr_code);
@@ -165,7 +173,7 @@ impl Codegen {
                 todo!()
             }
             Expression::Block(block) => {
-                let block_code = self.generate_block(block)?;
+                let block_code = self.generate_block(block, false)?;
                 writeln!(result, "{block_code}")?;
             }
         }
@@ -202,19 +210,19 @@ impl Codegen {
         let condition_code = self.generate_expression(condition)?;
         result.push_str(&condition_code);
 
-        let block_code = self.generate_block(block)?;
+        let block_code = self.generate_block(block, false)?;
         result.push_str(&block_code);
 
         if let Some(else_block) = else_block {
             result.push_str(" else ");
-            let code = self.generate_block(else_block)?;
+            let code = self.generate_block(else_block, false)?;
             result.push_str(&code);
         }
 
         Ok(result)
     }
 
-    fn generate_block(&mut self, block: &AstNode) -> anyhow::Result<String> {
+    fn generate_block(&mut self, block: &AstNode, is_func_body: bool) -> anyhow::Result<String> {
         let Some((statements, value_expr)) = block.as_block() else {
             bail!("ast is not block");
         };
@@ -227,7 +235,15 @@ impl Codegen {
         }
         if let Some(value_expr) = value_expr {
             let expr_code = self.generate_expression(value_expr)?;
-            writeln!(result, "{expr_code}")?
+
+            // if this block is both func_body and also the expr is its value_expr, then
+            // we treat it a little bit different
+            let is_func_last_exp = is_func_body;
+
+            let ret_code = self
+                .behavior
+                .codegen_for_return(&expr_code, is_func_last_exp)?;
+            writeln!(result, "{ret_code}")?
         }
         writeln!(result, "}}")?;
 
@@ -245,8 +261,27 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Behavior for TestBehavior {
-        async fn execute(&mut self, method: &str, params: &[Value]) -> anyhow::Result<Value> {
+        async fn runtime_call_method(
+            &mut self,
+            method: &str,
+            params: &[Value],
+        ) -> anyhow::Result<Value> {
             todo!()
+        }
+
+        fn codegen_for_func_signature(
+            &mut self,
+            name: &str,
+            params: &[String],
+            ret_type: Option<&str>,
+        ) -> anyhow::Result<String> {
+            // generate async functions
+            let params = params.join(",");
+            Ok(if let Some(ret_type) = ret_type {
+                format!("async fn {name}({params}) -> anyhow::Result<{ret_type}>")
+            } else {
+                format!("async fn {name}({params} -> anyhow::Result<()>")
+            })
         }
 
         fn codegen_for_type(&mut self, path: &str) -> anyhow::Result<String> {
@@ -268,15 +303,23 @@ mod tests {
                     format!("println!(\"{place_holder}\", {params_code})")
                 }
                 "a::b::sync_func" => {
-                    format!("my_crate::a::b::sync_func({params_code})")
+                    format!("my_crate::a::b::sync_func({params_code})?")
                 }
                 "a::b::async_func" => {
-                    format!("my_crate::a::b::async_func({params_code}).await")
+                    format!("my_crate::a::b::async_func({params_code}).await?")
                 }
                 _ => {
                     bail!("call \"{path}\" not supported")
                 }
             })
+        }
+
+        fn codegen_for_return(&mut self, expr: &str, is_last: bool) -> anyhow::Result<String> {
+            if is_last {
+                Ok(format!("Ok({expr})"))
+            } else {
+                Ok(format!("return Ok({expr});"))
+            }
         }
     }
 
@@ -285,8 +328,6 @@ mod tests {
         let mut codegen = Codegen::new(Box::new(TestBehavior::default()));
         let ast = AstNode::parse_file(
             r#"fn hello(i: String) -> String {
-                let i: String = "hello";
-                i = "world";
                 let j: String = i;
                 let k: String = {
                     if true {
@@ -295,10 +336,14 @@ mod tests {
                         "bar"
                     }
                 };
+                if true {
+                    return "foo";
+                } else {
+                    return "bar";
+                };
                 print(k);
                 let sync_call_result: String = a::b::sync_func(k);
-                let sync_call_result: String = a::b::sync_func(k);
-                let async_call_result: String = a::b::async_func(k);
+                let async_call_result: String = a::b::async_func(sync_call_result);
                 k
             }"#,
         )

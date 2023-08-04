@@ -61,7 +61,25 @@ pub use serde_json::Value;
 #[async_trait::async_trait]
 pub trait Behavior: fmt::Debug {
     /// Execute an method with name
-    async fn execute(&mut self, method: &str, params: &[Value]) -> anyhow::Result<Value>;
+    async fn runtime_call_method(
+        &mut self,
+        method: &str,
+        params: &[Value],
+    ) -> anyhow::Result<Value>;
+
+    fn codegen_for_func_signature(
+        &mut self,
+        name: &str,
+        params: &[String],
+        ret_type: Option<&str>,
+    ) -> anyhow::Result<String> {
+        let params = params.join(",");
+        Ok(if let Some(ret_type) = ret_type {
+            format!("fn {name}({params}) -> {ret_type}")
+        } else {
+            format!("fn {name}({params}")
+        })
+    }
 
     /// gen type for path
     /// e.g: print => println!
@@ -77,5 +95,16 @@ pub trait Behavior: fmt::Debug {
     fn codegen_for_call(&mut self, path: &str, params: &[String]) -> anyhow::Result<String> {
         let params_code = params.join(", ");
         Ok(format!("{path}({params_code})"))
+    }
+
+    /// customization point for return expression
+    /// is_last: whether this express is the body's last value expr, if false, then it is in body
+    ///       return
+    fn codegen_for_return(&mut self, expr: &str, is_last: bool) -> anyhow::Result<String> {
+        if is_last {
+            Ok(format!("{expr}"))
+        } else {
+            Ok(format!("return {expr};"))
+        }
     }
 }
