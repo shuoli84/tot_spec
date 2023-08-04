@@ -1,21 +1,19 @@
 use super::*;
 use pest::iterators::Pair;
 
-pub fn parse_file(pair: Pair<Rule>) -> AstNode {
+pub fn parse_file(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
     let span = pair.as_span().into();
-    let mut inner = pair.into_inner();
+    let inner = pair.into_inner();
 
     let mut func_defs = vec![];
     for inner in inner {
-        func_defs.push(func_def::parse_func_def(inner));
+        func_defs.push(func_def::parse_func_def(inner)?);
     }
 
-    AstNode {
-        kind: AstNodeKind::File {
-            func_defs: func_defs,
-        },
+    Ok(AstNode {
+        kind: AstNodeKind::File { func_defs },
         span,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -37,7 +35,7 @@ mod tests {
         .nth(0)
         .unwrap();
 
-        let node = parse_file(parsed);
+        let node = parse_file(parsed).unwrap();
         assert!(node.is_file());
         assert_eq!(node.as_file().unwrap().len(), 1)
     }

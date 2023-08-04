@@ -1,4 +1,4 @@
-use crate::ast::{Ast, AstNode, Expression, Literal, Statement};
+use crate::ast::{AstNode, Expression, Literal, Statement};
 use crate::Behavior;
 use anyhow::{anyhow, bail};
 use std::fmt::Write;
@@ -260,8 +260,8 @@ mod tests {
     impl Behavior for TestBehavior {
         async fn runtime_call_method(
             &mut self,
-            method: &str,
-            params: &[Value],
+            _method: &str,
+            _params: &[Value],
         ) -> anyhow::Result<Value> {
             todo!()
         }

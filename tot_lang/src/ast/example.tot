@@ -6,11 +6,6 @@ fn main(req: int) {
     } else {
     }
 
-    // good thing
-    for i in hello {
-        print(i);
-    }
-
     {
         let h: integer = 123;
     }

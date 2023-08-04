@@ -1,4 +1,5 @@
 use crate::ast::grammar::{GrammarParser, Rule};
+use anyhow::anyhow;
 use pest::Parser;
 
 mod block;
@@ -77,20 +78,14 @@ pub struct AstNode {
 
 impl AstNode {
     pub fn parse_file(code: &str) -> anyhow::Result<Self> {
-        let parsed = GrammarParser::parse(Rule::file, code)
-            .unwrap()
-            .nth(0)
-            .unwrap();
-        let file = file::parse_file(parsed);
+        let parsed = try_take_first(GrammarParser::parse(Rule::file, code)?)?;
+        let file = file::parse_file(parsed)?;
         Ok(file)
     }
 
     pub fn parse_statement(code: &str) -> anyhow::Result<Self> {
-        let parsed = GrammarParser::parse(Rule::statement, code)
-            .unwrap()
-            .nth(0)
-            .unwrap();
-        let stmt = statement::parse_statement(parsed);
+        let parsed = try_take_first(GrammarParser::parse(Rule::statement, code)?)?;
+        let stmt = statement::parse_statement(parsed)?;
         Ok(stmt)
     }
 }
@@ -368,4 +363,20 @@ pub struct BindRef<'a> {
 
 pub struct ReturnRef<'a> {
     expression: &'a AstNode,
+}
+
+fn try_take_first<I, T>(mut iter: I) -> anyhow::Result<T>
+where
+    I: Iterator<Item = T>,
+{
+    iter.next()
+        .ok_or_else(|| anyhow!("not able to get first element"))
+}
+
+fn try_next<I, T>(iter: &mut I) -> anyhow::Result<T>
+where
+    I: Iterator<Item = T>,
+{
+    iter.next()
+        .ok_or_else(|| anyhow!("not able to get next element"))
 }

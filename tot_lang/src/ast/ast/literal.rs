@@ -1,8 +1,9 @@
 use crate::ast::ast::{AstNode, AstNodeKind, Literal};
 use crate::ast::grammar::Rule;
+use anyhow::bail;
 use pest::iterators::Pair;
 
-pub fn parse_literal(pair: Pair<Rule>) -> AstNode {
+pub fn parse_literal(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
     assert!(matches!(pair.as_rule(), Rule::literal));
 
     let span = pair.as_span().into();
@@ -14,17 +15,17 @@ pub fn parse_literal(pair: Pair<Rule>) -> AstNode {
         Rule::number_literal => Literal::Number,
         Rule::bool_literal => Literal::Boolean,
         _ => {
-            unreachable!()
+            bail!("unknown ast node: {inner:?}")
         }
     };
 
-    AstNode {
+    Ok(AstNode {
         kind: AstNodeKind::Literal {
             kind: literal_kind,
             value: inner.as_str().to_string(),
         },
         span,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -39,7 +40,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let literal = parse_literal(parsed);
+        let literal = parse_literal(parsed).unwrap();
         assert!(matches!(
             literal.kind,
             AstNodeKind::Literal {
@@ -55,7 +56,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let literal = parse_literal(parsed);
+        let literal = parse_literal(parsed).unwrap();
         assert!(matches!(
             literal.kind,
             AstNodeKind::Literal {
@@ -71,7 +72,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let literal = parse_literal(parsed);
+        let literal = parse_literal(parsed).unwrap();
         assert!(matches!(
             literal.kind,
             AstNodeKind::Literal {

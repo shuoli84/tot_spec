@@ -2,23 +2,24 @@ use crate::ast::ast::expression::parse_expression;
 use crate::ast::ast::path::parse_path;
 use crate::ast::ast::{AstNode, AstNodeKind};
 use crate::ast::grammar::Rule;
+use anyhow::anyhow;
 use pest::iterators::Pair;
 
-pub fn parse_call(pair: Pair<Rule>) -> AstNode {
+pub fn parse_call(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
     assert!(matches!(pair.as_rule(), Rule::call_exp));
     let span = pair.as_span().into();
 
     let mut inner = pair.into_inner();
-    let path = parse_path(inner.next().unwrap());
-    let params = inner.map(|i| parse_expression(i)).collect();
+    let path = parse_path(inner.next().ok_or_else(|| anyhow!("path not found"))?);
+    let params: anyhow::Result<Vec<_>> = inner.map(|i| parse_expression(i)).collect();
 
-    AstNode {
+    Ok(AstNode {
         kind: AstNodeKind::Call {
             path: Box::new(path),
-            params,
+            params: params?,
         },
         span,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -33,7 +34,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let ast = parse_call(parsed);
+        let ast = parse_call(parsed).unwrap();
         assert!(ast.is_call());
 
         let (_path, params) = ast.as_call().unwrap();
@@ -46,7 +47,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let ast = parse_call(parsed);
+        let ast = parse_call(parsed).unwrap();
         assert!(ast.is_call());
         let (_path, params) = ast.as_call().unwrap();
         assert!(params.is_empty());

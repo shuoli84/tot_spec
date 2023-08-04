@@ -143,7 +143,7 @@ mod tests {
         async fn runtime_call_method(
             &mut self,
             method: &str,
-            params: &[Value],
+            _params: &[Value],
         ) -> anyhow::Result<Value> {
             match method {
                 "foo" => return Ok(Value::String("foo".into())),

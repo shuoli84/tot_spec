@@ -1,26 +1,27 @@
 use crate::ast::ast::expression::parse_expression;
 use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::path::parse_path;
-use crate::ast::ast::{AstNode, AstNodeKind, Statement};
+use crate::ast::ast::{try_next, try_take_first, AstNode, AstNodeKind, Statement};
 use crate::ast::grammar::Rule;
+use anyhow::bail;
 use pest::iterators::Pair;
 
-pub fn parse_statement(pair: Pair<Rule>) -> AstNode {
+pub fn parse_statement(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
     assert!(matches!(pair.as_rule(), Rule::statement));
 
     let span = pair.as_span().into();
-    let inner = pair.into_inner().nth(0).unwrap();
+    let inner = try_take_first(pair.into_inner())?;
 
     let inner = match inner.as_rule() {
-        Rule::expression => Statement::Expression(Box::new(parse_expression(inner))),
+        Rule::expression => Statement::Expression(Box::new(parse_expression(inner)?)),
         Rule::declare_and_bind => {
             let mut components = inner.into_inner();
-            let ident = components.next().unwrap();
+            let ident = try_next(&mut components)?;
             let ident = parse_ident(ident);
-            let path = components.next().unwrap();
+            let path = try_next(&mut components)?;
             let path = parse_path(path);
-            let expression = components.next().unwrap();
-            let expr = parse_expression(expression);
+            let expression = try_next(&mut components)?;
+            let expr = parse_expression(expression)?;
 
             Statement::DeclareAndBind {
                 ident: Box::new(ident),
@@ -30,10 +31,10 @@ pub fn parse_statement(pair: Pair<Rule>) -> AstNode {
         }
         Rule::bind => {
             let mut components = inner.into_inner();
-            let ident = components.next().unwrap();
+            let ident = try_next(&mut components)?;
             let ident = parse_ident(ident);
-            let expression = components.next().unwrap();
-            let expr = parse_expression(expression);
+            let expression = try_next(&mut components)?;
+            let expr = parse_expression(expression)?;
 
             Statement::Bind {
                 ident: Box::new(ident),
@@ -41,22 +42,22 @@ pub fn parse_statement(pair: Pair<Rule>) -> AstNode {
             }
         }
         Rule::return_statement => {
-            let mut components = inner.into_inner();
-            let expr = parse_expression(components.next().unwrap());
+            let components = inner.into_inner();
+            let expr = parse_expression(try_take_first(components)?)?;
 
             Statement::Return {
                 expression: Box::new(expr),
             }
         }
         _ => {
-            unreachable!()
+            bail!("unsupported rule: {inner:?}")
         }
     };
 
-    AstNode {
+    Ok(AstNode {
         kind: AstNodeKind::Statement(inner),
         span,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -71,7 +72,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let stmt = parse_statement(parsed);
+        let stmt = parse_statement(parsed).unwrap();
         let stmt = stmt.as_statement().unwrap();
         let exp = stmt.as_expression().unwrap();
         let exp = exp.as_expression().unwrap();
@@ -86,7 +87,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let stmt = parse_statement(parsed);
+        let stmt = parse_statement(parsed).unwrap();
         assert!(stmt.as_statement().unwrap().as_declare_and_bind().is_some());
     }
 
@@ -96,7 +97,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let stmt = parse_statement(parsed);
+        let stmt = parse_statement(parsed).unwrap();
         assert!(stmt.as_statement().unwrap().as_bind_ref().is_some());
     }
 
@@ -106,7 +107,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let stmt = parse_statement(parsed);
+        let stmt = parse_statement(parsed).unwrap();
         assert!(stmt.as_statement().unwrap().as_return().is_some());
     }
 }

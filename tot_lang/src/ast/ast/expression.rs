@@ -3,19 +3,20 @@ use crate::ast::ast::call::parse_call;
 use crate::ast::ast::expression_if::parse_if;
 use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::literal::parse_literal;
-use crate::ast::ast::{AstNode, AstNodeKind, Expression};
+use crate::ast::ast::{try_take_first, AstNode, AstNodeKind, Expression};
 use crate::ast::grammar::Rule;
+use anyhow::bail;
 use pest::iterators::Pair;
 
-pub fn parse_expression(pair: Pair<Rule>) -> AstNode {
+pub fn parse_expression(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
     assert!(matches!(pair.as_rule(), Rule::expression));
 
     let span = pair.as_span().into();
 
-    let inner = pair.into_inner().nth(0).unwrap();
+    let inner = try_take_first(pair.into_inner())?;
     let expression = match inner.as_rule() {
-        Rule::literal => Expression::Literal(Box::new(parse_literal(inner))),
-        Rule::block => Expression::Block(Box::new(parse_block(inner))),
+        Rule::literal => Expression::Literal(Box::new(parse_literal(inner)?)),
+        Rule::block => Expression::Block(Box::new(parse_block(inner)?)),
         Rule::reference => {
             let span = inner.as_span().into();
             Expression::Reference(Box::new(AstNode {
@@ -25,17 +26,17 @@ pub fn parse_expression(pair: Pair<Rule>) -> AstNode {
                 span,
             }))
         }
-        Rule::call_exp => Expression::Call(Box::new(parse_call(inner))),
-        Rule::if_exp => Expression::If(Box::new(parse_if(inner))),
+        Rule::call_exp => Expression::Call(Box::new(parse_call(inner)?)),
+        Rule::if_exp => Expression::If(Box::new(parse_if(inner)?)),
         _ => {
-            unreachable!();
+            bail!("unknown inner rule: {inner:?}");
         }
     };
 
-    AstNode {
+    Ok(AstNode {
         kind: AstNodeKind::Expression(expression),
         span,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -51,7 +52,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let exp = parse_expression(parsed);
+        let exp = parse_expression(parsed).unwrap();
         let literal = exp
             .as_expression()
             .unwrap()
@@ -68,7 +69,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let exp = parse_expression(parsed);
+        let exp = parse_expression(parsed).unwrap();
         let reference = exp
             .as_expression()
             .unwrap()
@@ -85,7 +86,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let exp = parse_expression(parsed);
+        let exp = parse_expression(parsed).unwrap();
         assert!(exp.as_expression().unwrap().as_call().is_some());
     }
 
@@ -95,7 +96,7 @@ mod tests {
             .unwrap()
             .nth(0)
             .unwrap();
-        let exp = parse_expression(parsed);
+        let exp = parse_expression(parsed).unwrap();
         assert!(exp.as_expression().unwrap().as_if().is_some());
     }
 
@@ -106,7 +107,7 @@ mod tests {
             .nth(0)
             .unwrap();
         dbg!(&parsed);
-        let exp = parse_expression(parsed);
+        let exp = parse_expression(parsed).unwrap();
         assert!(exp.as_expression().unwrap().as_block().is_some());
     }
 }
