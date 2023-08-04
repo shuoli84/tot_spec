@@ -47,8 +47,12 @@ impl Codegen {
             param_code_blocks.join(", ")
         };
 
-        let return_type = "String";
-        writeln!(result, "fn {ident}({params}) -> {return_type}")?;
+        if let Some(ret_type) = ret {
+            let ret_type = self.generate_type(ret_type)?;
+            writeln!(result, "fn {ident}({params}) -> {ret_type}")?;
+        } else {
+            writeln!(result, "fn {ident}({params}")?;
+        }
 
         let body = self.generate_block(body)?;
         result.push_str(&body);
@@ -91,8 +95,7 @@ impl Codegen {
                 expression,
             } => {
                 let ident = ident.as_ident().unwrap();
-                // todo: fix this
-                let ty = "String";
+                let ty = self.generate_type(path)?;
                 let expr_code = self.generate_expression(expression)?;
                 writeln!(result, "let mut {ident}: {ty} = {expr_code};")?;
             }
@@ -301,12 +304,7 @@ mod tests {
         )
         .unwrap();
 
-        dbg!(&ast);
-
         let code = codegen.generate_file(&ast).unwrap();
-
-        println!("{code}");
-
         let code_ast = syn::parse_file(&code).unwrap();
         let formatted_code = prettyplease::unparse(&code_ast);
         println!("{}", formatted_code);
