@@ -322,33 +322,23 @@ mod tests {
 
     #[test]
     fn test_codegen() {
-        let mut codegen = Codegen::new(Box::new(TestBehavior::default()));
-        let ast = AstNode::parse_file(
-            r#"fn hello(i: String) -> String {
-                let j: String = i;
-                let k: String = {
-                    if true {
-                        "foo"
-                    } else {
-                        "bar"
-                    }
-                };
-                if true {
-                    return "foo";
-                } else {
-                    return "bar";
-                };
-                print(k);
-                let sync_call_result: String = a::b::sync_func(k);
-                let async_call_result: String = a::b::async_func(sync_call_result);
-                k
-            }"#,
-        )
-        .unwrap();
+        for (tot_file, rs_file) in [(
+            "src/codegen/fixtures/simple.tot",
+            "src/codegen/fixtures/simple.rs",
+        )] {
+            let code = std::fs::read_to_string(tot_file).unwrap();
+            let mut codegen = Codegen::new(Box::new(TestBehavior::default()));
+            let ast = AstNode::parse_file(&code).unwrap();
 
-        let code = codegen.generate_file(&ast).unwrap();
-        let code_ast = syn::parse_file(&code).unwrap();
-        let formatted_code = prettyplease::unparse(&code_ast);
-        println!("{}", formatted_code);
+            let code = codegen.generate_file(&ast).unwrap();
+            let code_ast = syn::parse_file(&code).unwrap();
+            let formatted_gen_code = prettyplease::unparse(&code_ast);
+
+            let expected_rs_code = std::fs::read_to_string(rs_file).unwrap();
+            let code_ast = syn::parse_file(&expected_rs_code).unwrap();
+            let formatted_expect_code = prettyplease::unparse(&code_ast);
+
+            pretty_assertions::assert_eq!(formatted_gen_code.trim(), formatted_expect_code.trim());
+        }
     }
 }

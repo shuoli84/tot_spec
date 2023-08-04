@@ -1,7 +1,7 @@
 WHITESPACE = _{ " "| "\t" | line_break }
 line_break = { "\r" | "\n" | "\r\n" }
 block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
-line_comment = @{ "//" ~ (!line_break ~ ANY)*}
+line_comment = _{ "//" ~ (!line_break ~ ANY)*}
 COMMENT = _{block_comment | line_comment}
 
 keywords = { ("let" | "input" | "return" | "if" | "fn" | "for" | "as" | "async" | "while" | "loop" ) ~ !symbol_char }
@@ -54,4 +54,4 @@ func_param = { identifier ~ ":" ~ path }
 func_body = { block }
 func = { func_signature ~ func_body }
 
-file = { func* }
+file = { (COMMENT | func)* }

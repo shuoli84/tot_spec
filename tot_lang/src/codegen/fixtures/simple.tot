@@ -1,0 +1,20 @@
+// An example to show very simple statements
+fn hello(i: String) -> String {
+    let j: String = i;
+    let k: String = {
+        if true {
+            "foo"
+        } else {
+            "bar"
+        }
+    };
+    if true {
+        return "foo";
+    } else {
+        return "bar";
+    };
+    print(k);
+    let sync_call_result: String = a::b::sync_func(k);
+    let async_call_result: String = a::b::async_func(sync_call_result);
+    k
+}
