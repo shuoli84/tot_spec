@@ -13,16 +13,8 @@ impl Codegen {
         Self { behavior }
     }
 
-    /// generate rust code for program
-    pub fn generate(&mut self, ast: &Ast) -> anyhow::Result<String> {
-        let mut result = "".to_string();
-        let ast_node = ast.node();
-
-        Ok(result)
-    }
-
-    fn generate_file(&mut self, ast: &AstNode) -> anyhow::Result<String> {
-        let Some((func_defs)) = ast.as_file() else {
+    pub fn generate_file(&mut self, ast: &AstNode) -> anyhow::Result<String> {
+        let Some(func_defs) = ast.as_file() else {
             bail!("ast is not file");
         };
 
@@ -71,15 +63,18 @@ impl Codegen {
 
         let mut result = "".to_string();
 
-        let rs_type = self.generate_path(path)?;
+        let rs_type = self.generate_type(path)?;
 
         writeln!(result, "{}: {}", ident.as_ident().unwrap(), rs_type)?;
 
         Ok(result)
     }
 
-    fn generate_path(&mut self, path: &AstNode) -> anyhow::Result<String> {
-        Ok(format!("{}", path.as_path().unwrap().to_string()))
+    fn generate_type(&mut self, path: &AstNode) -> anyhow::Result<String> {
+        let Some(path) = path.as_path() else {
+            bail!("ast node is not path");
+        };
+        self.behavior.codegen_for_type(path)
     }
 
     fn generate_statement(&mut self, ast: &AstNode) -> anyhow::Result<String> {
@@ -180,21 +175,16 @@ impl Codegen {
             bail!("ast is not call");
         };
 
-        let path = path.as_path().unwrap();
+        let mut params_code = vec![];
+        for param in params {
+            params_code.push(self.generate_expression(param)?);
+        }
 
-        let params_code: String = {
-            let mut params_code = vec![];
+        let call_code = self
+            .behavior
+            .codegen_for_call(path.as_path().unwrap(), &params_code)?;
 
-            for param in params {
-                params_code.push(self.generate_expression(param)?);
-            }
-
-            params_code.join(",")
-        };
-
-        let mut result = "".to_string();
-        writeln!(result, "{}({})", path, params_code)?;
-        Ok(result)
+        Ok(call_code)
     }
 
     fn generate_if(&mut self, ast: &AstNode) -> anyhow::Result<String> {
@@ -256,8 +246,34 @@ mod tests {
             todo!()
         }
 
-        fn codegen_code_for_path(&mut self, path: &str) -> anyhow::Result<String> {
-            todo!()
+        fn codegen_for_type(&mut self, path: &str) -> anyhow::Result<String> {
+            Ok(match path {
+                "String" => "String".to_string(),
+                _ => {
+                    todo!()
+                }
+            })
+        }
+
+        fn codegen_for_call(&mut self, path: &str, params: &[String]) -> anyhow::Result<String> {
+            let params_code = params.join(",");
+
+            Ok(match path {
+                "print" => {
+                    let params_count = params.len();
+                    let place_holder = "{}".repeat(params_count);
+                    format!("println!(\"{place_holder}\", {params_code})")
+                }
+                "a::b::sync_func" => {
+                    format!("my_crate::a::b::sync_func({params_code})")
+                }
+                "a::b::async_func" => {
+                    format!("my_crate::a::b::async_func({params_code}).await")
+                }
+                _ => {
+                    bail!("call \"{path}\" not supported")
+                }
+            })
         }
     }
 
@@ -277,10 +293,16 @@ mod tests {
                     }
                 };
                 print(k);
+                let sync_call_result: String = a::b::sync_func(k);
+                let sync_call_result: String = a::b::sync_func(k);
+                let async_call_result: String = a::b::async_func(k);
                 k
-        }"#,
+            }"#,
         )
         .unwrap();
+
+        dbg!(&ast);
+
         let code = codegen.generate_file(&ast).unwrap();
 
         println!("{code}");

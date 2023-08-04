@@ -63,13 +63,19 @@ pub trait Behavior: fmt::Debug {
     /// Execute an method with name
     async fn execute(&mut self, method: &str, params: &[Value]) -> anyhow::Result<Value>;
 
-    /// convert tot path to rust path
+    /// gen type for path
     /// e.g: print => println!
-    fn codegen_code_for_path(&mut self, path: &str) -> anyhow::Result<String> {
+    fn codegen_for_type(&mut self, path: &str) -> anyhow::Result<String> {
         if path.eq("debug") {
             return Ok("dbg!".to_string());
         }
 
         Ok(path.to_string())
+    }
+
+    /// gen for call
+    fn codegen_for_call(&mut self, path: &str, params: &[String]) -> anyhow::Result<String> {
+        let params_code = params.join(", ");
+        Ok(format!("{path}({params_code})"))
     }
 }

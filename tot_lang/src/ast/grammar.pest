@@ -4,7 +4,7 @@ block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 line_comment = @{ "//" ~ (!line_break ~ ANY)*}
 COMMENT = _{block_comment | line_comment}
 
-keywords = { "let" | "input" | "return" | "if" | "fn" | "for" | "as" }
+keywords = { ("let" | "input" | "return" | "if" | "fn" | "for" | "as" | "async") ~ !symbol_char }
 
 statement = { (declare_and_bind | bind | return_statement | expression) ~ ";" }
 
@@ -13,7 +13,7 @@ block = { "{" ~ statement* ~ block_value? ~ "}" }
 block_value = { expression }
 
 declare_and_bind = {
-  "let" ~ identifier ~ (":" ~ path)? ~ "=" ~ expression
+  "let" ~ identifier ~ ":" ~ path ~ "=" ~ expression
 }
 bind = { reference ~ "=" ~ expression }
 return_statement = {
