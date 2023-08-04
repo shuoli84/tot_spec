@@ -336,9 +336,6 @@ impl Type {
 pub struct VariantDef {
     pub name: String,
     pub payload_type: Option<serde_helper::StringOrStruct<Type>>,
-    /// also payload can be defined with fields
-    #[serde(default)]
-    pub payload_fields: Option<Vec<FieldDef>>,
     #[serde(default)]
     pub desc: Option<String>,
 }

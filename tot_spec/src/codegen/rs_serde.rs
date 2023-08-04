@@ -405,14 +405,6 @@ impl RsSerde {
                         let payload_type = self.rs_type(&payload_type);
                         writeln!(code, "{}", self.render_derived(&derived))?;
                         writeln!(code, "pub struct {variant_type_name}({payload_type});")?;
-                    } else if let Some(fields) = &variant.payload_fields {
-                        let struct_def = StructDef {
-                            extend: None,
-                            fields: fields.clone(),
-                        };
-                        let struct_code =
-                            self.render_struct(&variant_type_name, &derived, &struct_def, def)?;
-                        writeln!(code, "{}", struct_code)?;
                     } else {
                         writeln!(code, "{}", self.render_derived(&derived))?;
                         writeln!(code, "pub struct {variant_type_name};")?;
@@ -449,12 +441,6 @@ impl RsSerde {
                             variant.name,
                             self.rs_type(&payload_type)
                         )?;
-                    } else if let Some(fields) = &variant.payload_fields {
-                        let fields_def_code = self.render_fields_def(&fields)?;
-
-                        writeln!(model_code, "    {} {{", variant.name,)?;
-                        writeln!(model_code, "{}", indent(&fields_def_code, 2))?;
-                        writeln!(model_code, "    }},")?;
                     } else {
                         writeln!(model_code, "    {},", variant.name,)?;
                     }
@@ -767,10 +753,6 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/enum_variant_type.yaml",
                 "src/codegen/fixtures/rs_serde/enum_variant_type.rs",
-            ),
-            (
-                "src/codegen/fixtures/specs/enum_variant_fields.yaml",
-                "src/codegen/fixtures/rs_serde/enum_variant_fields.rs",
             ),
             (
                 "src/codegen/fixtures/specs/new_type.yaml",
