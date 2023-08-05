@@ -133,6 +133,17 @@ impl Codegen {
         let mut result = "".to_string();
 
         match expression {
+            Expression::Convert(c) => {
+                let (value_l_ref, target_path) = c.as_convert().unwrap();
+                let expr = self.generate_reference(value_l_ref)?;
+
+                writeln!(result, "{expr};")?;
+
+                let target_type = self.generate_type(target_path)?;
+                let expr_type = self.type_path_for_reference(&value_l_ref)?;
+
+                writeln!(result, "// todo: {expr_type} -> {target_type}")?;
+            }
             Expression::Literal(l) => {
                 let (literal_type, literal_value) = l.as_literal().unwrap();
                 match literal_type {
@@ -148,18 +159,8 @@ impl Codegen {
                 }
             }
             Expression::Reference(reference) => {
-                let reference_components = reference.as_reference().unwrap();
-                for (idx, component) in reference_components.iter().enumerate() {
-                    let component_name = component.as_ident().unwrap();
-                    if idx == 0 {
-                        write!(result, "{component_name}")?;
-                    } else {
-                        write!(result, ".{component_name}")?;
-                    }
-
-                    // force a clone as no reference are generated for now
-                    write!(result, ".clone()")?;
-                }
+                let code = self.generate_reference(reference)?;
+                write!(result, "{code}")?;
             }
             Expression::Call(call) => {
                 let call_code = self.generate_call(call)?;
@@ -176,6 +177,23 @@ impl Codegen {
         }
 
         Ok(result.trim().to_string())
+    }
+
+    fn generate_reference(&mut self, ast: &AstNode) -> anyhow::Result<String> {
+        let reference_components = ast.as_reference().unwrap();
+        let mut result = "".to_string();
+        for (idx, component) in reference_components.iter().enumerate() {
+            let component_name = component.as_ident().unwrap();
+            if idx == 0 {
+                write!(result, "{component_name}")?;
+            } else {
+                write!(result, ".{component_name}")?;
+            }
+
+            // force a clone as no reference are generated for now
+            write!(result, ".clone()")?;
+        }
+        Ok(result)
     }
 
     fn generate_call(&mut self, ast: &AstNode) -> anyhow::Result<String> {
@@ -246,6 +264,63 @@ impl Codegen {
 
         Ok(result)
     }
+
+    /// get the type for expr
+    fn type_path_for_expr(&mut self, expr: &AstNode) -> anyhow::Result<String> {
+        let Some(expr) = expr.as_expression() else {
+            bail!("node is not expression: {expr:?}");
+        };
+
+        Ok(match expr {
+            Expression::Literal(l) => {
+                let (literal_type, literal_value) = l.as_literal().unwrap();
+                match literal_type {
+                    Literal::String => "String".into(),
+                    Literal::Number => if literal_value.parse::<f64>().is_ok() {
+                        "f64"
+                    } else if literal_value.parse::<i64>().is_ok() {
+                        "i64"
+                    } else {
+                        "u64"
+                    }
+                    .into(),
+                    Literal::Boolean => "bool".into(),
+                }
+            }
+            Expression::Reference(reference) => self.type_path_for_reference(reference)?,
+            Expression::Call(call_node) => {
+                let (path, _) = call_node.as_call().unwrap();
+                let func_path = path.as_path().unwrap();
+                self.behavior.return_type_for_method(func_path)?
+            }
+            Expression::If(if_node) => {
+                let (_, block, _) = if_node.as_if().unwrap();
+
+                let (_, value_expr) = block.as_block().unwrap();
+                match value_expr {
+                    None => "()".to_string(),
+                    Some(expr) => self.type_path_for_expr(expr)?,
+                }
+            }
+            Expression::Block(block) => {
+                let (_, value_expr) = block.as_block().unwrap();
+                match value_expr {
+                    None => "()".to_string(),
+                    Some(expr) => self.type_path_for_expr(expr)?,
+                }
+            }
+            Expression::Convert(convert) => {
+                let (_, target_path) = convert.as_convert().unwrap();
+                target_path.as_path().unwrap().to_string()
+            }
+        })
+    }
+
+    fn type_path_for_reference(&mut self, _reference: &AstNode) -> anyhow::Result<String> {
+        // let reference = reference.as_reference().unwrap();
+        // we need to keep track of type info for all reachable references
+        Ok("todo(reference)".into())
+    }
 }
 
 #[cfg(test)]
@@ -266,6 +341,14 @@ mod tests {
             todo!()
         }
 
+        fn return_type_for_method(&mut self, name: &str) -> anyhow::Result<String> {
+            match name {
+                _ => {
+                    bail!("{name} not supported yet");
+                }
+            }
+        }
+
         fn codegen_for_func_signature(
             &mut self,
             name: &str,
@@ -284,8 +367,11 @@ mod tests {
         fn codegen_for_type(&mut self, path: &str) -> anyhow::Result<String> {
             Ok(match path {
                 "String" => "String".to_string(),
+                "json" => "serde_json::Value".to_string(),
+                "FirstRequest" => "serde_json::Value".to_string(),
+                "SecondResponse" => "serde_json::Value".to_string(),
                 _ => {
-                    todo!()
+                    bail!("type {path} not supported")
                 }
             })
         }
@@ -305,6 +391,12 @@ mod tests {
                 "a::b::async_func" => {
                     format!("my_crate::a::b::async_func({params_code}).await?")
                 }
+                "first_method" => {
+                    format!("my_crate::a::b::first({params_code}).await?")
+                }
+                "second_method" => {
+                    format!("my_crate::a::b::second({params_code}).await?")
+                }
                 _ => {
                     bail!("call \"{path}\" not supported")
                 }
@@ -322,15 +414,22 @@ mod tests {
 
     #[test]
     fn test_codegen() {
-        for (tot_file, rs_file) in [(
-            "src/codegen/fixtures/simple.tot",
-            "src/codegen/fixtures/simple.rs",
-        )] {
+        for (tot_file, rs_file) in [
+            (
+                "src/codegen/fixtures/simple.tot",
+                "src/codegen/fixtures/simple.rs",
+            ),
+            (
+                "src/codegen/fixtures/type_conversion.tot",
+                "src/codegen/fixtures/type_conversion.rs",
+            ),
+        ] {
             let code = std::fs::read_to_string(tot_file).unwrap();
             let mut codegen = Codegen::new(Box::new(TestBehavior::default()));
             let ast = AstNode::parse_file(&code).unwrap();
 
             let code = codegen.generate_file(&ast).unwrap();
+            println!("{}", code);
             let code_ast = syn::parse_file(&code).unwrap();
             let formatted_gen_code = prettyplease::unparse(&code_ast);
 

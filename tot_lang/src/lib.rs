@@ -67,6 +67,10 @@ pub trait Behavior: fmt::Debug {
         params: &[Value],
     ) -> anyhow::Result<Value>;
 
+    /// the return type for method
+    /// consider return func signature in future?
+    fn return_type_for_method(&mut self, name: &str) -> anyhow::Result<String>;
+
     fn codegen_for_func_signature(
         &mut self,
         name: &str,

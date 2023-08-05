@@ -4,6 +4,11 @@ use crate::program::expression_if::convert_if;
 pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
     let exp = exp.as_expression().unwrap();
     match exp {
+        Expression::Convert(convert_node) => {
+            let (value, target_type) = convert_node.as_literal().unwrap();
+
+            todo!()
+        }
         Expression::Literal(literal_node) => {
             let (literal_type, literal_value) = literal_node.as_literal().unwrap();
             let value = match literal_type {

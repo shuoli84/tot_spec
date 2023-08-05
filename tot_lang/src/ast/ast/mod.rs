@@ -5,6 +5,7 @@ use pest::Parser;
 mod block;
 mod call;
 mod expression;
+mod expression_convert;
 mod expression_if;
 mod file;
 mod func_def;
@@ -19,6 +20,10 @@ pub enum AstNodeKind {
     Bind {
         name: Box<AstNode>,
         expression: Box<AstNode>,
+    },
+    Convert {
+        expr: Box<AstNode>,
+        target_path: Box<AstNode>,
     },
     Ident {
         value: String,
@@ -99,6 +104,10 @@ impl AstNode {
         self.span
     }
 
+    pub fn is_convert(&self) -> bool {
+        matches!(self.kind, AstNodeKind::Convert { .. })
+    }
+
     pub fn is_file(&self) -> bool {
         matches!(self.kind, AstNodeKind::File { .. })
     }
@@ -109,6 +118,13 @@ impl AstNode {
 
     pub fn is_func_param(&self) -> bool {
         matches!(self.kind, AstNodeKind::FuncParam { .. })
+    }
+
+    pub fn as_convert(&self) -> Option<(&AstNode, &AstNode)> {
+        match &self.kind {
+            AstNodeKind::Convert { expr, target_path } => Some((expr, target_path)),
+            _ => None,
+        }
     }
 
     pub fn as_file(&self) -> Option<&[AstNode]> {
@@ -251,6 +267,7 @@ pub enum Expression {
     Call(Box<AstNode>),
     If(Box<AstNode>),
     Block(Box<AstNode>),
+    Convert(Box<AstNode>),
 }
 
 impl Expression {

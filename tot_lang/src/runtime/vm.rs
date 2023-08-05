@@ -134,6 +134,7 @@ fn bool_for_value(value: &Option<Value>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::bail;
 
     #[derive(Debug, Default)]
     struct TestBehavior {}
@@ -148,7 +149,15 @@ mod tests {
             match method {
                 "foo" => return Ok(Value::String("foo".into())),
                 "bar" => return Ok(Value::String("bar".into())),
-                _ => anyhow::bail!("{method} not supported"),
+                _ => bail!("{method} not supported"),
+            }
+        }
+
+        fn return_type_for_method(&mut self, name: &str) -> anyhow::Result<String> {
+            match name {
+                _ => {
+                    bail!("{name} not supported yet");
+                }
             }
         }
     }

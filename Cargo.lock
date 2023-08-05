@@ -1140,6 +1140,7 @@ dependencies = [
  "indexmap 2.0.0",
  "pest",
  "pest_derive",
+ "pretty_assertions",
  "prettyplease",
  "serde",
  "serde_json",

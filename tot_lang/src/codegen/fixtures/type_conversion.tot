@@ -1,0 +1,6 @@
+// test type conversion
+fn test_it(i: json) -> SecondResponse {
+    let i: json = i;
+    first_method(i as FirstRequest);
+    i
+}
