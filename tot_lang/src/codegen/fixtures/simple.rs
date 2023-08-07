@@ -1,11 +1,11 @@
 async fn hello(i: String) -> anyhow::Result<String> {
     let mut j: String = i.clone();
     let mut k: String = {
-        return Ok(if true {
-            return Ok("foo".to_string());
+        if true {
+            "foo".to_string()
         } else {
-            return Ok("bar".to_string());
-        });
+            "bar".to_string()
+        }
     };
     if true {
         return Ok("foo".to_string());

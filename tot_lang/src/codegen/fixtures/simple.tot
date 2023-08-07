@@ -1,7 +1,7 @@
 // An example to show very simple statements
-fn hello(i: String) -> String {
-    let j: String = i;
-    let k: String = {
+fn hello(i: string) -> string {
+    let j: string = i;
+    let k: string = {
         if true {
             "foo"
         } else {
@@ -14,7 +14,7 @@ fn hello(i: String) -> String {
         return "bar";
     };
     print(k);
-    let sync_call_result: String = a::b::sync_func(k);
-    let async_call_result: String = a::b::async_func(sync_call_result);
+    let sync_call_result: string = a::b::sync_func(k);
+    let async_call_result: string = a::b::async_func(sync_call_result);
     k
 }

@@ -54,6 +54,7 @@ pub mod ast;
 pub mod codegen;
 pub mod program;
 pub mod runtime;
+pub mod type_repository;
 
 pub use serde_json::Value;
 

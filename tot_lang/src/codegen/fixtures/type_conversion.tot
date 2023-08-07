@@ -1,6 +1,7 @@
 // test type conversion
-fn test_it(i: json) -> SecondResponse {
+fn test_it(i: json) -> base::SecondResponse {
     let i: json = i;
-    first_method(i as FirstRequest);
-    i
+    let j: base::FirstResponse = first_method(i as base::FirstRequest);
+    let k: base::SecondResponse = second_method(j as base::SecondRequest);
+    k
 }

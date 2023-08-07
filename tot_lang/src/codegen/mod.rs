@@ -1,16 +1,31 @@
 use crate::ast::{AstNode, Expression, Literal, Statement};
+use crate::codegen::scope::{CodegenScopes, DeferedScopeLock};
+use crate::type_repository::{ModelOrType, TypeRepository};
 use crate::Behavior;
 use anyhow::{anyhow, bail};
 use std::fmt::Write;
+use tot_spec::{ModelType, Type};
+
+mod scope;
 
 pub struct Codegen {
     behavior: Box<dyn Behavior>,
+    type_repository: Box<TypeRepository>,
+    scopes: CodegenScopes,
 }
 
 impl Codegen {
     /// Create a new codegen instance from behavior
-    pub fn new(behavior: Box<dyn Behavior>) -> Self {
-        Self { behavior }
+    pub fn new(behavior: Box<dyn Behavior>, type_repository: Box<TypeRepository>) -> Self {
+        Self {
+            behavior,
+            type_repository,
+            scopes: Default::default(),
+        }
+    }
+
+    fn enter_scope(&mut self) -> DeferedScopeLock {
+        DeferedScopeLock::new(self)
     }
 
     pub fn generate_file(&mut self, ast: &AstNode) -> anyhow::Result<String> {
@@ -29,6 +44,8 @@ impl Codegen {
     }
 
     fn generate_func_def(&mut self, ast: &AstNode) -> anyhow::Result<String> {
+        let mut self_ = self.enter_scope();
+
         let Some((sig, body)) = ast.as_func_def() else {
             bail!("ast is not func_def");
         };
@@ -39,20 +56,20 @@ impl Codegen {
         let params = {
             let mut param_code_blocks = vec![];
             for param in params {
-                param_code_blocks.push(self.generate_func_param(param)?);
+                param_code_blocks.push(self_.generate_func_param(param)?);
             }
 
             param_code_blocks
         };
 
         let ret_type = if let Some(ret_type) = ret {
-            Some(self.generate_type(ret_type)?)
+            Some(self_.generate_type(ret_type)?)
         } else {
             None
         };
 
-        let body = self.generate_block(body, true)?;
-        let func_signature = self.behavior.codegen_for_func_signature(
+        let body = self_.generate_block(body, true)?;
+        let func_signature = self_.behavior.codegen_for_func_signature(
             ident,
             &params,
             ret_type.as_ref().map(|s| s.as_str()),
@@ -75,6 +92,12 @@ impl Codegen {
 
         writeln!(result, "{}: {}", ident.as_ident().unwrap(), rs_type)?;
 
+        self.scopes.update_reference(
+            ident.as_ident().unwrap().to_string(),
+            path.as_path().unwrap().to_string(),
+        );
+        dbg!(&self.scopes);
+
         Ok(result)
     }
 
@@ -82,6 +105,8 @@ impl Codegen {
         let Some(path) = path.as_path() else {
             bail!("ast node is not path");
         };
+
+        // let model_type = self.type_repository.type_for_path(path)?;
         self.behavior.codegen_for_type(path)
     }
 
@@ -99,6 +124,9 @@ impl Codegen {
                 expression,
             } => {
                 let ident = ident.as_ident().unwrap();
+                self.scopes
+                    .update_reference(ident.to_string(), path.as_path().unwrap().to_string());
+
                 let ty = self.generate_type(path)?;
                 let expr_code = self.generate_expression(expression)?;
                 writeln!(result, "let mut {ident}: {ty} = {expr_code};")?;
@@ -116,11 +144,9 @@ impl Codegen {
             Statement::Expression(expr) => {
                 let expr_code = self.generate_expression(expr)?;
                 result.push_str(&expr_code);
+                result.push(';');
             }
         }
-
-        // statement ends with ;
-        result.push(';');
 
         Ok(result)
     }
@@ -137,12 +163,15 @@ impl Codegen {
                 let (value_l_ref, target_path) = c.as_convert().unwrap();
                 let expr = self.generate_reference(value_l_ref)?;
 
-                writeln!(result, "{expr};")?;
+                let source_var_name = "s";
+                writeln!(result, "{{")?;
+                writeln!(result, "let {source_var_name} = {expr};")?;
 
-                let target_type = self.generate_type(target_path)?;
-                let expr_type = self.type_path_for_reference(&value_l_ref)?;
-
-                writeln!(result, "// todo: {expr_type} -> {target_type}")?;
+                let source_path = self.type_path_for_reference(&value_l_ref)?.to_string();
+                let convert_code =
+                    self.generate_convert(&source_path, target_path.as_path().unwrap(), "s")?;
+                writeln!(result, "{convert_code}")?;
+                writeln!(result, "}}")?;
             }
             Expression::Literal(l) => {
                 let (literal_type, literal_value) = l.as_literal().unwrap();
@@ -177,6 +206,67 @@ impl Codegen {
         }
 
         Ok(result.trim().to_string())
+    }
+
+    fn generate_convert(
+        &mut self,
+        from_type_path: &str,
+        to_type_path: &str,
+        source_var_name: &str,
+    ) -> anyhow::Result<String> {
+        let source_type = self.type_repository.type_for_path(from_type_path)?;
+        let target_type = self.type_repository.type_for_path(to_type_path)?;
+
+        match (source_type, target_type) {
+            (ModelOrType::Type(source_type), ModelOrType::Type(target_type)) => {
+                match (source_type, target_type) {
+                    (Type::String, Type::String) => {
+                        return Ok(format!("{source_var_name}.clone()"))
+                    }
+                    (Type::Bool, Type::Bool) => return Ok("=".to_string()),
+                    (_, Type::Reference(_)) => {
+                        unimplemented!()
+                    }
+                    (Type::Reference(_), _) => {
+                        unimplemented!()
+                    }
+                    _ => {
+                        unimplemented!()
+                    }
+                }
+            }
+            (ModelOrType::ModelType(source_model_type), ModelOrType::Type(target_type)) => {
+                todo!()
+            }
+            (ModelOrType::Type(source_type), ModelOrType::ModelType(..)) => {
+                match source_type {
+                    Type::Json => {
+                        // only support convert from json to model
+                        return Ok(format!("serde_json::from_value({source_var_name})"));
+                    }
+                    _ => {
+                        bail!(
+                            "convert from {:?} to {:?} not supported",
+                            from_type_path,
+                            to_type_path
+                        );
+                    }
+                }
+            }
+            (
+                ModelOrType::ModelType(source_model_type),
+                ModelOrType::ModelType(target_model_type),
+            ) => {
+                // convert model to model, we only generate convert code if these models are
+                // compatible
+                let code = convert_source_model_to_target_model(
+                    source_model_type,
+                    target_model_type,
+                    source_var_name,
+                )?;
+                return Ok(code);
+            }
+        }
     }
 
     fn generate_reference(&mut self, ast: &AstNode) -> anyhow::Result<String> {
@@ -238,6 +328,8 @@ impl Codegen {
     }
 
     fn generate_block(&mut self, block: &AstNode, is_func_body: bool) -> anyhow::Result<String> {
+        let mut self_ = self.enter_scope();
+
         let Some((statements, value_expr)) = block.as_block() else {
             bail!("ast is not block");
         };
@@ -245,20 +337,23 @@ impl Codegen {
         let mut result = "".to_string();
         writeln!(result, "{{")?;
         for statement in statements {
-            let statement_code = self.generate_statement(statement)?;
+            let statement_code = self_.generate_statement(statement)?;
             writeln!(result, "{statement_code}")?;
         }
         if let Some(value_expr) = value_expr {
-            let expr_code = self.generate_expression(value_expr)?;
+            let expr_code = self_.generate_expression(value_expr)?;
 
             // if this block is both func_body and also the expr is its value_expr, then
             // we treat it a little bit different
             let is_func_last_exp = is_func_body;
-
-            let ret_code = self
-                .behavior
-                .codegen_for_return(&expr_code, is_func_last_exp)?;
-            writeln!(result, "{ret_code}")?
+            let ret_code = if is_func_last_exp {
+                self_
+                    .behavior
+                    .codegen_for_return(&expr_code, is_func_last_exp)?
+            } else {
+                expr_code
+            };
+            writeln!(result, "{ret_code}")?;
         }
         writeln!(result, "}}")?;
 
@@ -275,7 +370,7 @@ impl Codegen {
             Expression::Literal(l) => {
                 let (literal_type, literal_value) = l.as_literal().unwrap();
                 match literal_type {
-                    Literal::String => "String".into(),
+                    Literal::String => "string".into(),
                     Literal::Number => if literal_value.parse::<f64>().is_ok() {
                         "f64"
                     } else if literal_value.parse::<i64>().is_ok() {
@@ -287,7 +382,9 @@ impl Codegen {
                     Literal::Boolean => "bool".into(),
                 }
             }
-            Expression::Reference(reference) => self.type_path_for_reference(reference)?,
+            Expression::Reference(reference) => {
+                self.type_path_for_reference(reference)?.to_string()
+            }
             Expression::Call(call_node) => {
                 let (path, _) = call_node.as_call().unwrap();
                 let func_path = path.as_path().unwrap();
@@ -316,17 +413,92 @@ impl Codegen {
         })
     }
 
-    fn type_path_for_reference(&mut self, _reference: &AstNode) -> anyhow::Result<String> {
-        // let reference = reference.as_reference().unwrap();
-        // we need to keep track of type info for all reachable references
-        Ok("todo(reference)".into())
+    /// get type_path for current reference, the type_path for reference changes from time_to_time
+    /// e.g: even in same scope, the same reference can be overwritten
+    fn type_path_for_reference(&mut self, reference: &AstNode) -> anyhow::Result<&str> {
+        let reference = reference.as_reference().unwrap();
+        assert_eq!(reference.len(), 1, "current not support reference to field");
+        let local_var_ref = &reference[0].as_ident().unwrap();
+        let type_path = self
+            .scopes
+            .lookup_reference_type(local_var_ref)
+            .ok_or_else(|| anyhow!("not able to find reference {local_var_ref:?}"))?;
+        Ok(type_path)
     }
+}
+
+/// recursive check whether source able to convert to target, in the spirit
+/// of convert through json. if source -> json -> target succeeds, then this
+/// function should return true.
+/// source_var_name will be consumed after the convert
+fn convert_source_model_to_target_model(
+    source: &ModelType,
+    target: &ModelType,
+    source_var_name: &str,
+) -> anyhow::Result<String> {
+    let target_type_path = "TodoResponse";
+    let mut code_blocks = vec![format!("{target_type_path} {{")];
+
+    match (source, target) {
+        (ModelType::Const { .. }, _) | (_, ModelType::Const { .. }) => {
+            bail!("const in convert is not supported yet")
+        }
+        (ModelType::Struct(source_st), ModelType::Struct(target_st)) => {
+            // todo: support extend
+            assert!(source_st.extend.is_none() && target_st.extend.is_none());
+
+            let source_fields = &source_st.fields;
+            let target_fields = &target_st.fields;
+
+            let mut field_codes = vec![];
+
+            for field in target_fields {
+                let field_name = field.name.as_str();
+                // for each field, find the same name in source
+                // if not found, then if field is optional, then skip
+                // if found, then generate convert code
+                match source_fields
+                    .iter()
+                    .filter(|f| f.name.eq(&field.name))
+                    .nth(0)
+                {
+                    None => {
+                        if field.required {
+                            bail!("field {} is required, but not found in source", field.name);
+                        }
+
+                        field_codes.push(format!("{}: None", field.name));
+                    }
+                    Some(source_field) => {
+                        if source_field.type_.inner().eq(&field.type_.inner()) {
+                            field_codes.push(format!(
+                                "{field_name}: {source_var_name}.{field_name}.clone()"
+                            ))
+                        } else {
+                            todo!()
+                        }
+                    }
+                }
+            }
+
+            code_blocks.push(field_codes.join(","));
+        }
+        _ => {
+            todo!()
+        }
+    }
+
+    code_blocks.push("}".to_string());
+
+    Ok(code_blocks.join("\n"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::Value;
+    use std::path::PathBuf;
+    use tot_spec::codegen::context::Context;
 
     #[derive(Debug, Default)]
     struct TestBehavior {}
@@ -366,10 +538,12 @@ mod tests {
 
         fn codegen_for_type(&mut self, path: &str) -> anyhow::Result<String> {
             Ok(match path {
-                "String" => "String".to_string(),
+                "string" => "String".to_string(),
                 "json" => "serde_json::Value".to_string(),
-                "FirstRequest" => "serde_json::Value".to_string(),
-                "SecondResponse" => "serde_json::Value".to_string(),
+                "base::FirstRequest"
+                | "base::FirstResponse"
+                | "base::SecondRequest"
+                | "base::SecondResponse" => path.to_string(),
                 _ => {
                     bail!("type {path} not supported")
                 }
@@ -425,7 +599,12 @@ mod tests {
             ),
         ] {
             let code = std::fs::read_to_string(tot_file).unwrap();
-            let mut codegen = Codegen::new(Box::new(TestBehavior::default()));
+            let mut codegen = Codegen::new(
+                Box::new(TestBehavior::default()),
+                Box::new(TypeRepository::new(
+                    Context::new_from_folder(&PathBuf::from("src/codegen/fixtures")).unwrap(),
+                )),
+            );
             let ast = AstNode::parse_file(&code).unwrap();
 
             let code = codegen.generate_file(&ast).unwrap();

@@ -272,7 +272,6 @@ impl TypeReference {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(tag = "name")]
-/// All types supported
 pub enum Type {
     #[serde(rename = "bool")]
     Bool,
@@ -553,6 +552,12 @@ mod serde_helper {
     /// requires T to impl both FromStr and Deserialize
     #[derive(Eq, PartialEq)]
     pub struct StringOrStruct<T>(pub(crate) T);
+
+    impl<T> StringOrStruct<T> {
+        pub fn inner(&self) -> &T {
+            &self.0
+        }
+    }
 
     impl<T: Clone> Clone for StringOrStruct<T> {
         fn clone(&self) -> Self {

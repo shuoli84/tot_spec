@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Context stores use info for a codegen pass
+#[derive(Debug)]
 pub struct Context {
     /// All loaded definitions
     definitions: IndexMap<PathBuf, Definition>,
@@ -133,8 +134,11 @@ impl Context {
     /// get a ref to definition for spec path, the spec should already loaded
     /// panic if path not loaded
     pub fn get_definition(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
-        let path = self.to_relative_path(path.as_ref());
-        Ok(self.definitions.get(&path).unwrap())
+        let path = path.as_ref();
+        let path = self.to_relative_path(path);
+        self.definitions
+            .get(&path)
+            .ok_or_else(|| anyhow!("spec not found {path:?}"))
     }
 
     /// get model def of the type_ref

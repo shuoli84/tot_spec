@@ -1,0 +1,44 @@
+models:
+  - name: BaseInfo
+    type:
+      name: struct
+      fields:
+        - name: base_i8_field
+          type: i8
+          required: true
+
+  - name: FirstRequest
+    desc: Test struct
+    type:
+      name: struct
+      fields:
+        - name: foo
+          type: string
+          required: true
+
+  - name: FirstResponse
+    desc: Test struct
+    type:
+      name: struct
+      fields:
+        - name: foo
+          type: string
+          required: true
+
+  - name: SecondRequest
+    desc: Test struct
+    type:
+      name: struct
+      fields:
+        - name: foo
+          type: string
+          required: true
+
+  - name: SecondResponse
+    desc: Test struct
+    type:
+      name: struct
+      fields:
+        - name: foo
+          type: string
+          required: true

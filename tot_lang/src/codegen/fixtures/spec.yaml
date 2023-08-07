@@ -1,0 +1,13 @@
+includes:
+  - path: ./base.yaml
+    namespace: base
+
+models:
+  - name: TestStruct
+    desc: path for this struct is spec::TestStruct
+    type:
+      name: struct
+      fields:
+        - name: foo
+          type: i32
+          required: true

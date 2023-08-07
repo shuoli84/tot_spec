@@ -1,0 +1,8 @@
+models:
+  - name: NestBaseInfo
+    type:
+      name: struct
+      fields:
+        - name: nested_base_field
+          type: i8
+          required: true
