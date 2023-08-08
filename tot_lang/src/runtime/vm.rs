@@ -220,12 +220,13 @@ impl Vm {
             Type::Bytes => {
                 todo!()
             }
-            Type::String => match ty {
-                Type::String => value,
-                _ => {
-                    bail!("cant' convert from string to {ty:?}");
+            Type::String => {
+                if value.is_string() {
+                    value
+                } else {
+                    bail!("cant' convert from {value:?} to string");
                 }
-            },
+            }
             Type::List { .. } => {
                 todo!()
             }
@@ -493,6 +494,21 @@ mod tests {
         .unwrap();
         let result = vm.into_value();
         assert_eq!(result.unwrap().as_i64().unwrap(), 4);
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_string() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let i: string = "hello";
+            i as string
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_str().unwrap(), "hello");
     }
 
     #[tokio::test]
