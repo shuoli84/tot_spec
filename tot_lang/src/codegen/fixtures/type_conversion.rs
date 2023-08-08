@@ -12,3 +12,11 @@ async fn test_it(i: serde_json::Value) -> anyhow::Result<base::SecondResponse> {
     .await?;
     Ok(k.clone())
 }
+
+async fn test_number_to_string() -> anyhow::Result<String> {
+    let mut i: i8 = 12;
+    Ok({
+        let s = i.clone();
+        s.to_string()
+    })
+}

@@ -227,6 +227,9 @@ impl Codegen {
                     (Type::String, Type::String) => {
                         return Ok(format!("{source_var_name}.clone()"))
                     }
+                    (Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64, Type::String) => {
+                        return Ok(format!("{source_var_name}.to_string()"))
+                    }
                     (Type::Bool, Type::Bool) => return Ok("=".to_string()),
                     (_, Type::Reference(_)) => {
                         unimplemented!()
@@ -541,6 +544,7 @@ mod tests {
         fn codegen_for_type(&mut self, path: &str) -> anyhow::Result<String> {
             Ok(match path {
                 "string" => "String".to_string(),
+                "i8" => "i8".to_string(),
                 "json" => "serde_json::Value".to_string(),
                 "base::FirstRequest"
                 | "base::FirstResponse"

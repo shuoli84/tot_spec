@@ -5,3 +5,8 @@ fn test_it(i: json) -> base::SecondResponse {
     let k: base::SecondResponse = second_method(j as base::SecondRequest);
     k
 }
+
+fn test_number_to_string() -> string {
+    let i: i8 = 12;
+    i as string
+}

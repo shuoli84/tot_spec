@@ -223,6 +223,8 @@ impl Vm {
             Type::String => {
                 if value.is_string() {
                     value
+                } else if value.is_number() {
+                    Value::String(value.to_string())
                 } else {
                     bail!("cant' convert from {value:?} to string");
                 }
@@ -509,6 +511,21 @@ mod tests {
         .unwrap();
         let result = vm.into_value();
         assert_eq!(result.unwrap().as_str().unwrap(), "hello");
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_number_to_string() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let i: i8 = 12;
+            i as string
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_str().unwrap(), "12");
     }
 
     #[tokio::test]
