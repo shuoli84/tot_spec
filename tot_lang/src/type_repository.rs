@@ -4,6 +4,7 @@ use tot_spec::codegen::context::Context;
 use tot_spec::{ModelType, Type};
 
 /// Provides type info for both codegen and vm
+#[derive(Debug)]
 pub struct TypeRepository {
     /// the context which holds all loaded type info
     context: Context,

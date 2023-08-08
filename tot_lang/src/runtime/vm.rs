@@ -1,15 +1,30 @@
 use super::frame::Frame;
 use crate::program::{Op, Program, ReferenceOrValue};
-use crate::Behavior;
+use crate::type_repository::TypeRepository;
+use crate::VmBehavior;
 use anyhow::anyhow;
 use serde_json::Value;
+use std::default::Default;
+use std::sync::Arc;
 
 /// The virtual machine, which stores all runtime state for one run
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Vm {
     frame: Frame,
     register: Option<Value>,
-    behavior: Option<Box<dyn Behavior>>,
+    behavior: Box<dyn VmBehavior>,
+    type_repository: Arc<TypeRepository>,
+}
+
+impl Vm {
+    pub fn new(behavior: Box<dyn VmBehavior>, type_repository: Arc<TypeRepository>) -> Self {
+        Self {
+            frame: Frame::default(),
+            register: None,
+            behavior,
+            type_repository,
+        }
+    }
 }
 
 impl Vm {
@@ -70,12 +85,12 @@ impl Vm {
                             print!("{} ", param);
                         }
                         println!();
-                    } else if let Some(behavior) = self.behavior.as_mut() {
-                        let result = behavior.runtime_call_method(path, &loaded_params).await?;
-                        self.register = Some(result);
                     } else {
-                        println!("calling {path} with params: {loaded_params:?}");
-                        self.register = Some(Value::Null);
+                        let result = self
+                            .behavior
+                            .runtime_call_method(path, &loaded_params)
+                            .await?;
+                        self.register = Some(result);
                     }
                 }
                 Op::Return => {
@@ -135,12 +150,14 @@ fn bool_for_value(value: &Option<Value>) -> bool {
 mod tests {
     use super::*;
     use anyhow::bail;
+    use std::path::PathBuf;
+    use tot_spec::codegen::context::Context;
 
     #[derive(Debug, Default)]
     struct TestBehavior {}
 
     #[async_trait::async_trait]
-    impl Behavior for TestBehavior {
+    impl VmBehavior for TestBehavior {
         async fn runtime_call_method(
             &mut self,
             method: &str,
@@ -152,20 +169,17 @@ mod tests {
                 _ => bail!("{method} not supported"),
             }
         }
+    }
 
-        fn return_type_for_method(&mut self, name: &str) -> anyhow::Result<String> {
-            match name {
-                _ => {
-                    bail!("{name} not supported yet");
-                }
-            }
-        }
+    fn test_vm() -> Vm {
+        let context = Context::new_from_folder(&PathBuf::from("src/codegen/fixtures")).unwrap();
+        let type_repository = Arc::new(TypeRepository::new(context));
+        Vm::new(Box::new(TestBehavior::default()), type_repository)
     }
 
     #[tokio::test]
     async fn test_execute() {
-        let mut vm = Vm::default();
-        vm.behavior = Some(Box::new(TestBehavior::default()));
+        let mut vm = test_vm();
         vm.eval("let i: i32 = 1;").await.unwrap();
         vm.eval("let j: i32 = 2;").await.unwrap();
         vm.eval("let k: i32 = 3;").await.unwrap();
@@ -180,8 +194,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_return_from_inner() {
-        let mut vm = Vm::default();
-        vm.behavior = Some(Box::new(TestBehavior::default()));
+        let mut vm = test_vm();
         vm.eval(
             r#"{
             let i: String = "hello";
@@ -198,8 +211,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_if_else_true() {
-        let mut vm = Vm::default();
-        vm.behavior = Some(Box::new(TestBehavior::default()));
+        let mut vm = test_vm();
         vm.eval(
             r#"{
             if 1 {
@@ -217,8 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_if_else_false() {
-        let mut vm = Vm::default();
-        vm.behavior = Some(Box::new(TestBehavior::default()));
+        let mut vm = test_vm();
         vm.eval(
             r#"{
             if 0 {
@@ -236,8 +247,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_if_no_else() {
-        let mut vm = Vm::default();
-        vm.behavior = Some(Box::new(TestBehavior::default()));
+        let mut vm = test_vm();
         vm.eval(
             r#"{
             if 0 {

@@ -1,22 +1,23 @@
 use crate::ast::{AstNode, Expression, Literal, Statement};
 use crate::codegen::scope::{CodegenScopes, DeferedScopeLock};
 use crate::type_repository::{ModelOrType, TypeRepository};
-use crate::Behavior;
+use crate::CodegenBehavior;
 use anyhow::{anyhow, bail};
 use std::fmt::Write;
+use std::sync::Arc;
 use tot_spec::{ModelType, Type};
 
 mod scope;
 
 pub struct Codegen {
-    behavior: Box<dyn Behavior>,
-    type_repository: Box<TypeRepository>,
+    behavior: Box<dyn CodegenBehavior>,
+    type_repository: Arc<TypeRepository>,
     scopes: CodegenScopes,
 }
 
 impl Codegen {
     /// Create a new codegen instance from behavior
-    pub fn new(behavior: Box<dyn Behavior>, type_repository: Box<TypeRepository>) -> Self {
+    pub fn new(behavior: Box<dyn CodegenBehavior>, type_repository: Arc<TypeRepository>) -> Self {
         Self {
             behavior,
             type_repository,
@@ -507,15 +508,7 @@ mod tests {
     struct TestBehavior {}
 
     #[async_trait::async_trait]
-    impl Behavior for TestBehavior {
-        async fn runtime_call_method(
-            &mut self,
-            _method: &str,
-            _params: &[Value],
-        ) -> anyhow::Result<Value> {
-            todo!()
-        }
-
+    impl CodegenBehavior for TestBehavior {
         fn return_type_for_method(&mut self, name: &str) -> anyhow::Result<String> {
             match name {
                 _ => {
@@ -604,7 +597,7 @@ mod tests {
             let code = std::fs::read_to_string(tot_file).unwrap();
             let mut codegen = Codegen::new(
                 Box::new(TestBehavior::default()),
-                Box::new(TypeRepository::new(
+                Arc::new(TypeRepository::new(
                     Context::new_from_folder(&PathBuf::from("src/codegen/fixtures")).unwrap(),
                 )),
             );

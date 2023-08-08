@@ -58,16 +58,18 @@ pub mod type_repository;
 
 pub use serde_json::Value;
 
-/// We need the user to provide A behavior to inject customized logic
 #[async_trait::async_trait]
-pub trait Behavior: fmt::Debug {
+pub trait VmBehavior: fmt::Debug {
     /// Execute an method with name
     async fn runtime_call_method(
         &mut self,
         method: &str,
         params: &[Value],
     ) -> anyhow::Result<Value>;
+}
 
+/// We need the user to provide A behavior to inject customized logic
+pub trait CodegenBehavior: fmt::Debug {
     /// the return type for method
     /// consider return func signature in future?
     fn return_type_for_method(&mut self, name: &str) -> anyhow::Result<String>;
