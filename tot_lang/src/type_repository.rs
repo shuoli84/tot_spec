@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use std::ops::Add;
+use std::path::PathBuf;
 use tot_spec::codegen::context::Context;
 use tot_spec::{ModelType, Type};
 
@@ -41,6 +42,7 @@ impl TypeRepository {
 
 #[derive(Debug)]
 pub enum ModelOrType<'a> {
+    /// ModelType
     ModelType(&'a ModelType),
     Type(Type),
 }

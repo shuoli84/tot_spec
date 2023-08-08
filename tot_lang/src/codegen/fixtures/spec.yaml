@@ -2,6 +2,9 @@ includes:
   - path: ./base.yaml
     namespace: base
 
+  - path: ./nested_base/nest_base.yaml
+    namespace: nest_base
+
 models:
   - name: TestStruct
     desc: path for this struct is spec::TestStruct
@@ -10,4 +13,8 @@ models:
       fields:
         - name: foo
           type: i32
+          required: true
+
+        - name: nested_base_info
+          type: nest_base.NestBaseInfo
           required: true

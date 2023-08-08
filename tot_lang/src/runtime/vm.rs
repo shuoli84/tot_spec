@@ -38,7 +38,9 @@ impl Vm {
     /// Execute the ast
     pub async fn execute(&mut self, program: &Program) -> anyhow::Result<()> {
         let mut skip_count: usize = 0;
-        for op in program.operations() {
+        let mut operations = program.operations().into_iter();
+
+        while let Some(op) = operations.next() {
             if skip_count > 0 {
                 skip_count -= 1;
                 continue;
@@ -147,9 +149,24 @@ impl Vm {
                                 if i64_value > i8::MAX as i64 {
                                     bail!("overflow");
                                 } else {
+                                    Value::Number(number)
+                                }
+                            }
+                            Type::I16 => {
+                                if i64_value > i16::MAX as i64 {
+                                    bail!("overflow");
+                                } else {
+                                    Value::Number(number)
+                                }
+                            }
+                            Type::I32 => {
+                                if i64_value > i32::MAX as i64 {
+                                    bail!("overflow");
+                                } else {
                                     Value::Number(Number::from(i64_value))
                                 }
                             }
+                            Type::I64 => Value::Number(number),
                             _ => {
                                 unreachable!()
                             }
@@ -160,9 +177,24 @@ impl Vm {
                                 if u64_value > i8::MAX as u64 {
                                     bail!("overflow");
                                 } else {
-                                    Value::Number(Number::from(u64_value))
+                                    Value::Number(number)
                                 }
                             }
+                            Type::I16 => {
+                                if u64_value > i16::MAX as u64 {
+                                    bail!("overflow");
+                                } else {
+                                    Value::Number(number)
+                                }
+                            }
+                            Type::I32 => {
+                                if u64_value > u32::MAX as u64 {
+                                    bail!("overflow");
+                                } else {
+                                    Value::Number(number)
+                                }
+                            }
+                            Type::I64 => Value::Number(number),
                             _ => {
                                 unreachable!()
                             }
@@ -172,8 +204,7 @@ impl Vm {
                     }
                 }
                 _ => {
-                    dbg!(value, ty);
-                    todo!()
+                    bail!("not able to convert value from {value} to {ty:?}");
                 }
             },
             Type::F64 => {
@@ -200,7 +231,8 @@ impl Vm {
             Type::Map { .. } => {
                 todo!()
             }
-            Type::Reference(_) => {
+            Type::Reference(user_type) => {
+                dbg!(user_type);
                 todo!()
             }
             Type::Json => value,
@@ -245,7 +277,7 @@ impl Vm {
                         continue;
                     }
 
-                    bail!("missing key for required field")
+                    bail!("missing key for required field [{field_name}]")
                 }
                 Some(value) => {
                     let field_ty = field.type_.inner();
@@ -446,7 +478,32 @@ mod tests {
         )
         .await
         .unwrap();
-        let result = vm.into_value();
-        dbg!(result);
+        let result = vm.into_value().unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!({
+                "foo": "bar"
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_json_to_struct_nested() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let i: json = json("{\"foo\": 123, \"ignore\": true, \"nested_base_info\": {  }}");
+            i as spec::TestStruct
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value().unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!({
+                "foo": "bar"
+            })
+        );
     }
 }
