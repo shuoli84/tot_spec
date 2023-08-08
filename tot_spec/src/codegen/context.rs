@@ -3,6 +3,7 @@ use crate::codegen::utils::folder_tree::FolderTree;
 use crate::{Definition, ModelDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
+use path_absolutize::path_dedot::ParseDot;
 use path_absolutize::Absolutize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -173,18 +174,18 @@ impl Context {
     /// panic if path not loaded
     pub fn get_definition_by_path(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
         let path = path.as_ref();
-        let path = self.to_relative_path(path);
+        let path = self.to_relative_path(path)?;
         let spec_id = self
-            .spec_for_path(&path)
+            .spec_for_path(&path)?
             .ok_or_else(|| anyhow!("spec not found {path:?}"))?;
         self.get_definition(spec_id)
     }
 
     /// get the spec_id for path
-    pub fn spec_for_path(&self, path: impl AsRef<Path>) -> Option<SpecId> {
+    pub fn spec_for_path(&self, path: impl AsRef<Path>) -> anyhow::Result<Option<SpecId>> {
         let path = path.as_ref();
-        let path = self.to_relative_path(path);
-        self.path_to_spec.get(&path).cloned()
+        let path = self.to_relative_path(path)?;
+        Ok(self.path_to_spec.get(&path).cloned())
     }
 
     /// get the path for spec_id
@@ -229,7 +230,7 @@ impl Context {
         let relative_path = &include.path;
         let spec_path = self.spec_to_path.get(&spec_id).expect("should exists");
         let included_def_path = spec_path.parent().unwrap().join(relative_path);
-        Ok(self.to_relative_path(&included_def_path))
+        Ok(self.to_relative_path(&included_def_path)?)
     }
 
     /// get the spec_id for namespace
@@ -239,7 +240,7 @@ impl Context {
         namespace: &str,
     ) -> anyhow::Result<SpecId> {
         let path = self.get_include_path(namespace, from_spec_id)?;
-        self.spec_for_path(&path)
+        self.spec_for_path(&path)?
             .ok_or_else(|| anyhow!("not able to find spec for path {path:?}"))
     }
 
@@ -252,11 +253,11 @@ impl Context {
         self.get_definition(spec_id)
     }
 
-    fn to_relative_path(&self, path: &Path) -> PathBuf {
+    fn to_relative_path(&self, path: &Path) -> anyhow::Result<PathBuf> {
         use path_absolutize::*;
-
-        let path = path.absolutize_virtually(&self.root_folder).unwrap();
-        pathdiff::diff_paths(path, &self.root_folder).unwrap()
+        let path = path.parse_dot_from(&self.root_folder)?;
+        let path = path.absolutize_virtually(&self.root_folder)?;
+        Ok(pathdiff::diff_paths(path, &self.root_folder).unwrap())
     }
 
     /// validate all definitions against styles, return violations

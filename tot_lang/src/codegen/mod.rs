@@ -5,7 +5,7 @@ use crate::CodegenBehavior;
 use anyhow::{anyhow, bail};
 use std::fmt::Write;
 use std::sync::Arc;
-use tot_spec::{ModelType, Type};
+use tot_spec::{ModelDef, ModelType, Type};
 
 mod scope;
 
@@ -215,8 +215,11 @@ impl Codegen {
         to_type_path: &str,
         source_var_name: &str,
     ) -> anyhow::Result<String> {
-        let source_type = self.type_repository.type_for_path(from_type_path)?;
-        let target_type = self.type_repository.type_for_path(to_type_path)?;
+        let source_type = self
+            .type_repository
+            .type_for_path(from_type_path)?
+            .to_owned();
+        let target_type = self.type_repository.type_for_path(to_type_path)?.to_owned();
 
         match (source_type, target_type) {
             (ModelOrType::Type(source_type), ModelOrType::Type(target_type)) => {
@@ -236,7 +239,10 @@ impl Codegen {
                     }
                 }
             }
-            (ModelOrType::ModelType(source_model_type), ModelOrType::Type(target_type)) => {
+            (
+                ModelOrType::ModelType(source_model_type, spec_id),
+                ModelOrType::Type(target_type),
+            ) => {
                 todo!()
             }
             (ModelOrType::Type(source_type), ModelOrType::ModelType(..)) => {
@@ -255,8 +261,8 @@ impl Codegen {
                 }
             }
             (
-                ModelOrType::ModelType(source_model_type),
-                ModelOrType::ModelType(target_model_type),
+                ModelOrType::ModelType(source_model_type, source_spec_id),
+                ModelOrType::ModelType(target_model_type, target_spec_id),
             ) => {
                 // convert model to model, we only generate convert code if these models are
                 // compatible
@@ -434,15 +440,15 @@ impl Codegen {
     /// source_var_name will be consumed after the convert
     fn convert_source_model_to_target_model(
         &mut self,
-        source: &ModelType,
-        target: &ModelType,
+        source: &ModelDef,
+        target: &ModelDef,
         source_var_name: &str,
         target_type_path: &str,
     ) -> anyhow::Result<String> {
         let target_type = self.behavior.codegen_for_type(target_type_path)?;
         let mut code_blocks = vec![format!("{target_type} {{")];
 
-        match (source, target) {
+        match (&source.type_, &target.type_) {
             (ModelType::Const { .. }, _) | (_, ModelType::Const { .. }) => {
                 bail!("const in convert is not supported yet")
             }

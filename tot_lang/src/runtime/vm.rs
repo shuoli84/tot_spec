@@ -6,7 +6,8 @@ use anyhow::{anyhow, bail};
 use serde_json::{Number, Value};
 use std::default::Default;
 use std::sync::Arc;
-use tot_spec::{ModelType, StructDef, Type};
+use tot_spec::codegen::context::SpecId;
+use tot_spec::{ModelDef, ModelType, StructDef, Type};
 
 /// The virtual machine, which stores all runtime state for one run
 #[derive(Debug)]
@@ -102,14 +103,8 @@ impl Vm {
                         .take()
                         .ok_or_else(|| anyhow!("register didn't set"))?;
 
-                    let target_type = self.type_repository.type_for_path(target_path)?;
-                    let converted_value = match target_type {
-                        ModelOrType::Type(ty) => self.convert_value(value, ty)?,
-                        ModelOrType::ModelType(model_type) => {
-                            self.convert_value_to_model(value, &model_type.clone())?
-                        }
-                    };
-                    self.register = Some(converted_value);
+                    let target_type = self.type_repository.type_for_path(target_path)?.to_owned();
+                    self.register = Some(self.convert_value_to_model_or_type(value, target_type)?);
                 }
                 Op::Return => {
                     while self.frame.depth() > 0 {
@@ -138,7 +133,13 @@ impl Vm {
         self.register
     }
 
-    fn convert_value(&mut self, value: Value, ty: Type) -> anyhow::Result<Value> {
+    /// if from_spec is Some, then this type should be resolved in that spec's context
+    fn convert_value(
+        &self,
+        value: Value,
+        ty: Type,
+        from_spec: Option<SpecId>,
+    ) -> anyhow::Result<Value> {
         Ok(match ty {
             Type::Bool => Value::Bool(bool_for_value(&Some(value))),
             Type::I8 | Type::I16 | Type::I32 | Type::I64 => match value {
@@ -232,25 +233,47 @@ impl Vm {
                 todo!()
             }
             Type::Reference(user_type) => {
-                dbg!(user_type);
-                todo!()
+                let Some(from_spec) = from_spec else {
+                    bail!("type_reference should has relative spec set");
+                };
+
+                let model_or_type = self
+                    .type_repository
+                    .type_for_type_reference(&user_type, from_spec)?
+                    .to_owned();
+
+                self.convert_value_to_model_or_type(value, model_or_type)?
             }
             Type::Json => value,
         })
     }
 
+    fn convert_value_to_model_or_type(
+        &self,
+        value: Value,
+        model_or_type: ModelOrType<'static>,
+    ) -> anyhow::Result<Value> {
+        Ok(match model_or_type {
+            ModelOrType::Type(ty) => self.convert_value(value, ty, None)?,
+            ModelOrType::ModelType(model_type, spec_id) => {
+                self.convert_value_to_model(value, &model_type.clone(), spec_id)?
+            }
+        })
+    }
+
     /// convert value to model, the returned value is also a Value
     fn convert_value_to_model(
-        &mut self,
+        &self,
         value: Value,
-        model_type: &ModelType,
+        model_def: &ModelDef,
+        spec_id: SpecId,
     ) -> anyhow::Result<Value> {
         let Value::Object(obj)  = value else {
             bail!("only object supported");
         };
 
-        match model_type {
-            ModelType::Struct(st) => return self.convert_json_map_to_struct(obj, st),
+        match &model_def.type_ {
+            ModelType::Struct(st) => return self.convert_json_map_to_struct(obj, st, spec_id),
             _ => {
                 bail!("not supported")
             }
@@ -258,9 +281,10 @@ impl Vm {
     }
 
     fn convert_json_map_to_struct(
-        &mut self,
+        &self,
         value: serde_json::Map<String, Value>,
         st: &StructDef,
+        spec_id: SpecId,
     ) -> anyhow::Result<Value> {
         // todo: support extend
         assert!(st.extend.is_none());
@@ -281,7 +305,8 @@ impl Vm {
                 }
                 Some(value) => {
                     let field_ty = field.type_.inner();
-                    let field_value = self.convert_value(value.clone(), field_ty.clone())?;
+                    let field_value =
+                        self.convert_value(value.clone(), field_ty.clone(), Some(spec_id))?;
                     result.insert(field_name.to_string(), field_value);
                 }
             }
@@ -491,10 +516,16 @@ mod tests {
     async fn test_execute_convert_json_to_struct_nested() {
         let mut vm = test_vm();
         vm.eval(
-            r#"{
-            let i: json = json("{\"foo\": 123, \"ignore\": true, \"nested_base_info\": {  }}");
+            r##"{
+            let i: json = json("{
+                \"foo\": 123, 
+                \"ignore\": true, 
+                \"nested_base_info\": { 
+                    \"nested_base_field\": 12 
+                }
+            }");
             i as spec::TestStruct
-        };"#,
+        };"##,
         )
         .await
         .unwrap();
@@ -502,7 +533,10 @@ mod tests {
         assert_eq!(
             result,
             serde_json::json!({
-                "foo": "bar"
+                "foo": 123,
+                "nested_base_info": {
+                    "nested_base_field": 12
+                }
             })
         );
     }
