@@ -6,3 +6,11 @@ models:
         - name: nested_base_field
           type: i8
           required: true
+
+  - name: VirtualBase
+    type:
+      name: virtual
+      fields:
+        - name: common_i8_field
+          type: i8
+          required: true

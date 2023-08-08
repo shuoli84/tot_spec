@@ -18,3 +18,12 @@ models:
         - name: nested_base_info
           type: nest_base.NestBaseInfo
           required: true
+
+  - name: TestExtend
+    type:
+      name: struct
+      extend: nest_base.VirtualBase
+      fields:
+        - name: self_i8_field
+          type: i8
+          required: false

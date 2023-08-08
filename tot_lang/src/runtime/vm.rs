@@ -286,12 +286,30 @@ impl Vm {
         st: &StructDef,
         spec_id: SpecId,
     ) -> anyhow::Result<Value> {
-        // todo: support extend
-        assert!(st.extend.is_none());
+        let mut fields = if let Some(base_type) = st.extend.as_ref() {
+            let base_type = base_type.inner();
+            let base_type_model = self
+                .type_repository
+                .type_for_type_reference(base_type, spec_id)?;
+            match base_type_model {
+                ModelOrType::ModelType(model_type, _) => match &model_type.type_ {
+                    ModelType::Virtual(ref virtual_model) => virtual_model.fields.clone(),
+                    _ => {
+                        unimplemented!();
+                    }
+                },
+                ModelOrType::Type(_) => {
+                    unimplemented!();
+                }
+            }
+        } else {
+            vec![]
+        };
+        fields.extend_from_slice(&st.fields);
 
         let mut result = serde_json::Map::<String, Value>::new();
 
-        for field in st.fields.iter() {
+        for field in fields.iter() {
             let field_name = &field.name;
 
             match value.get(field_name) {
@@ -537,6 +555,28 @@ mod tests {
                 "nested_base_info": {
                     "nested_base_field": 12
                 }
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_json_to_struct_extend() {
+        let mut vm = test_vm();
+        vm.eval(
+            r##"{
+            let i: json = json("{
+                \"common_i8_field\":  12 
+            }");
+            i as spec::TestExtend
+        };"##,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value().unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!({
+                "common_i8_field": 12
             })
         );
     }
