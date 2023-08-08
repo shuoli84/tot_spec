@@ -55,20 +55,21 @@ impl super::Codegen for RsSerde {
             }
         });
 
-        for (spec, _) in context.iter_specs() {
+        for (spec_id, _) in context.iter_specs() {
+            let spec_path = context.path_for_spec(*spec_id).unwrap();
             let output = {
                 let mut output = output.clone();
-                output.push(spec);
+                output.push(spec_path);
                 output.set_extension("rs");
                 output
             };
 
-            println!("generating spec={spec:?} output={output:?}");
+            println!("generating spec={spec_path:?} output={output:?}");
 
             let parent_folder = output.parent().unwrap();
             std::fs::create_dir_all(parent_folder)?;
 
-            let code = self.render(&spec)?;
+            let code = self.render(&spec_path)?;
 
             std::fs::write(&output, code).unwrap();
             println!("write output to {:?}", output);

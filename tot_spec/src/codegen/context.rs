@@ -4,14 +4,31 @@ use crate::{Definition, ModelDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use path_absolutize::Absolutize;
+use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+#[derive(Debug, Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
+pub struct SpecId(u64);
+
+impl SpecId {
+    pub fn new() -> Self {
+        use std::sync::atomic::*;
+        static COUNTER: AtomicU64 = AtomicU64::new(1);
+        let id = COUNTER.fetch_add(1, Ordering::Relaxed);
+        Self(id)
+    }
+}
 
 /// Context stores use info for a codegen pass
 #[derive(Debug)]
 pub struct Context {
     /// All loaded definitions
-    definitions: IndexMap<PathBuf, Definition>,
+    definitions: IndexMap<SpecId, Definition>,
+
+    path_to_spec: IndexMap<PathBuf, SpecId>,
+    spec_to_path: HashMap<SpecId, PathBuf>,
 
     folder_tree: FolderTree,
 
@@ -39,6 +56,9 @@ impl Context {
         };
 
         let mut definitions = IndexMap::new();
+        let mut path_to_spec = IndexMap::new();
+        let mut spec_to_path = HashMap::new();
+
         let mut spec_folder = FolderTree::new();
 
         for entry in WalkDir::new(folder).sort_by_file_name() {
@@ -65,14 +85,20 @@ impl Context {
                 continue;
             }
 
+            let spec_id = SpecId::new();
+
             let relative_path = spec.strip_prefix(folder).unwrap();
             spec_folder.insert(relative_path);
 
             let def = Definition::load_from_yaml(&spec)?;
-            definitions.insert(relative_path.to_owned(), def);
+            definitions.insert(spec_id, def);
+            path_to_spec.insert(relative_path.to_owned(), spec_id);
+            spec_to_path.insert(spec_id, relative_path.to_owned());
         }
         let context = Self {
             definitions,
+            path_to_spec,
+            spec_to_path,
             folder_tree: spec_folder,
             root_folder: folder.clone(),
             style,
@@ -133,12 +159,34 @@ impl Context {
 
     /// get a ref to definition for spec path, the spec should already loaded
     /// panic if path not loaded
+    pub fn get_definition_by_id(&self, id: SpecId) -> anyhow::Result<&Definition> {
+        self.definitions
+            .get(&id)
+            .ok_or_else(|| anyhow!("spec {id:?} not found"))
+    }
+
+    /// get a ref to definition for spec path, the spec should already loaded
+    /// panic if path not loaded
     pub fn get_definition(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
         let path = path.as_ref();
         let path = self.to_relative_path(path);
-        self.definitions
+        let spec_id = self
+            .path_to_spec
             .get(&path)
-            .ok_or_else(|| anyhow!("spec not found {path:?}"))
+            .ok_or_else(|| anyhow!("spec not found {path:?}"))?;
+        Ok(self.definitions.get(spec_id).expect("should exists"))
+    }
+
+    /// get the spec_id for path
+    pub fn spec_id_for_path(&self, path: impl AsRef<Path>) -> Option<SpecId> {
+        let path = path.as_ref();
+        let path = self.to_relative_path(path);
+        self.path_to_spec.get(&path).cloned()
+    }
+
+    /// get the path for spec_id
+    pub fn path_for_spec(&self, spec_id: SpecId) -> Option<&PathBuf> {
+        self.spec_to_path.get(&spec_id)
     }
 
     /// get model def of the type_ref
@@ -161,9 +209,46 @@ impl Context {
         .ok_or_else(|| anyhow!("model {:?} not find", type_ref))
     }
 
+    /// get model def of the type_ref
+    pub fn get_model_def_for_reference_by_id(
+        &self,
+        type_ref: &TypeReference,
+        spec_id: SpecId,
+    ) -> anyhow::Result<&ModelDef> {
+        match &type_ref.namespace {
+            Some(namespace) => {
+                let namespace_spec = self.get_include_path_for_id(namespace, spec_id)?;
+                let def = self.get_definition(namespace_spec)?;
+                def.get_model(&type_ref.target)
+            }
+            None => {
+                let def = self.get_definition_by_id(spec_id)?;
+                def.get_model(&type_ref.target)
+            }
+        }
+        .ok_or_else(|| anyhow!("model {:?} not find", type_ref))
+    }
+
     /// get an iterator for all specs
-    pub fn iter_specs(&self) -> impl Iterator<Item = (&PathBuf, &Definition)> {
+    pub fn iter_specs(&self) -> impl Iterator<Item = (&SpecId, &Definition)> {
         self.definitions.iter()
+    }
+
+    /// get the path for namespace
+    pub fn get_include_path_for_id(
+        &self,
+        namespace: &str,
+        spec_id: SpecId,
+    ) -> anyhow::Result<PathBuf> {
+        let def = self.get_definition_by_id(spec_id)?;
+        let include = def
+            .get_include(namespace)
+            .ok_or_else(|| anyhow::anyhow!("{} not found", namespace))?;
+
+        let relative_path = &include.path;
+        let spec_path = self.spec_to_path.get(&spec_id).expect("should exists");
+        let included_def_path = spec_path.parent().unwrap().join(relative_path);
+        Ok(self.to_relative_path(&included_def_path))
     }
 
     /// get the path for namespace
@@ -176,6 +261,15 @@ impl Context {
         let relative_path = &include.path;
         let included_def_path = spec_path.parent().unwrap().join(relative_path);
         Ok(self.to_relative_path(&included_def_path))
+    }
+
+    pub fn load_include_def_with_id(
+        &self,
+        namespace: &str,
+        spec_id: SpecId,
+    ) -> anyhow::Result<&Definition> {
+        let path = self.get_include_path_for_id(namespace, spec_id)?;
+        self.get_definition(path)
     }
 
     pub fn load_include_def(
@@ -201,7 +295,8 @@ impl Context {
             return violations;
         };
 
-        for (spec, def) in self.definitions.iter() {
+        for (spec_id, def) in self.definitions.iter() {
+            let spec = self.spec_to_path.get(spec_id).expect("should exists");
             if style.is_excluded(spec) {
                 continue;
             }
@@ -228,7 +323,7 @@ impl Context {
         for (spec, def) in self.definitions.iter() {
             for model in def.models.iter() {
                 violations.extend(
-                    self.validate_example_for_model(model, spec)
+                    self.validate_example_for_model(model, *spec)
                         .into_iter()
                         .map(|v| format!("{spec:?} {} {v}", model.name)),
                 );
@@ -237,7 +332,7 @@ impl Context {
         violations
     }
 
-    fn validate_example_for_model(&self, model: &ModelDef, spec: &PathBuf) -> Vec<String> {
+    fn validate_example_for_model(&self, model: &ModelDef, spec: SpecId) -> Vec<String> {
         let mut violations = vec![];
 
         for example in model.examples.iter() {
@@ -267,7 +362,7 @@ impl Context {
         &self,
         model_type: &ModelType,
         value: &serde_json::Value,
-        spec: &PathBuf,
+        spec: SpecId,
     ) -> Vec<String> {
         match &model_type {
             crate::ModelType::Enum { .. } => {
@@ -309,7 +404,7 @@ impl Context {
         value: &serde_json::Value,
         ty_: &Type,
         required: bool,
-        spec: &PathBuf,
+        spec: SpecId,
     ) -> Vec<String> {
         if !required && value.is_null() {
             return vec![];
@@ -389,7 +484,9 @@ impl Context {
                 return violations;
             }
             Type::Reference(type_ref) => {
-                let model_def = self.get_model_def_for_reference(type_ref, spec).unwrap();
+                let model_def = self
+                    .get_model_def_for_reference_by_id(type_ref, spec)
+                    .unwrap();
                 return self.validate_value_for_model_type(&model_def.type_, value, spec);
             }
             Type::Json => {

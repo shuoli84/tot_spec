@@ -33,7 +33,8 @@ impl super::Codegen for PyDataclass {
                 .unwrap();
         });
 
-        for (spec_path, _) in context.iter_specs() {
+        for (spec_id, _) in context.iter_specs() {
+            let spec_path = context.path_for_spec(*spec_id).unwrap();
             let mut output = output.join(spec_path);
             output.set_extension("py");
 

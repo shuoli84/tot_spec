@@ -2,6 +2,7 @@ use convert_case::Casing;
 
 use super::context::Context;
 use super::utils;
+use crate::codegen::context::SpecId;
 use crate::{ConstType, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference};
 use std::path::Path;
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
@@ -17,8 +18,8 @@ impl super::Codegen for JavaJackson {
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
         let context = Context::new_from_folder(folder)?;
 
-        for (spec_path, _) in context.iter_specs() {
-            render(&spec_path, &context, &output)?;
+        for (spec_id, _) in context.iter_specs() {
+            render(*spec_id, &context, &output)?;
         }
 
         Ok(())
@@ -26,8 +27,8 @@ impl super::Codegen for JavaJackson {
 }
 
 /// java does not export to a file, instead, it exports to a folder
-fn render(spec_path: &Path, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
-    let def = context.get_definition(spec_path)?;
+fn render(spec_id: SpecId, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
+    let def = context.get_definition_by_id(spec_id)?;
 
     std::fs::create_dir_all(target_folder)?;
 
@@ -59,7 +60,7 @@ fn render(spec_path: &Path, context: &Context, target_folder: &PathBuf) -> anyho
 
                 writeln!(result, "")?;
 
-                let model_code = render_model(model, false, def, spec_path, context)?;
+                let model_code = render_model(model, false, def, spec_id, context)?;
 
                 writeln!(result, "{}", model_code.trim_end())?;
 
@@ -84,7 +85,7 @@ fn render(spec_path: &Path, context: &Context, target_folder: &PathBuf) -> anyho
             writeln!(result, "")?;
 
             for (idx, model) in def.models.iter().enumerate() {
-                let model_code = render_model(model, true, def, spec_path, context)?;
+                let model_code = render_model(model, true, def, spec_id, context)?;
                 let model_code = utils::indent(&model_code, 1);
                 if idx + 1 < def.models.len() {
                     writeln!(result, "{}", model_code)?;
@@ -106,7 +107,7 @@ pub fn render_model(
     model: &ModelDef,
     is_nested: bool,
     def: &Definition,
-    spec_path: &Path,
+    spec_id: SpecId,
     context: &Context,
 ) -> anyhow::Result<String> {
     let mut result = "".to_string();
@@ -144,7 +145,7 @@ pub fn render_model(
                 Some(base) => {
                     if let Some(type_ref) = TypeReference::try_parse(base) {
                         let java_type =
-                            java_type_for_type_reference(&type_ref, def, spec_path, context)?;
+                            java_type_for_type_reference(&type_ref, def, spec_id, context)?;
                         writeln!(
                             result,
                             "public {class_modifier}class {name} extends {base} {{",
@@ -159,7 +160,7 @@ pub fn render_model(
             }
 
             for field in st.fields.iter() {
-                result.push_str(&render_field(field, def, spec_path, context)?);
+                result.push_str(&render_field(field, def, spec_id, context)?);
             }
 
             writeln!(result, "}}")?;
@@ -202,7 +203,7 @@ pub fn render_model(
                         writeln!(
                             result,
                             "        private {} payload;",
-                            java_type(payload_type, def, spec_path, context)?,
+                            java_type(payload_type, def, spec_id, context)?,
                         )?;
                     }
                     None => todo!(),
@@ -226,7 +227,7 @@ pub fn render_model(
                 Some(_) => todo!(),
                 None => {
                     for field in st.fields.iter() {
-                        result.push_str(&render_field(field, def, spec_path, context)?);
+                        result.push_str(&render_field(field, def, spec_id, context)?);
                     }
                 }
             }
@@ -239,7 +240,7 @@ pub fn render_model(
             }
 
             writeln!(result, "public {class_modifier}class {model_name} {{")?;
-            let java_type = java_type(&inner_type, def, spec_path, context)?;
+            let java_type = java_type(&inner_type, def, spec_id, context)?;
 
             writeln!(result, "    private {java_type} value;",)?;
 
@@ -289,7 +290,7 @@ pub fn render_model(
 fn java_type(
     ty: &Type,
     def: &Definition,
-    spec_path: &Path,
+    spec_id: SpecId,
     context: &Context,
 ) -> anyhow::Result<String> {
     Ok(match ty {
@@ -299,17 +300,15 @@ fn java_type(
         Type::Bytes => "byte[]".into(),
         Type::String => "String".into(),
         Type::List { item_type } => {
-            format!("List<{}>", java_type(item_type, def, spec_path, context)?)
+            format!("List<{}>", java_type(item_type, def, spec_id, context)?)
         }
         Type::Map { value_type } => {
             format!(
                 "Map<String, {}>",
-                java_type(value_type, def, spec_path, context)?
+                java_type(value_type, def, spec_id, context)?
             )
         }
-        Type::Reference(type_ref) => {
-            java_type_for_type_reference(type_ref, def, spec_path, context)?
-        }
+        Type::Reference(type_ref) => java_type_for_type_reference(type_ref, def, spec_id, context)?,
         Type::Json => "com.fasterxml.jackson.databind.JsonNode".to_string(),
         Type::Decimal => "java.math.BigDecimal".into(),
         Type::BigInt => "java.math.BigInteger".into(),
@@ -319,13 +318,13 @@ fn java_type(
 fn java_type_for_type_reference(
     type_ref: &TypeReference,
     def: &Definition,
-    spec_path: &Path,
+    spec_id: SpecId,
     context: &Context,
 ) -> anyhow::Result<String> {
     let TypeReference { namespace, target } = type_ref;
     let fqdn_target = match namespace {
         Some(namespace) => {
-            let include_def = context.load_include_def(namespace, spec_path)?;
+            let include_def = context.load_include_def_with_id(namespace, spec_id)?;
             let package = java_package_for_def(&include_def);
             format!("{package}.{target}")
         }
@@ -370,7 +369,7 @@ fn java_package_for_def(def: &Definition) -> String {
 fn render_field(
     field: &FieldDef,
     def: &Definition,
-    spec_path: &Path,
+    spec_id: SpecId,
     context: &Context,
 ) -> anyhow::Result<String> {
     let mut result = "".to_string();
@@ -392,7 +391,7 @@ fn render_field(
     writeln!(
         result,
         "    private {java_type} {name};",
-        java_type = java_type(&field.type_, def, spec_path, context)?,
+        java_type = java_type(&field.type_, def, spec_id, context)?,
         name = java_field_name
     )?;
     Ok(result)
@@ -456,12 +455,8 @@ mod tests {
             let context =
                 Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
 
-            render(
-                &PathBuf::from(spec),
-                &context,
-                &std::path::PathBuf::from(package_folder),
-            )
-            .unwrap();
+            let spec_id = context.spec_id_for_path(&spec).unwrap();
+            render(spec_id, &context, &std::path::PathBuf::from(package_folder)).unwrap();
         }
     }
 }

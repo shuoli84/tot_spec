@@ -149,7 +149,8 @@ impl Codegen for Swagger {
         };
         openapi_spec.components = Some(Components::default());
 
-        for (spec, _) in context.iter_specs() {
+        for (spec_id, _) in context.iter_specs() {
+            let spec = context.path_for_spec(*spec_id).unwrap();
             println!("swagger rendering {spec:?}");
             match self.render_one_spec(spec, &context, &mut openapi_spec, &config) {
                 Ok(_) => continue,
@@ -251,11 +252,12 @@ impl Swagger {
                                         {
                                             let mut violations = vec![];
                                             for (example_name, example) in examples.iter() {
+                                                let spec_id = context.spec_id_for_path(spec).unwrap();
                                                 violations.extend(context.validate_value_for_type(
                                                     example,
                                                     &Type::Reference(method.request.0.clone()),
                                                     true,
-                                                    spec,
+                                                    spec_id,
                                                 ).into_iter().map(|v| format!("example:{example_name} {v}")));
                                             }
                                             if !violations.is_empty() {
