@@ -29,6 +29,9 @@ pub enum Op {
         path: String,
         params: Vec<ReferenceOrValue>,
     },
+    Convert {
+        target_path: String,
+    },
     /// Return from current execution program
     Return,
     /// Skip the next n ops if current register value evaluates to false, it must be in same scope, otherwise
@@ -119,6 +122,15 @@ mod tests {
     #[test]
     fn test_program_call() {
         let ast = AstNode::parse_statement(r#"a(1, 2, 3);"#).unwrap();
+
+        let mut operations = vec![];
+        assert!(convert_statement(&ast, &mut operations).is_ok());
+        dbg!(operations);
+    }
+
+    #[test]
+    fn test_program_convert() {
+        let ast = AstNode::parse_statement(r#"i as Request;"#).unwrap();
 
         let mut operations = vec![];
         assert!(convert_statement(&ast, &mut operations).is_ok());

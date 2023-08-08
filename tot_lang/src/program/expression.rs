@@ -5,9 +5,14 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
     let exp = exp.as_expression().unwrap();
     match exp {
         Expression::Convert(convert_node) => {
-            let (value, target_type) = convert_node.as_literal().unwrap();
+            let (value, target_type) = convert_node.as_convert().unwrap();
 
-            todo!()
+            // eval the expression and load to register
+            // convert_expression(value, operations)?;
+            convert_reference(value, operations)?;
+            operations.push(Op::Convert {
+                target_path: target_type.as_path().unwrap().to_string(),
+            });
         }
         Expression::Literal(literal_node) => {
             let (literal_type, literal_value) = literal_node.as_literal().unwrap();
@@ -22,16 +27,7 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
             };
             operations.push(Op::Load(ReferenceOrValue::Value(value)));
         }
-        Expression::Reference(reference) => operations.push(Op::Load(ReferenceOrValue::Reference(
-            reference
-                .as_reference()
-                .unwrap()
-                .iter()
-                .map(|i| i.as_ident().unwrap())
-                .collect::<Vec<_>>()
-                .join(".")
-                .into(),
-        ))),
+        Expression::Reference(reference) => convert_reference(reference, operations)?,
         Expression::Call(call) => {
             // each call creates a new scope
             operations.push(Op::EnterScope);
@@ -69,5 +65,18 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
             convert_block(block, operations)?;
         }
     }
+    Ok(())
+}
+
+fn convert_reference(node: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
+    let reference = node.as_reference().expect("node must be reference");
+    operations.push(Op::Load(ReferenceOrValue::Reference(
+        reference
+            .iter()
+            .map(|i| i.as_ident().unwrap())
+            .collect::<Vec<_>>()
+            .join(".")
+            .into(),
+    )));
     Ok(())
 }

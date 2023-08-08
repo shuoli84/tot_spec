@@ -1,11 +1,12 @@
 use super::frame::Frame;
 use crate::program::{Op, Program, ReferenceOrValue};
-use crate::type_repository::TypeRepository;
+use crate::type_repository::{ModelOrType, TypeRepository};
 use crate::VmBehavior;
-use anyhow::anyhow;
-use serde_json::Value;
+use anyhow::{anyhow, bail};
+use serde_json::{Number, Value};
 use std::default::Default;
 use std::sync::Arc;
+use tot_spec::{ModelType, StructDef, Type};
 
 /// The virtual machine, which stores all runtime state for one run
 #[derive(Debug)]
@@ -93,6 +94,21 @@ impl Vm {
                         self.register = Some(result);
                     }
                 }
+                Op::Convert { target_path } => {
+                    let value = self
+                        .register
+                        .take()
+                        .ok_or_else(|| anyhow!("register didn't set"))?;
+
+                    let target_type = self.type_repository.type_for_path(target_path)?;
+                    let converted_value = match target_type {
+                        ModelOrType::Type(ty) => self.convert_value(value, ty)?,
+                        ModelOrType::ModelType(model_type) => {
+                            self.convert_value_to_model(value, &model_type.clone())?
+                        }
+                    };
+                    self.register = Some(converted_value);
+                }
                 Op::Return => {
                     while self.frame.depth() > 0 {
                         self.frame.pop_scope();
@@ -118,6 +134,128 @@ impl Vm {
     /// consume self and return the value
     pub fn into_value(self) -> Option<Value> {
         self.register
+    }
+
+    fn convert_value(&mut self, value: Value, ty: Type) -> anyhow::Result<Value> {
+        Ok(match ty {
+            Type::Bool => Value::Bool(bool_for_value(&Some(value))),
+            Type::I8 | Type::I16 | Type::I32 | Type::I64 => match value {
+                Value::Number(number) => {
+                    if let Some(i64_value) = number.as_i64() {
+                        match ty {
+                            Type::I8 => {
+                                if i64_value > i8::MAX as i64 {
+                                    bail!("overflow");
+                                } else {
+                                    Value::Number(Number::from(i64_value))
+                                }
+                            }
+                            _ => {
+                                unreachable!()
+                            }
+                        }
+                    } else if let Some(u64_value) = number.as_u64() {
+                        match ty {
+                            Type::I8 => {
+                                if u64_value > i8::MAX as u64 {
+                                    bail!("overflow");
+                                } else {
+                                    Value::Number(Number::from(u64_value))
+                                }
+                            }
+                            _ => {
+                                unreachable!()
+                            }
+                        }
+                    } else {
+                        bail!("not able to convert")
+                    }
+                }
+                _ => {
+                    dbg!(value, ty);
+                    todo!()
+                }
+            },
+            Type::F64 => {
+                todo!()
+            }
+            Type::Decimal => {
+                todo!()
+            }
+            Type::BigInt => {
+                todo!()
+            }
+            Type::Bytes => {
+                todo!()
+            }
+            Type::String => match ty {
+                Type::String => value,
+                _ => {
+                    bail!("cant' convert from string to {ty:?}");
+                }
+            },
+            Type::List { .. } => {
+                todo!()
+            }
+            Type::Map { .. } => {
+                todo!()
+            }
+            Type::Reference(_) => {
+                todo!()
+            }
+            Type::Json => value,
+        })
+    }
+
+    /// convert value to model, the returned value is also a Value
+    fn convert_value_to_model(
+        &mut self,
+        value: Value,
+        model_type: &ModelType,
+    ) -> anyhow::Result<Value> {
+        let Value::Object(obj)  = value else {
+            bail!("only object supported");
+        };
+
+        match model_type {
+            ModelType::Struct(st) => return self.convert_json_map_to_struct(obj, st),
+            _ => {
+                bail!("not supported")
+            }
+        }
+    }
+
+    fn convert_json_map_to_struct(
+        &mut self,
+        value: serde_json::Map<String, Value>,
+        st: &StructDef,
+    ) -> anyhow::Result<Value> {
+        // todo: support extend
+        assert!(st.extend.is_none());
+
+        let mut result = serde_json::Map::<String, Value>::new();
+
+        for field in st.fields.iter() {
+            let field_name = &field.name;
+
+            match value.get(field_name) {
+                None => {
+                    if !field.required {
+                        // ignore optional field
+                        continue;
+                    }
+
+                    bail!("missing key for required field")
+                }
+                Some(value) => {
+                    let field_ty = field.type_.inner();
+                    let field_value = self.convert_value(value.clone(), field_ty.clone())?;
+                    result.insert(field_name.to_string(), field_value);
+                }
+            }
+        }
+
+        Ok(Value::Object(result))
     }
 }
 
@@ -161,9 +299,14 @@ mod tests {
         async fn runtime_call_method(
             &mut self,
             method: &str,
-            _params: &[Value],
+            params: &[Value],
         ) -> anyhow::Result<Value> {
             match method {
+                "json" => {
+                    let param = &params[0];
+                    let str_val = param.as_str().unwrap();
+                    return Ok(serde_json::from_str::<Value>(str_val)?);
+                }
                 "foo" => return Ok(Value::String("foo".into())),
                 "bar" => return Ok(Value::String("bar".into())),
                 _ => bail!("{method} not supported"),
@@ -184,8 +327,8 @@ mod tests {
         vm.eval("let j: i32 = 2;").await.unwrap();
         vm.eval("let k: i32 = 3;").await.unwrap();
         vm.eval("debug(\"hello\", i, j, k);").await.unwrap();
-        vm.eval("let f: String = foo();").await.unwrap();
-        vm.eval("let g: String = bar();").await.unwrap();
+        vm.eval("let f: string = foo();").await.unwrap();
+        vm.eval("let g: string = bar();").await.unwrap();
         vm.eval("return g;").await.unwrap();
         let result = vm.into_value();
         assert!(result.is_some());
@@ -197,7 +340,7 @@ mod tests {
         let mut vm = test_vm();
         vm.eval(
             r#"{
-            let i: String = "hello";
+            let i: string = "hello";
             {
                 return i;
             };
@@ -260,5 +403,50 @@ mod tests {
         .unwrap();
         let result = vm.into_value();
         assert_eq!(result.unwrap().as_i64().unwrap(), 200);
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_to_number_i8() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let i: i64 = 4;
+            i as i8
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_i64().unwrap(), 4);
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_number_to_json() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let i: i64 = 4;
+            i as json
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_i64().unwrap(), 4);
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_json_to_request() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let i: json = json("{\"foo\": \"bar\", \"ignore\": true}");
+            i as base::FirstRequest
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        dbg!(result);
     }
 }
