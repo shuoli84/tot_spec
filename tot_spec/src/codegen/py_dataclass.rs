@@ -1,7 +1,7 @@
 use crate::codegen::context::SpecId;
 use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::context::Context;
 use super::utils::{indent, multiline_prefix_with};
@@ -233,7 +233,10 @@ fn render(spec_id: SpecId, context: &Context) -> anyhow::Result<String> {
             crate::ModelType::Struct(struct_def) => {
                 writeln!(result, "@dataclass")?;
 
-                if let Some(virtual_name) = &struct_def.extend {
+                if let Some(base) = &struct_def.extend {
+                    let type_ref = base.inner();
+                    let virtual_name = py_type_for_type_reference(type_ref);
+
                     writeln!(result, "class {}({}):", model.name, virtual_name)?;
                 } else {
                     writeln!(result, "class {}:", model.name)?;
@@ -241,7 +244,8 @@ fn render(spec_id: SpecId, context: &Context) -> anyhow::Result<String> {
 
                 let mut fields = vec![];
                 if let Some(base) = &struct_def.extend {
-                    let base_model = def.get_model(&base).unwrap();
+                    let base_type_ref = base.inner();
+                    let base_model = context.get_model_def_for_reference(base_type_ref, spec_id)?;
                     match &base_model.type_ {
                         crate::ModelType::Virtual(struct_def) => {
                             fields.extend(struct_def.fields.clone());
@@ -385,19 +389,24 @@ fn py_type(ty: &Type) -> String {
             format!("typing.List[{}]", py_type(item_type))
         }
         Type::Map { value_type } => format!("typing.Dict[str, {}]", py_type(value_type)),
-        Type::Reference(TypeReference { namespace, target }) => match namespace {
-            None => {
-                format!("{}", target)
-            }
-            Some(namespace) => {
-                format!("{}.{}", namespace, target)
-            }
-        },
+        Type::Reference(type_reference) => py_type_for_type_reference(type_reference),
         Type::Json => {
             // now we just mark json as Any
             "typing.Any".to_string()
         }
         Type::Decimal => "decimal.Decimal".to_string(),
+    }
+}
+
+fn py_type_for_type_reference(type_reference: &TypeReference) -> String {
+    let TypeReference { namespace, target } = type_reference;
+    match namespace {
+        None => {
+            format!("{}", target)
+        }
+        Some(namespace) => {
+            format!("{}.{}", namespace, target)
+        }
     }
 }
 
@@ -697,6 +706,7 @@ mod tests {
                 Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
             let spec_id = context
                 .spec_for_path(PathBuf::from(spec).as_path())
+                .unwrap()
                 .unwrap();
             let rendered = render(spec_id, &context).unwrap();
 

@@ -1,3 +1,4 @@
+use crate::models::serde_helper::StringOrStruct;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path};
 
@@ -149,7 +150,8 @@ impl ModelType {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct StructDef {
     #[serde(default)]
-    pub extend: Option<String>,
+    pub extend: Option<StringOrStruct<TypeReference>>,
+
     #[serde(default)]
     pub fields: Vec<FieldDef>,
 }

@@ -5,7 +5,6 @@ use crate::{
     StringOrInteger, StructDef, Type, TypeReference, VariantDef,
 };
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 use super::context::Context;
@@ -190,11 +189,12 @@ impl RsSerde {
 
             match &model.type_ {
                 crate::ModelType::Enum { variants } => {
-                    let code = self.render_enum(model, &derived, variants, def)?;
+                    let code = self.render_enum(model, &derived, variants)?;
                     writeln!(model_code, "{}", code.trim())?;
                 }
                 crate::ModelType::Struct(struct_def) => {
-                    let code = self.render_struct(&model_name, &derived, struct_def, def)?;
+                    let code =
+                        self.render_struct(&model_name, &derived, struct_def, def, spec_id)?;
                     writeln!(model_code, "{}", code.trim())?;
                 }
 
@@ -265,6 +265,7 @@ impl RsSerde {
         derived: &[&str],
         struct_def: &StructDef,
         def: &Definition,
+        spec_id: SpecId,
     ) -> anyhow::Result<String> {
         let mut result = "".to_string();
         let model_code = &mut result;
@@ -275,16 +276,16 @@ impl RsSerde {
 
             let mut fields = vec![];
             if let Some(virtual_name) = &struct_def.extend {
-                match def.get_model(&virtual_name) {
-                    Some(model) => match &model.type_ {
-                        crate::ModelType::Virtual(struct_def) => {
-                            fields.extend(struct_def.fields.clone());
-                        }
-                        _ => {
-                            anyhow::bail!("model is not virtual: {}", virtual_name);
-                        }
-                    },
-                    None => anyhow::bail!("not able to find virtual model: {}", virtual_name),
+                let base_model = self
+                    .context
+                    .get_model_def_for_reference(virtual_name.inner(), spec_id)?;
+                match &base_model.type_ {
+                    crate::ModelType::Virtual(struct_def) => {
+                        fields.extend(struct_def.fields.clone());
+                    }
+                    _ => {
+                        anyhow::bail!("model is not virtual: {:?}", virtual_name);
+                    }
                 }
             }
 
@@ -296,7 +297,8 @@ impl RsSerde {
             writeln!(model_code, "}}")?;
         }
 
-        if let Some(virtual_name) = &struct_def.extend {
+        if let Some(virtual_type_ref) = &struct_def.extend {
+            let virtual_name = self.rs_type_for_type_reference(virtual_type_ref.inner());
             writeln!(model_code, "")?;
             writeln!(model_code, "impl {virtual_name} for {model_name} {{")?;
             match def.get_model(&virtual_name) {
@@ -370,7 +372,6 @@ impl RsSerde {
         model: &ModelDef,
         derived: &[&str],
         variants: &[VariantDef],
-        def: &Definition,
     ) -> anyhow::Result<String> {
         let model_name = &model.name;
 
@@ -615,6 +616,19 @@ impl RsSerde {
         }
     }
 
+    fn rs_type_for_type_reference(&self, type_ref: &TypeReference) -> String {
+        match type_ref {
+            TypeReference {
+                namespace: None,
+                target,
+            } => target.clone(),
+            TypeReference {
+                namespace: Some(namespace),
+                target,
+            } => format!("{namespace}::{target}"),
+        }
+    }
+
     fn decimal_type(&self) -> String {
         self.config
             .type_overwrites
@@ -692,6 +706,7 @@ fn to_identifier(name: &str) -> (Cow<str>, bool) {
 mod tests {
     use super::*;
     use crate::codegen::Codegen;
+    use std::path::Path;
 
     #[test]
     fn test_render() {
@@ -701,7 +716,7 @@ mod tests {
             let codegen =
                 RsSerde::load_from_folder(&PathBuf::from("src/codegen/fixtures/specs/")).unwrap();
 
-            let spec_id = codegen.context.spec_for_path(spec).unwrap();
+            let spec_id = codegen.context.spec_for_path(spec).unwrap().unwrap();
             let rendered = codegen.render(spec_id).unwrap();
             let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
 

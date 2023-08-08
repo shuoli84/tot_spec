@@ -227,7 +227,8 @@ fn render(def: &Definition) -> anyhow::Result<String> {
             crate::ModelType::Struct(struct_def) => {
                 let mut fields: Vec<FieldDef> = vec![];
 
-                if let Some(base) = &struct_def.extend {
+                if let Some(base_type_ref) = &struct_def.extend {
+                    let base = swift_type_for_type_ref(base_type_ref, &package_name);
                     writeln!(result, "public struct {}: Codable, {base} {{", model.name)?;
                     let base_model = def.get_model(&base).unwrap();
                     match &base_model.type_ {
@@ -337,16 +338,19 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
         Type::Map { value_type } => {
             format!("[String:{}]", swift_type(value_type, package_name))
         }
-        Type::Reference(TypeReference { namespace, target }) => {
-            if namespace.is_some() {
-                unimplemented!()
-            }
-            format!("{}.{}", package_name, target)
-        }
+        Type::Reference(type_ref) => swift_type_for_type_ref(type_ref, package_name),
         Type::Json => todo!(),
         Type::Decimal => todo!(),
         Type::BigInt => todo!(),
     }
+}
+
+fn swift_type_for_type_ref(type_ref: &TypeReference, package_name: &str) -> String {
+    let TypeReference { namespace, target } = type_ref;
+    if namespace.is_some() {
+        todo!("swift codegen cross package reference is not supported yet")
+    }
+    format!("{}.{}", package_name, target)
 }
 
 fn generate_memberwise_init(fields: &[FieldDef], package_name: &str) -> anyhow::Result<String> {

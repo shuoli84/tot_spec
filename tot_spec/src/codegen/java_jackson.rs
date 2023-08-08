@@ -4,7 +4,6 @@ use super::context::Context;
 use super::utils;
 use crate::codegen::context::SpecId;
 use crate::{ConstType, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference};
-use std::path::Path;
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 #[derive(Default)]
@@ -143,16 +142,14 @@ pub fn render_model(
 
             match st.extend.as_ref() {
                 Some(base) => {
-                    if let Some(type_ref) = TypeReference::try_parse(base) {
-                        let java_type =
-                            java_type_for_type_reference(&type_ref, def, spec_id, context)?;
-                        writeln!(
-                            result,
-                            "public {class_modifier}class {name} extends {base} {{",
-                            name = model.name,
-                            base = java_type
-                        )?;
-                    }
+                    let java_type =
+                        java_type_for_type_reference(base.inner(), def, spec_id, context)?;
+                    writeln!(
+                        result,
+                        "public {class_modifier}class {name} extends {base} {{",
+                        name = model.name,
+                        base = java_type
+                    )?;
                 }
                 None => {
                     writeln!(result, "public {class_modifier}class {} {{", model.name)?;
@@ -455,7 +452,7 @@ mod tests {
             let context =
                 Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
 
-            let spec_id = context.spec_for_path(&spec).unwrap();
+            let spec_id = context.spec_for_path(&spec).unwrap().unwrap();
             render(spec_id, &context, &std::path::PathBuf::from(package_folder)).unwrap();
         }
     }
