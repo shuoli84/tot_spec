@@ -1,3 +1,4 @@
+use crate::codegen::context::SpecId;
 use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -34,14 +35,14 @@ impl super::Codegen for PyDataclass {
         });
 
         for (spec_id, _) in context.iter_specs() {
-            let spec_path = context.path_for_spec(*spec_id).unwrap();
+            let spec_path = context.path_for_spec(spec_id).unwrap();
             let mut output = output.join(spec_path);
             output.set_extension("py");
 
             let parent_folder = output.parent().unwrap();
             std::fs::create_dir_all(parent_folder)?;
 
-            let code = render(spec_path, &context)?;
+            let code = render(spec_id, &context)?;
 
             std::fs::write(&output, code)?;
             println!("write output to {:?}", output);
@@ -50,8 +51,9 @@ impl super::Codegen for PyDataclass {
     }
 }
 
-fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
-    let def = context.get_definition(spec_path)?;
+fn render(spec_id: SpecId, context: &Context) -> anyhow::Result<String> {
+    let def = context.get_definition(spec_id)?;
+    let spec_path = context.path_for_spec(spec_id).expect("should exists");
 
     let type_var_name = "type_";
 
@@ -68,7 +70,7 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
 
     // generate import for includes
     for include in def.includes.iter() {
-        let include_path = context.get_include_path(&include.namespace, spec_path)?;
+        let include_path = context.get_include_path(&include.namespace, spec_id)?;
         let relative_path = pathdiff::diff_paths(&include_path, spec_path).unwrap();
 
         let include_name = relative_path
@@ -693,7 +695,10 @@ mod tests {
             let spec = spec.strip_prefix("src/codegen/fixtures/specs/").unwrap();
             let context =
                 Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
-            let rendered = render(PathBuf::from(spec).as_path(), &context).unwrap();
+            let spec_id = context
+                .spec_for_path(PathBuf::from(spec).as_path())
+                .unwrap();
+            let rendered = render(spec_id, &context).unwrap();
 
             let expected_code = std::fs::read_to_string(expected).unwrap();
             #[cfg(not(feature = "test_update_spec"))]

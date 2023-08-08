@@ -19,7 +19,7 @@ impl super::Codegen for JavaJackson {
         let context = Context::new_from_folder(folder)?;
 
         for (spec_id, _) in context.iter_specs() {
-            render(*spec_id, &context, &output)?;
+            render(spec_id, &context, &output)?;
         }
 
         Ok(())
@@ -28,7 +28,7 @@ impl super::Codegen for JavaJackson {
 
 /// java does not export to a file, instead, it exports to a folder
 fn render(spec_id: SpecId, context: &Context, target_folder: &PathBuf) -> anyhow::Result<()> {
-    let def = context.get_definition_by_id(spec_id)?;
+    let def = context.get_definition(spec_id)?;
 
     std::fs::create_dir_all(target_folder)?;
 
@@ -324,7 +324,7 @@ fn java_type_for_type_reference(
     let TypeReference { namespace, target } = type_ref;
     let fqdn_target = match namespace {
         Some(namespace) => {
-            let include_def = context.load_include_def_with_id(namespace, spec_id)?;
+            let include_def = context.include_def_for_namespace(spec_id, namespace)?;
             let package = java_package_for_def(&include_def);
             format!("{package}.{target}")
         }
@@ -455,7 +455,7 @@ mod tests {
             let context =
                 Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
 
-            let spec_id = context.spec_id_for_path(&spec).unwrap();
+            let spec_id = context.spec_for_path(&spec).unwrap();
             render(spec_id, &context, &std::path::PathBuf::from(package_folder)).unwrap();
         }
     }

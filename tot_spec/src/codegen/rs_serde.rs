@@ -1,3 +1,4 @@
+use crate::codegen::context::SpecId;
 use crate::codegen::style::Case;
 use crate::{
     codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
@@ -56,7 +57,7 @@ impl super::Codegen for RsSerde {
         });
 
         for (spec_id, _) in context.iter_specs() {
-            let spec_path = context.path_for_spec(*spec_id).unwrap();
+            let spec_path = context.path_for_spec(spec_id).unwrap();
             let output = {
                 let mut output = output.clone();
                 output.push(spec_path);
@@ -69,7 +70,7 @@ impl super::Codegen for RsSerde {
             let parent_folder = output.parent().unwrap();
             std::fs::create_dir_all(parent_folder)?;
 
-            let code = self.render(&spec_path)?;
+            let code = self.render(spec_id)?;
 
             std::fs::write(&output, code).unwrap();
             println!("write output to {:?}", output);
@@ -104,14 +105,16 @@ impl RsSerde {
         Ok(outputs)
     }
 
-    fn render(&self, spec_path: &Path) -> anyhow::Result<String> {
+    fn render(&self, spec_id: SpecId) -> anyhow::Result<String> {
         let context = &self.context;
-        let def = context.get_definition(spec_path)?;
+
+        let def = context.get_definition(spec_id)?;
         let def = &def;
         let mut result = String::new();
 
         for include in def.includes.iter() {
-            let include_path = context.get_include_path(&include.namespace, spec_path)?;
+            let include_path = context.get_include_path(&include.namespace, spec_id)?;
+            let spec_path = context.path_for_spec(spec_id).expect("should exists");
             let relative_path = pathdiff::diff_paths(&include_path, spec_path).unwrap();
 
             let include_name = relative_path.file_stem().unwrap().to_str().unwrap();
@@ -698,7 +701,8 @@ mod tests {
             let codegen =
                 RsSerde::load_from_folder(&PathBuf::from("src/codegen/fixtures/specs/")).unwrap();
 
-            let rendered = codegen.render(spec).unwrap();
+            let spec_id = codegen.context.spec_for_path(spec).unwrap();
+            let rendered = codegen.render(spec_id).unwrap();
             let rendered_ast = syn::parse_file(&mut rendered.clone()).unwrap();
 
             let code = std::fs::read_to_string(code_path).unwrap();

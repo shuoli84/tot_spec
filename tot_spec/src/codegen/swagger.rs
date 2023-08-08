@@ -1,5 +1,5 @@
 use super::Codegen;
-use crate::codegen::context::Context;
+use crate::codegen::context::{Context, SpecId};
 use crate::{Definition, FieldDef, MethodDef, ModelDef, ModelType, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
@@ -150,9 +150,7 @@ impl Codegen for Swagger {
         openapi_spec.components = Some(Components::default());
 
         for (spec_id, _) in context.iter_specs() {
-            let spec = context.path_for_spec(*spec_id).unwrap();
-            println!("swagger rendering {spec:?}");
-            match self.render_one_spec(spec, &context, &mut openapi_spec, &config) {
+            match self.render_one_spec(spec_id, &context, &mut openapi_spec, &config) {
                 Ok(_) => continue,
                 Err(_) if self.skip_failed => continue,
                 Err(e) => return Err(e),
@@ -171,12 +169,16 @@ impl Codegen for Swagger {
 impl Swagger {
     fn render_one_spec(
         &self,
-        spec: &PathBuf,
+        spec_id: SpecId,
         context: &Context,
         openapi_spec: &mut OpenAPI,
         config: &CodegenConfig,
     ) -> anyhow::Result<()> {
-        let def = context.get_definition(spec)?;
+        let spec = context.path_for_spec(spec_id).unwrap();
+
+        println!("swagger rendering {spec:?} ");
+
+        let def = context.get_definition(spec_id)?;
 
         let mut methods = def.methods.clone();
         let mut name_to_example = HashMap::<String, IndexMap<String, serde_json::Value>>::default();
@@ -237,12 +239,12 @@ impl Swagger {
                                     schema: Some(type_to_schema(
                                         &Type::Reference(method.request.0.clone()),
                                         true,
-                                        spec,
+                                        spec_id,
                                         context,
                                     )?),
                                     examples: {
                                         let request_model_def = context
-                                            .get_model_def_for_reference(&method.request.0, spec)?;
+                                            .get_model_def_for_reference(&method.request.0, spec_id)?;
 
                                         let mut examples = name_to_example
                                             .remove(&method_name)
@@ -252,7 +254,6 @@ impl Swagger {
                                         {
                                             let mut violations = vec![];
                                             for (example_name, example) in examples.iter() {
-                                                let spec_id = context.spec_id_for_path(spec).unwrap();
                                                 violations.extend(context.validate_value_for_type(
                                                     example,
                                                     &Type::Reference(method.request.0.clone()),
@@ -312,7 +313,7 @@ impl Swagger {
                                             "application/json".into(),
                                             MediaType {
                                                 schema: Some(response_schema(
-                                                    method, spec, context, config,
+                                                    method, spec_id, context, config,
                                                 )?),
                                                 example: None,
                                                 examples: Default::default(),
@@ -349,7 +350,7 @@ impl Swagger {
                 ModelType::Struct(st_) => {
                     let mut object_type = openapiv3::ObjectType::default();
 
-                    let properties = fields_to_properties(&st_.fields, spec, context)?;
+                    let properties = fields_to_properties(&st_.fields, spec_id, context)?;
                     for (name, property_schema) in properties {
                         object_type.properties.insert(name, property_schema);
                     }
@@ -374,7 +375,8 @@ impl Swagger {
                             .payload_type
                             .as_ref()
                             .ok_or_else(|| anyhow!("swagger enum now only support payload_type"))?;
-                        let variant_schema = type_to_schema(&payload_type.0, true, spec, context)?;
+                        let variant_schema =
+                            type_to_schema(&payload_type.0, true, spec_id, context)?;
                         variant_schemas.push(variant_schema);
                     }
 
@@ -394,7 +396,7 @@ impl Swagger {
                 }
                 ModelType::NewType { inner_type } => {
                     let inner_type = &inner_type.as_ref().0;
-                    type_to_schema(inner_type, true, spec, context)?
+                    type_to_schema(inner_type, true, spec_id, context)?
                 }
                 ModelType::Const { .. } => {
                     continue;
@@ -416,7 +418,7 @@ impl Swagger {
 fn type_to_schema(
     ty_: &Type,
     required: bool,
-    spec_path: &PathBuf,
+    spec_id: SpecId,
     context: &Context,
 ) -> anyhow::Result<ReferenceOr<Schema>> {
     let schema_kind = match ty_ {
@@ -445,7 +447,7 @@ fn type_to_schema(
         }
         Type::List { item_type } => {
             let item_type_ref = &item_type.as_ref().0;
-            let item_schema = match type_to_schema(item_type_ref, false, spec_path, context)? {
+            let item_schema = match type_to_schema(item_type_ref, false, spec_id, context)? {
                 ReferenceOr::Reference { reference } => ReferenceOr::Reference { reference },
                 ReferenceOr::Item(item) => ReferenceOr::Item(Box::new(item)),
             };
@@ -466,11 +468,12 @@ fn type_to_schema(
             ..Default::default()
         })),
         Type::Reference(TypeReference { namespace, target }) => {
+            let spec_path = context.path_for_spec(spec_id).expect("should exists");
             let spec = match namespace {
                 None => spec_path.to_owned(),
                 Some(namespace) => {
-                    let include_path = context.get_include_path(namespace, spec_path)?;
-                    let include_def = context.get_definition(&include_path)?;
+                    let include_path = context.get_include_path(namespace, spec_id)?;
+                    let include_def = context.get_definition_by_path(&include_path)?;
 
                     let _ = include_def
                         .get_model(&target)
@@ -513,13 +516,13 @@ fn model_fqdn(spec_path: &PathBuf, model_name: &str) -> String {
 
 fn fields_to_properties(
     fields: &[FieldDef],
-    spec: &PathBuf,
+    spec_id: SpecId,
     context: &Context,
 ) -> anyhow::Result<Vec<(String, ReferenceOr<Box<Schema>>)>> {
     let mut properties = vec![];
 
     for field in fields.iter() {
-        let field_schema = type_to_schema(&field.type_, field.required, spec, context)?;
+        let field_schema = type_to_schema(&field.type_, field.required, spec_id, context)?;
         properties.push((
             field.name.to_string(),
             match field_schema {
@@ -614,7 +617,7 @@ fn get_meta_value(path: &str, def: &Definition) -> Option<String> {
 /// construct the response schema for method's response
 fn response_schema(
     method: &MethodDef,
-    spec: &PathBuf,
+    spec_id: SpecId,
     context: &Context,
     config: &CodegenConfig,
 ) -> anyhow::Result<ReferenceOr<Schema>> {
@@ -622,7 +625,7 @@ fn response_schema(
         None => type_to_schema(
             &Type::Reference(method.response.0.clone()),
             true,
-            spec,
+            spec_id,
             context,
         ),
         Some(response_template) => {
@@ -640,7 +643,7 @@ fn response_schema(
 
             let mut object_type = openapiv3::ObjectType::default();
 
-            let properties = fields_to_properties(&fields, spec, context)?;
+            let properties = fields_to_properties(&fields, spec_id, context)?;
             for (name, property_schema) in properties {
                 object_type.properties.insert(name, property_schema);
             }

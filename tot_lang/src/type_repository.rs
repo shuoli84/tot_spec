@@ -32,7 +32,7 @@ impl TypeRepository {
         // e.g: a::b::c => a/b/c.yaml (todo: remove the yaml part in future)
         let spec_path = components.join("/") + ".yaml";
 
-        let def = self.context.get_definition(&spec_path)?;
+        let def = self.context.get_definition_by_path(&spec_path)?;
         let model = def
             .get_model(type_name)
             .ok_or_else(|| anyhow!("not able to find type: {type_name}"))?;
