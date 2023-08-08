@@ -242,7 +242,7 @@ impl Codegen {
                 match source_type {
                     Type::Json => {
                         // only support convert from json to model
-                        return Ok(format!("serde_json::from_value({source_var_name})"));
+                        return Ok(format!("serde_json::from_value({source_var_name})?"));
                     }
                     _ => {
                         bail!(
@@ -259,10 +259,11 @@ impl Codegen {
             ) => {
                 // convert model to model, we only generate convert code if these models are
                 // compatible
-                let code = convert_source_model_to_target_model(
-                    source_model_type,
-                    target_model_type,
+                let code = self.convert_source_model_to_target_model(
+                    &source_model_type.clone(),
+                    &target_model_type.clone(),
                     source_var_name,
+                    to_type_path,
                 )?;
                 return Ok(code);
             }
@@ -425,72 +426,74 @@ impl Codegen {
             .ok_or_else(|| anyhow!("not able to find reference {local_var_ref:?}"))?;
         Ok(type_path)
     }
-}
 
-/// recursive check whether source able to convert to target, in the spirit
-/// of convert through json. if source -> json -> target succeeds, then this
-/// function should return true.
-/// source_var_name will be consumed after the convert
-fn convert_source_model_to_target_model(
-    source: &ModelType,
-    target: &ModelType,
-    source_var_name: &str,
-) -> anyhow::Result<String> {
-    let target_type_path = "TodoResponse";
-    let mut code_blocks = vec![format!("{target_type_path} {{")];
+    /// recursive check whether source able to convert to target, in the spirit
+    /// of convert through json. if source -> json -> target succeeds, then this
+    /// function should return true.
+    /// source_var_name will be consumed after the convert
+    fn convert_source_model_to_target_model(
+        &mut self,
+        source: &ModelType,
+        target: &ModelType,
+        source_var_name: &str,
+        target_type_path: &str,
+    ) -> anyhow::Result<String> {
+        let target_type = self.behavior.codegen_for_type(target_type_path)?;
+        let mut code_blocks = vec![format!("{target_type} {{")];
 
-    match (source, target) {
-        (ModelType::Const { .. }, _) | (_, ModelType::Const { .. }) => {
-            bail!("const in convert is not supported yet")
-        }
-        (ModelType::Struct(source_st), ModelType::Struct(target_st)) => {
-            // todo: support extend
-            assert!(source_st.extend.is_none() && target_st.extend.is_none());
+        match (source, target) {
+            (ModelType::Const { .. }, _) | (_, ModelType::Const { .. }) => {
+                bail!("const in convert is not supported yet")
+            }
+            (ModelType::Struct(source_st), ModelType::Struct(target_st)) => {
+                // todo: support extend
+                assert!(source_st.extend.is_none() && target_st.extend.is_none());
 
-            let source_fields = &source_st.fields;
-            let target_fields = &target_st.fields;
+                let source_fields = &source_st.fields;
+                let target_fields = &target_st.fields;
 
-            let mut field_codes = vec![];
+                let mut field_codes = vec![];
 
-            for field in target_fields {
-                let field_name = field.name.as_str();
-                // for each field, find the same name in source
-                // if not found, then if field is optional, then skip
-                // if found, then generate convert code
-                match source_fields
-                    .iter()
-                    .filter(|f| f.name.eq(&field.name))
-                    .nth(0)
-                {
-                    None => {
-                        if field.required {
-                            bail!("field {} is required, but not found in source", field.name);
+                for field in target_fields {
+                    let field_name = field.name.as_str();
+                    // for each field, find the same name in source
+                    // if not found, then if field is optional, then skip
+                    // if found, then generate convert code
+                    match source_fields
+                        .iter()
+                        .filter(|f| f.name.eq(&field.name))
+                        .nth(0)
+                    {
+                        None => {
+                            if field.required {
+                                bail!("field {} is required, but not found in source", field.name);
+                            }
+
+                            field_codes.push(format!("{}: None", field.name));
                         }
-
-                        field_codes.push(format!("{}: None", field.name));
-                    }
-                    Some(source_field) => {
-                        if source_field.type_.inner().eq(&field.type_.inner()) {
-                            field_codes.push(format!(
-                                "{field_name}: {source_var_name}.{field_name}.clone()"
-                            ))
-                        } else {
-                            todo!()
+                        Some(source_field) => {
+                            if source_field.type_.inner().eq(&field.type_.inner()) {
+                                field_codes.push(format!(
+                                    "{field_name}: {source_var_name}.{field_name}.clone()"
+                                ))
+                            } else {
+                                todo!()
+                            }
                         }
                     }
                 }
+
+                code_blocks.push(field_codes.join(","));
             }
+            _ => {
+                todo!()
+            }
+        }
 
-            code_blocks.push(field_codes.join(","));
-        }
-        _ => {
-            todo!()
-        }
+        code_blocks.push("}".to_string());
+
+        Ok(code_blocks.join("\n"))
     }
-
-    code_blocks.push("}".to_string());
-
-    Ok(code_blocks.join("\n"))
 }
 
 #[cfg(test)]
