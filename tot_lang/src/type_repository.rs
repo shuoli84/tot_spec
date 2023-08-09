@@ -1,9 +1,7 @@
 use anyhow::anyhow;
 use std::borrow::Cow;
-use std::ops::Add;
-use std::path::PathBuf;
-use tot_spec::codegen::context::{Context, SpecId};
-use tot_spec::{ModelDef, ModelType, Type, TypeReference};
+use tot_spec::codegen::context::Context;
+use tot_spec::{ModelDef, SpecId, Type, TypeReference};
 
 /// Provides type info for both codegen and vm
 #[derive(Debug)]

@@ -6,8 +6,7 @@ use anyhow::{anyhow, bail};
 use serde_json::{Number, Value};
 use std::default::Default;
 use std::sync::Arc;
-use tot_spec::codegen::context::SpecId;
-use tot_spec::{ModelDef, ModelType, StructDef, Type};
+use tot_spec::{ModelDef, ModelType, SpecId, StructDef, Type};
 
 /// The virtual machine, which stores all runtime state for one run
 #[derive(Debug)]

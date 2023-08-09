@@ -1,6 +1,6 @@
 use super::Codegen;
-use crate::codegen::context::{Context, SpecId};
-use crate::{Definition, FieldDef, MethodDef, ModelDef, ModelType, Type, TypeReference};
+use crate::codegen::context::Context;
+use crate::{Definition, FieldDef, MethodDef, ModelDef, ModelType, SpecId, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use openapiv3::{
@@ -369,8 +369,6 @@ impl Swagger {
                 ModelType::Enum { ref variants } => {
                     let mut variant_schemas = vec![];
                     for variant in variants.iter() {
-                        // todo: enum variant embeded should converge to a separate model def
-
                         let payload_type = variant
                             .payload_type
                             .as_ref()

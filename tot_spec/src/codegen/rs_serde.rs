@@ -1,8 +1,7 @@
-use crate::codegen::context::SpecId;
 use crate::codegen::style::Case;
 use crate::{
     codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
-    StringOrInteger, StructDef, Type, TypeReference, VariantDef,
+    SpecId, StringOrInteger, StructDef, Type, TypeReference, VariantDef,
 };
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, fmt::Write, path::PathBuf};

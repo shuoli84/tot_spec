@@ -2,8 +2,9 @@ use convert_case::Casing;
 
 use super::context::Context;
 use super::utils;
-use crate::codegen::context::SpecId;
-use crate::{ConstType, Definition, FieldDef, ModelDef, StringOrInteger, Type, TypeReference};
+use crate::{
+    ConstType, Definition, FieldDef, ModelDef, SpecId, StringOrInteger, Type, TypeReference,
+};
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
 #[derive(Default)]

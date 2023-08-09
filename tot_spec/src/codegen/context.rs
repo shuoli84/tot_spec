@@ -1,37 +1,21 @@
 use crate::codegen::style::Style;
 use crate::codegen::utils::folder_tree::FolderTree;
-use crate::{Definition, ModelDef, ModelType, Type, TypeReference};
+use crate::{Definition, ModelDef, ModelType, SpecId, SpecInfo, Type, TypeReference};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use path_absolutize::path_dedot::ParseDot;
 use path_absolutize::Absolutize;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
-
-#[derive(Debug, Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub struct SpecId(u64);
-
-impl SpecId {
-    pub fn new() -> Self {
-        use std::sync::atomic::*;
-        static COUNTER: AtomicU64 = AtomicU64::new(1);
-        let id = COUNTER.fetch_add(1, Ordering::Relaxed);
-        Self(id)
-    }
-}
 
 /// Context stores use info for a codegen pass
 #[derive(Debug)]
 pub struct Context {
     /// All loaded definitions
-    definitions: IndexMap<SpecId, Definition>,
+    specs: IndexMap<SpecId, SpecInfo>,
 
     /// map from relative path to spec_id
     path_to_spec: IndexMap<PathBuf, SpecId>,
-
-    /// the revert index mapping from spec_id to relative path
-    spec_to_path: HashMap<SpecId, PathBuf>,
 
     /// loaded folder tree, it can be used to iter all folder and spec files
     folder_tree: FolderTree,
@@ -60,9 +44,8 @@ impl Context {
             style
         };
 
-        let mut definitions = IndexMap::new();
+        let mut specs = IndexMap::new();
         let mut path_to_spec = IndexMap::new();
-        let mut spec_to_path = HashMap::new();
 
         let mut spec_folder = FolderTree::new();
 
@@ -95,15 +78,15 @@ impl Context {
             let relative_path = spec.strip_prefix(folder).unwrap();
             spec_folder.insert(relative_path);
 
-            let def = Definition::load_from_yaml(&spec)?;
-            definitions.insert(spec_id, def);
+            specs.insert(
+                spec_id,
+                SpecInfo::new(relative_path.to_owned(), Definition::load_from_yaml(&spec)?),
+            );
             path_to_spec.insert(relative_path.to_owned(), spec_id);
-            spec_to_path.insert(spec_id, relative_path.to_owned());
         }
         let context = Self {
-            definitions,
+            specs,
             path_to_spec,
-            spec_to_path,
             folder_tree: spec_folder,
             root_folder: folder.clone(),
             style,
@@ -165,8 +148,8 @@ impl Context {
     /// get a ref to definition for spec path, the spec should already loaded
     /// panic if path not loaded
     pub fn get_definition(&self, id: SpecId) -> anyhow::Result<&Definition> {
-        self.definitions
-            .get(&id)
+        self.get_spec_info(id)
+            .map(|s| s.definition())
             .ok_or_else(|| anyhow!("spec {id:?} not found"))
     }
 
@@ -190,7 +173,11 @@ impl Context {
 
     /// get the path for spec_id
     pub fn path_for_spec(&self, spec_id: SpecId) -> Option<&PathBuf> {
-        self.spec_to_path.get(&spec_id)
+        self.get_spec_info(spec_id).map(|s| s.relative_path())
+    }
+
+    fn get_spec_info(&self, spec_id: SpecId) -> Option<&SpecInfo> {
+        self.specs.get(&spec_id)
     }
 
     /// get model def of the type_ref
@@ -215,9 +202,9 @@ impl Context {
 
     /// get an iterator for all specs
     pub fn iter_specs(&self) -> impl Iterator<Item = (SpecId, &Definition)> {
-        self.definitions
+        self.specs
             .iter()
-            .map(|(spec_id, def)| (*spec_id, def))
+            .map(|(spec_id, spec)| (*spec_id, spec.definition()))
     }
 
     /// get the path for namespace
@@ -228,7 +215,7 @@ impl Context {
             .ok_or_else(|| anyhow::anyhow!("{} not found", namespace))?;
 
         let relative_path = &include.path;
-        let spec_path = self.spec_to_path.get(&spec_id).expect("should exists");
+        let spec_path = self.path_for_spec(spec_id).expect("should exists");
         let included_def_path = spec_path.parent().unwrap().join(relative_path);
         Ok(self.to_relative_path(&included_def_path)?)
     }
@@ -267,13 +254,13 @@ impl Context {
             return violations;
         };
 
-        for (spec_id, def) in self.definitions.iter() {
-            let spec = self.spec_to_path.get(spec_id).expect("should exists");
-            if style.is_excluded(spec) {
+        for (_, spec_info) in self.specs.iter() {
+            let spec_path = spec_info.relative_path();
+            if style.is_excluded(spec_path) {
                 continue;
             }
 
-            for model in def.models.iter() {
+            for model in spec_info.definition().models.iter() {
                 let model_violations = style.validate_model(model);
                 if model_violations.is_empty() {
                     continue;
@@ -282,7 +269,7 @@ impl Context {
                 for model_violation in model_violations {
                     violations.push(format!(
                         "spec:{:?} model:{} {}",
-                        spec, model.name, model_violation
+                        spec_path, model.name, model_violation
                     ));
                 }
             }
@@ -292,12 +279,13 @@ impl Context {
 
     fn validate_examples(&self) -> Vec<String> {
         let mut violations = vec![];
-        for (spec, def) in self.definitions.iter() {
-            for model in def.models.iter() {
+        for (spec_id, spec_info) in self.specs.iter() {
+            let spec_path = &spec_info.relative_path();
+            for model in spec_info.definition().models.iter() {
                 violations.extend(
-                    self.validate_example_for_model(model, *spec)
+                    self.validate_example_for_model(model, *spec_id)
                         .into_iter()
-                        .map(|v| format!("{spec:?} {} {v}", model.name)),
+                        .map(|v| format!("{spec_path:?} {} {v}", model.name)),
                 );
             }
         }
@@ -337,10 +325,10 @@ impl Context {
         spec: SpecId,
     ) -> Vec<String> {
         match &model_type {
-            crate::ModelType::Enum { .. } => {
+            ModelType::Enum { .. } => {
                 // todo: support example validate for enum
             }
-            crate::ModelType::Struct(st_) => {
+            ModelType::Struct(st_) => {
                 let mut violations = vec![];
                 // todo: support extend
                 for field in &st_.fields {
@@ -357,13 +345,13 @@ impl Context {
                 }
                 return violations;
             }
-            crate::ModelType::Virtual(_) => {
+            ModelType::Virtual(_) => {
                 // skip example validate for virtual model
             }
-            crate::ModelType::NewType { inner_type } => {
+            ModelType::NewType { inner_type } => {
                 return self.validate_value_for_type(&value, &inner_type.as_ref().0, true, spec)
             }
-            crate::ModelType::Const { .. } => {
+            ModelType::Const { .. } => {
                 // skip validate for const
             }
         }

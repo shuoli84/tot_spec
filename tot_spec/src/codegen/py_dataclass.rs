@@ -1,5 +1,4 @@
-use crate::codegen::context::SpecId;
-use crate::{Definition, FieldDef, StringOrInteger, Type, TypeReference};
+use crate::{Definition, FieldDef, SpecId, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 use std::path::PathBuf;
 
