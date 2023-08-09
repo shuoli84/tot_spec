@@ -29,6 +29,14 @@ async fn test_float_to_string() -> anyhow::Result<String> {
     })
 }
 
+async fn test_integer_to_float() -> anyhow::Result<f64> {
+    let mut f: i8 = 12;
+    Ok({
+        let s = f.clone();
+        s as f64
+    })
+}
+
 async fn test_bool_to_string() -> anyhow::Result<String> {
     let mut v: bool = true;
     Ok({

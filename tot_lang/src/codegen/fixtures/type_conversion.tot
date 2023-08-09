@@ -16,6 +16,10 @@ fn test_float_to_string() -> string {
     f as string
 }
 
+fn test_integer_to_float() -> f64 {
+    let f: i8 = 12;
+    f as f64
+}
 
 fn test_bool_to_string() -> string {
     let v: bool = true;

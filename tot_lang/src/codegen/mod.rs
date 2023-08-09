@@ -231,7 +231,11 @@ impl Codegen {
                         Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64 | Type::Bool,
                         Type::String,
                     ) => return Ok(format!("{source_var_name}.to_string()")),
+                    (Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64, Type::F64) => {
+                        return Ok(format!("{source_var_name} as f64"))
+                    }
                     (Type::Bool, Type::Bool) => return Ok("=".to_string()),
+
                     (_, Type::Reference(_)) => {
                         unimplemented!()
                     }
