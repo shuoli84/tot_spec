@@ -544,6 +544,21 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_execute_convert_float_to_json() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let f: f64 = 4.0;
+            f as json
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_f64().unwrap(), 4.0);
+    }
+
+    #[tokio::test]
     async fn test_execute_convert_json_to_request() {
         let mut vm = test_vm();
         vm.eval(

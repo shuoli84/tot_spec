@@ -1,5 +1,6 @@
 use super::*;
 use crate::program::expression_if::convert_if;
+use std::str::FromStr;
 
 pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
     let exp = exp.as_expression().unwrap();
@@ -18,7 +19,7 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
             let (literal_type, literal_value) = literal_node.as_literal().unwrap();
             let value = match literal_type {
                 Literal::String => Value::String(snailquote::unescape(literal_value)?),
-                Literal::Number => Value::Number(Number::from(literal_value.parse::<i64>()?)),
+                Literal::Number => Value::Number(Number::from_str(literal_value)?),
                 Literal::Boolean => Value::Bool(match literal_value {
                     "true" => true,
                     "false" => false,
