@@ -62,8 +62,7 @@ impl Frame {
             match scope.vars.get_mut(name) {
                 None => continue,
                 Some(v) => {
-                    *v = value;
-                    return Ok(());
+                    return assign_by_path(v, path, value);
                 }
             }
         }
