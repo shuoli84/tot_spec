@@ -1132,6 +1132,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tot_eval"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "tot_lang",
+ "tot_spec",
+]
+
+[[package]]
 name = "tot_lang"
 version = "0.1.0"
 dependencies = [

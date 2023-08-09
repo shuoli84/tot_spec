@@ -1,0 +1,18 @@
+[package]
+name = "tot_eval"
+version = "0.1.0"
+edition = "2021"
+repository = "https://github.com/shuoli84/tot_spec"
+license = "MIT OR Apache-2.0"
+description = "Eval for tot lang"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "tot_eval"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+tot_spec = { path = "../tot_spec", version = "0.1" }
+tot_lang = { path = "../tot_lang", version = "0.1" }

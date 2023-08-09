@@ -5,6 +5,7 @@ members = [
     "tot_spec",
     "tot_spec_util",
     "tot_lang",
+    "tot_eval",
     "codegen"
 ]
 
