@@ -1,5 +1,4 @@
 use super::scope::*;
-use anyhow::*;
 
 /// A function call frame, it is the state for one function
 #[derive(Debug)]
@@ -48,7 +47,7 @@ impl Frame {
                 }
             }
         }
-        bail!("{name} not found");
+        anyhow::bail!("{name} not found");
     }
 
     /// load value for name recursively, it looks up parent scopes
@@ -65,7 +64,7 @@ impl Frame {
     /// load the name, if it doesn't exist, then raise an error
     pub fn load_required(&self, name: &str) -> anyhow::Result<&serde_json::Value> {
         self.load(name)
-            .ok_or_else(|| anyhow!("local var not found: {name}"))
+            .ok_or_else(|| anyhow::anyhow!("local var not found: {name}"))
     }
 
     fn current_scope_mut(&mut self) -> &mut Scope {
