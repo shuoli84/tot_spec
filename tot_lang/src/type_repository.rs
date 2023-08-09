@@ -17,6 +17,11 @@ impl TypeRepository {
         Self { context }
     }
 
+    /// Get a reference to type context
+    pub fn context(&self) -> &Context {
+        &self.context
+    }
+
     /// Query the type for path.
     /// This resolves type reference to ModelType
     pub fn type_for_path(&self, type_path: &str) -> anyhow::Result<ModelOrType> {
