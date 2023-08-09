@@ -10,3 +10,14 @@ fn test_number_to_string() -> string {
     let i: i8 = 12;
     i as string
 }
+
+fn test_float_to_string() -> string {
+    let f: f64 = 12.0;
+    f as string
+}
+
+
+fn test_bool_to_string() -> string {
+    let v: bool = true;
+    v as string
+}

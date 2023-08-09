@@ -227,9 +227,10 @@ impl Codegen {
                     (Type::String, Type::String) => {
                         return Ok(format!("{source_var_name}.clone()"))
                     }
-                    (Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64, Type::String) => {
-                        return Ok(format!("{source_var_name}.to_string()"))
-                    }
+                    (
+                        Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::F64 | Type::Bool,
+                        Type::String,
+                    ) => return Ok(format!("{source_var_name}.to_string()")),
                     (Type::Bool, Type::Bool) => return Ok("=".to_string()),
                     (_, Type::Reference(_)) => {
                         unimplemented!()
@@ -509,7 +510,6 @@ impl Codegen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::Value;
     use std::path::PathBuf;
     use tot_spec::codegen::context::Context;
 
@@ -544,9 +544,14 @@ mod tests {
         fn codegen_for_type(&mut self, path: &str) -> anyhow::Result<String> {
             Ok(match path {
                 "string" => "String".to_string(),
-                "i8" => "i8".to_string(),
                 "json" => "serde_json::Value".to_string(),
-                "base::FirstRequest"
+                "i8"
+                | "i16"
+                | "i32"
+                | "i64"
+                | "f64"
+                | "bool"
+                | "base::FirstRequest"
                 | "base::FirstResponse"
                 | "base::SecondRequest"
                 | "base::SecondResponse" => path.to_string(),

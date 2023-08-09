@@ -20,3 +20,19 @@ async fn test_number_to_string() -> anyhow::Result<String> {
         s.to_string()
     })
 }
+
+async fn test_float_to_string() -> anyhow::Result<String> {
+    let mut f: f64 = 12.0;
+    Ok({
+        let s = f.clone();
+        s.to_string()
+    })
+}
+
+async fn test_bool_to_string() -> anyhow::Result<String> {
+    let mut v: bool = true;
+    Ok({
+        let s = v.clone();
+        s.to_string()
+    })
+}

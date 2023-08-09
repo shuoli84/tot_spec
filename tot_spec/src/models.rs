@@ -1,4 +1,5 @@
 use crate::models::serde_helper::StringOrStruct;
+use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path};
 
@@ -297,7 +298,7 @@ pub enum Type {
     String,
     #[serde(rename = "list")]
     List {
-        item_type: Box<serde_helper::StringOrStruct<Type>>,
+        item_type: Box<StringOrStruct<Type>>,
     },
     #[serde(rename = "map")]
     Map { value_type: Box<Type> },
@@ -310,7 +311,11 @@ pub enum Type {
 
 impl Type {
     pub fn try_parse(v: &str) -> anyhow::Result<Self> {
-        serde_helper::parse_type(v).map(|(ty, _)| ty)
+        let (parsed_ty, rest) = serde_helper::parse_type(v.trim())?;
+        if !rest.is_empty() {
+            bail!("failed to parse type {v}");
+        }
+        Ok(parsed_ty)
     }
 
     pub fn list(item_type: Type) -> Self {
