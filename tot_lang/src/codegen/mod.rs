@@ -131,10 +131,20 @@ impl Codegen {
                 let expr_code = self.generate_expression(expression)?;
                 writeln!(result, "let mut {ident}: {ty} = {expr_code};")?;
             }
-            Statement::Bind { ident, expression } => {
-                let ident = ident.as_ident().unwrap();
+            Statement::Bind {
+                reference,
+                expression,
+            } => {
+                let reference = reference.as_reference().unwrap();
                 let expr_code = self.generate_expression(expression)?;
-                writeln!(result, "{ident} = {expr_code};")?;
+
+                let reference = reference
+                    .into_iter()
+                    .map(|r| r.as_ident().unwrap())
+                    .collect::<Vec<_>>()
+                    .join(".");
+
+                writeln!(result, "{reference} = {expr_code};")?;
             }
             Statement::Return { expression } => {
                 let expr_code = self.generate_expression(expression)?;

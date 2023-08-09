@@ -60,8 +60,9 @@ impl Vm {
                 Op::Load(ReferenceOrValue::Value(value)) => {
                     self.register = Some(value.clone());
                 }
-                Op::Load(ReferenceOrValue::Reference(reference)) => {
-                    let value = self.frame.load_required(reference)?;
+                Op::Load(ReferenceOrValue::Reference { var_name, path }) => {
+                    assert!(path.is_empty(), "not supported yet");
+                    let value = self.frame.load_required(var_name)?;
                     self.register = Some(value.clone());
                 }
                 Op::EnterScope => {
@@ -74,8 +75,9 @@ impl Vm {
                     let mut loaded_params = vec![];
                     for param in params {
                         match param {
-                            ReferenceOrValue::Reference(reference) => {
-                                loaded_params.push(self.frame.load_required(reference)?.clone());
+                            ReferenceOrValue::Reference { var_name, path } => {
+                                assert!(path.is_empty(), "not supported yet");
+                                loaded_params.push(self.frame.load_required(var_name)?.clone());
                             }
                             ReferenceOrValue::Value(value) => {
                                 loaded_params.push(value.clone());
@@ -708,6 +710,30 @@ mod tests {
             result,
             serde_json::json!({
                 "foo": "bar"
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_execute_assign_to_field() {
+        let mut vm = test_vm();
+        vm.eval(
+            r##"{
+            let i: json = json("{
+                \"foo\":  \"bar\" 
+            }");
+            let j: spec::NewTypeStruct = i as spec::NewTypeStruct;
+            j.foo = "bar bar";
+            j
+        };"##,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value().unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!({
+                "foo": "bar bar"
             })
         );
     }

@@ -1,7 +1,6 @@
-use crate::ast::ast::block::parse_block;
-use crate::ast::ast::expression::parse_reference;
 use crate::ast::ast::path::parse_path;
-use crate::ast::ast::{try_next, try_take_first, AstNode, AstNodeKind};
+use crate::ast::ast::reference::parse_reference;
+use crate::ast::ast::{try_next, AstNode, AstNodeKind};
 use crate::ast::grammar::Rule;
 
 pub fn parse_convert(pair: pest::iterators::Pair<Rule>) -> anyhow::Result<AstNode> {
@@ -10,7 +9,7 @@ pub fn parse_convert(pair: pest::iterators::Pair<Rule>) -> anyhow::Result<AstNod
 
     let mut inner = pair.into_inner();
     let reference = try_next(&mut inner)?;
-    let expr = parse_reference(reference)?;
+    let expr = parse_reference(reference);
 
     let path = try_next(&mut inner)?;
     let path = parse_path(path);

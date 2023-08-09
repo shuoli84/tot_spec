@@ -1,6 +1,7 @@
 use crate::ast::ast::expression::parse_expression;
 use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::path::parse_path;
+use crate::ast::ast::reference::parse_reference;
 use crate::ast::ast::{try_next, try_take_first, AstNode, AstNodeKind, Statement};
 use crate::ast::grammar::Rule;
 use anyhow::bail;
@@ -31,13 +32,13 @@ pub fn parse_statement(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
         }
         Rule::bind => {
             let mut components = inner.into_inner();
-            let ident = try_next(&mut components)?;
-            let ident = parse_ident(ident);
+            let reference = try_next(&mut components)?;
+            let reference = parse_reference(reference);
             let expression = try_next(&mut components)?;
             let expr = parse_expression(expression)?;
 
             Statement::Bind {
-                ident: Box::new(ident),
+                reference: Box::new(reference),
                 expression: Box::new(expr),
             }
         }
@@ -94,6 +95,16 @@ mod tests {
     #[test]
     fn test_parse_statement_bind() {
         let parsed = GrammarParser::parse(Rule::statement, "x = 124;")
+            .unwrap()
+            .nth(0)
+            .unwrap();
+        let stmt = parse_statement(parsed).unwrap();
+        assert!(stmt.as_statement().unwrap().as_bind_ref().is_some());
+    }
+
+    #[test]
+    fn test_parse_statement_bind_to_field() {
+        let parsed = GrammarParser::parse(Rule::statement, "x.foo = 124;")
             .unwrap()
             .nth(0)
             .unwrap();

@@ -2,8 +2,8 @@ use crate::ast::ast::block::parse_block;
 use crate::ast::ast::call::parse_call;
 use crate::ast::ast::expression_convert::parse_convert;
 use crate::ast::ast::expression_if::parse_if;
-use crate::ast::ast::ident::parse_ident;
 use crate::ast::ast::literal::parse_literal;
+use crate::ast::ast::reference::parse_reference;
 use crate::ast::ast::{try_take_first, AstNode, AstNodeKind, Expression};
 use crate::ast::grammar::Rule;
 use anyhow::bail;
@@ -18,7 +18,7 @@ pub fn parse_expression(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
     let expression = match inner.as_rule() {
         Rule::literal => Expression::Literal(Box::new(parse_literal(inner)?)),
         Rule::block => Expression::Block(Box::new(parse_block(inner)?)),
-        Rule::reference => Expression::Reference(Box::new(parse_reference(inner)?)),
+        Rule::reference => Expression::Reference(Box::new(parse_reference(inner))),
         Rule::call_exp => Expression::Call(Box::new(parse_call(inner)?)),
         Rule::if_exp => Expression::If(Box::new(parse_if(inner)?)),
         Rule::convert_exp => Expression::Convert(Box::new(parse_convert(inner)?)),
@@ -29,16 +29,6 @@ pub fn parse_expression(pair: Pair<Rule>) -> anyhow::Result<AstNode> {
 
     Ok(AstNode {
         kind: AstNodeKind::Expression(expression),
-        span,
-    })
-}
-
-pub fn parse_reference(inner: Pair<Rule>) -> anyhow::Result<AstNode> {
-    let span = inner.as_span().into();
-    Ok(AstNode {
-        kind: AstNodeKind::Reference {
-            identifiers: inner.into_inner().map(|id| parse_ident(id)).collect(),
-        },
         span,
     })
 }

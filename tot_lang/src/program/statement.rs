@@ -9,10 +9,17 @@ pub fn convert_statement<'a>(ast: &'a AstNode, operations: &mut Vec<Op>) -> anyh
             path,
             expression,
         } => convert_declare_and_bind(ident, path, expression, operations)?,
-        Statement::Bind { .. } => {}
+        Statement::Bind {
+            reference,
+            expression,
+        } => {
+            convert_expression(expression, operations)?;
+
+            dbg!(reference);
+            todo!()
+        }
         Statement::Return { expression: expr } => {
             convert_expression(expr, operations)?;
-            // with the expr's value stored at register. Now return
             operations.push(Op::Return);
         }
         Statement::Expression(exp) => convert_expression(exp, operations)?,

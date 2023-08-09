@@ -13,6 +13,7 @@ mod func_signature;
 mod ident;
 mod literal;
 mod path;
+mod reference;
 mod statement;
 
 #[derive(Debug)]
@@ -315,7 +316,7 @@ pub enum Statement {
         expression: Box<AstNode>,
     },
     Bind {
-        ident: Box<AstNode>,
+        reference: Box<AstNode>,
         expression: Box<AstNode>,
     },
     Return {
@@ -349,8 +350,11 @@ impl Statement {
 
     pub fn as_bind_ref(&self) -> Option<BindRef> {
         match self {
-            Statement::Bind { ident, expression } => Some(BindRef {
-                ident: ident.as_ref(),
+            Statement::Bind {
+                reference,
+                expression,
+            } => Some(BindRef {
+                ident: reference.as_ref(),
                 expression: expression.as_ref(),
             }),
             _ => None,
@@ -373,6 +377,7 @@ pub struct DeclareAndBind<'a> {
     expression: &'a AstNode,
 }
 
+#[derive(Debug)]
 pub struct BindRef<'a> {
     ident: &'a AstNode,
     expression: &'a AstNode,

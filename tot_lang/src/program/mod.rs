@@ -5,7 +5,6 @@ use crate::program::statement::convert_statement;
 use anyhow::{anyhow, bail};
 use serde_json::{Number, Value};
 use std::borrow::Cow;
-use tot_spec::Type;
 
 mod block;
 mod expression;
@@ -45,11 +44,21 @@ pub enum Op {
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum ReferenceOrValue {
-    Reference(String),
+    Reference { var_name: String, path: Vec<String> },
     Value(Value),
 }
 
+impl ReferenceOrValue {
+    pub fn local_var(var_name: impl Into<String>) -> Self {
+        Self::Reference {
+            var_name: var_name.into(),
+            path: vec![],
+        }
+    }
+}
+
 /// program is compact representation for a tot program. It is generated from ast
+#[derive(Debug)]
 pub struct Program {
     operations: Vec<Op>,
 }
@@ -116,7 +125,10 @@ mod tests {
 
         assert_eq!(
             operations,
-            vec![Op::Load(ReferenceOrValue::Reference("i".into()))]
+            vec![Op::Load(ReferenceOrValue::Reference {
+                var_name: "i".into(),
+                path: Default::default()
+            })]
         );
     }
 
