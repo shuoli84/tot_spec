@@ -73,9 +73,6 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
 }
 
 fn convert_reference(node: &AstNode, operations: &mut Vec<Op>) -> anyhow::Result<()> {
-    let reference = node.as_reference().expect("node must be reference");
-    assert_eq!(reference.len(), 1, "only local var supported for now");
-    let var_name = reference.first().unwrap().as_ident().unwrap().to_string();
-    operations.push(Op::Load(ReferenceOrValue::local_var(var_name)));
+    operations.push(Op::Load(ReferenceOrValue::from_reference(node)?));
     Ok(())
 }

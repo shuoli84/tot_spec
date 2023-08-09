@@ -70,8 +70,21 @@ impl Frame {
         anyhow::bail!("{name} not found");
     }
 
+    /// load the name, if it doesn't exist, then raise an error
+    pub fn load_by_path<'a>(
+        &'a self,
+        name: &str,
+        path: &[PathComponent],
+    ) -> anyhow::Result<&'a Value> {
+        let var_value = self
+            .load(name)
+            .ok_or_else(|| anyhow::anyhow!("local var not found: {name}"))?;
+
+        load_by_path(var_value, path)
+    }
+
     /// load value for name recursively, it looks up parent scopes
-    pub fn load(&self, name: &str) -> Option<&Value> {
+    fn load(&self, name: &str) -> Option<&Value> {
         for s in self.scopes.iter().rev() {
             if let Some(v) = s.vars.get(name) {
                 return Some(v);
@@ -79,12 +92,6 @@ impl Frame {
         }
 
         None
-    }
-
-    /// load the name, if it doesn't exist, then raise an error
-    pub fn load_required(&self, name: &str) -> anyhow::Result<&serde_json::Value> {
-        self.load(name)
-            .ok_or_else(|| anyhow::anyhow!("local var not found: {name}"))
     }
 
     fn current_scope_mut(&mut self) -> &mut Scope {
@@ -96,6 +103,39 @@ pub enum PathComponent<'a> {
     /// Field, both for struct field and json object key
     Field(&'a str),
     Index(usize),
+}
+
+fn load_by_path<'a>(target: &'a Value, path: &[PathComponent]) -> anyhow::Result<&'a Value> {
+    match path.split_first() {
+        Some((first_component, rest_paths)) => match first_component {
+            PathComponent::Field(field_name) => match target {
+                Value::Object(obj) => match obj.get(*field_name) {
+                    None => {
+                        anyhow::bail!("object missing key {field_name}")
+                    }
+                    Some(target) => {
+                        return Ok(load_by_path(target, rest_paths)?);
+                    }
+                },
+                _ => {
+                    anyhow::bail!("only object and array supports paths")
+                }
+            },
+            PathComponent::Index(idx) => match target {
+                Value::Array(arr) => {
+                    if arr.len() <= *idx {
+                        anyhow::bail!("array out of index");
+                    }
+
+                    return Ok(load_by_path(&arr[*idx], rest_paths)?);
+                }
+                _ => anyhow::bail!("only array supports index"),
+            },
+        },
+        None => {
+            return Ok(target);
+        }
+    }
 }
 
 fn assign_by_path(target: &mut Value, path: &[PathComponent], value: Value) -> anyhow::Result<()> {

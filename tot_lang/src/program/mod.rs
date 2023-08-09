@@ -56,6 +56,24 @@ impl ReferenceOrValue {
             path: vec![],
         }
     }
+
+    pub fn from_reference(reference: &AstNode) -> anyhow::Result<Self> {
+        let reference_components = reference
+            .as_reference()
+            .ok_or_else(|| anyhow!("ast node is not reference"))?;
+        match reference_components.split_first() {
+            Some((var_name, field_path)) => Ok(Self::Reference {
+                var_name: var_name.as_ident().unwrap().to_string(),
+                path: field_path
+                    .into_iter()
+                    .map(|f| f.as_ident().unwrap().to_string())
+                    .collect(),
+            }),
+            None => {
+                bail!("reference is empty");
+            }
+        }
+    }
 }
 
 /// program is compact representation for a tot program. It is generated from ast

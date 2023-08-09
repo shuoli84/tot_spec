@@ -62,13 +62,9 @@ impl Vm {
                         .take()
                         .ok_or_else(|| anyhow!("register has no value"))?,
                 )?,
-                Op::Load(ReferenceOrValue::Value(value)) => {
-                    self.register = Some(value.clone());
-                }
-                Op::Load(ReferenceOrValue::Reference { var_name, path }) => {
-                    assert!(path.is_empty(), "not supported yet");
-                    let value = self.frame.load_required(var_name)?;
-                    self.register = Some(value.clone());
+                Op::Load(reference_or_value) => {
+                    let value = self.load_value(reference_or_value)?;
+                    self.register = Some(value);
                 }
                 Op::EnterScope => {
                     self.frame.push_scope();
@@ -79,15 +75,7 @@ impl Vm {
                 Op::Call { path, params } => {
                     let mut loaded_params = vec![];
                     for param in params {
-                        match param {
-                            ReferenceOrValue::Reference { var_name, path } => {
-                                assert!(path.is_empty(), "not supported yet");
-                                loaded_params.push(self.frame.load_required(var_name)?.clone());
-                            }
-                            ReferenceOrValue::Value(value) => {
-                                loaded_params.push(value.clone());
-                            }
-                        }
+                        loaded_params.push(self.load_value(param)?);
                     }
 
                     if path.eq("debug") {
@@ -127,6 +115,22 @@ impl Vm {
             }
         }
         Ok(())
+    }
+
+    fn load_value(&self, value_or_reference: &ReferenceOrValue) -> anyhow::Result<Value> {
+        match value_or_reference {
+            ReferenceOrValue::Value(value) => Ok(value.clone()),
+            ReferenceOrValue::Reference { var_name, path } => self
+                .frame
+                .load_by_path(
+                    var_name,
+                    &path
+                        .iter()
+                        .map(|p| PathComponent::Field(p.as_str()))
+                        .collect::<Vec<_>>(),
+                )
+                .cloned(),
+        }
     }
 
     /// get current value at register, it is the way to get the result
@@ -717,6 +721,24 @@ mod tests {
                 "foo": "bar"
             })
         );
+    }
+
+    #[tokio::test]
+    async fn test_execute_load_value_by_path() {
+        let mut vm = test_vm();
+        vm.eval(
+            r##"{
+            let i: json = json("{
+                \"foo\":  \"bar\" 
+            }");
+            let j: spec::NewTypeStruct = i as spec::NewTypeStruct;
+            j.foo
+        };"##,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value().unwrap();
+        assert_eq!(result, "bar");
     }
 
     #[tokio::test]
