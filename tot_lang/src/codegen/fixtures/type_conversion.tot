@@ -25,3 +25,7 @@ fn test_bool_to_string() -> string {
     let v: bool = true;
     v as string
 }
+
+fn test_json_to_new_type(j: json) -> spec::NewTypeStruct {
+    j as spec::NewTypeStruct
+}

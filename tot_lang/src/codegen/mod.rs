@@ -557,7 +557,8 @@ mod tests {
                 | "base::FirstRequest"
                 | "base::FirstResponse"
                 | "base::SecondRequest"
-                | "base::SecondResponse" => path.to_string(),
+                | "base::SecondResponse"
+                | "spec::NewTypeStruct" => path.to_string(),
                 _ => {
                     bail!("type {path} not supported")
                 }

@@ -44,3 +44,10 @@ async fn test_bool_to_string() -> anyhow::Result<String> {
         s.to_string()
     })
 }
+
+async fn test_json_to_new_type(j: serde_json::Value) -> anyhow::Result<spec::NewTypeStruct> {
+    Ok({
+        let s = j.clone();
+        serde_json::from_value(s)?
+    })
+}
