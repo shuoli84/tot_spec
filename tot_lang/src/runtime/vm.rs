@@ -398,7 +398,7 @@ mod tests {
     use super::*;
     use anyhow::bail;
     use std::path::PathBuf;
-    use tot_spec::codegen::context::Context;
+    use tot_spec::Context;
 
     #[derive(Debug, Default)]
     struct TestBehavior {}

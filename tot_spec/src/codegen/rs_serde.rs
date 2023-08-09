@@ -1,12 +1,11 @@
 use crate::codegen::style::Case;
 use crate::{
-    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, FieldDef, ModelDef,
-    SpecId, StringOrInteger, StructDef, Type, TypeReference, VariantDef,
+    codegen::utils::indent, models::Definition, ConstType, ConstValueDef, Context, FieldDef,
+    ModelDef, SpecId, StringOrInteger, StructDef, Type, TypeReference, VariantDef,
 };
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, fmt::Write, path::PathBuf};
 
-use super::context::Context;
 use super::{utils::folder_tree::Entry, utils::multiline_prefix_with};
 
 pub struct RsSerde {

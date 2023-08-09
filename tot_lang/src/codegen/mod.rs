@@ -514,7 +514,7 @@ impl Codegen {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    use tot_spec::codegen::context::Context;
+    use tot_spec::Context;
 
     #[derive(Debug, Default)]
     struct TestBehavior {}

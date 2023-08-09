@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tot_lang::runtime::Vm;
 use tot_lang::type_repository::TypeRepository;
 use tot_lang::{Value, VmBehavior};
-use tot_spec::codegen::context::Context;
+use tot_spec::Context;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

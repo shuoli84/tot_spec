@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use std::borrow::Cow;
-use tot_spec::codegen::context::Context;
-use tot_spec::{ModelDef, SpecId, Type, TypeReference};
+use tot_spec::{Context, ModelDef, SpecId, Type, TypeReference};
 
 /// Provides type info for both codegen and vm
 #[derive(Debug)]

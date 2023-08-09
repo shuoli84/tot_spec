@@ -1,8 +1,7 @@
-use crate::{Definition, FieldDef, SpecId, StringOrInteger, Type, TypeReference};
+use crate::{Context, Definition, FieldDef, SpecId, StringOrInteger, Type, TypeReference};
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use super::context::Context;
 use super::utils::{indent, multiline_prefix_with};
 
 #[derive(Default)]

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-pub mod context;
+pub use crate::Context;
+
 pub mod java_jackson;
 pub mod py_dataclass;
 pub mod rs_serde;

@@ -1,6 +1,7 @@
 use super::Codegen;
-use crate::codegen::context::Context;
-use crate::{Definition, FieldDef, MethodDef, ModelDef, ModelType, SpecId, Type, TypeReference};
+use crate::{
+    Context, Definition, FieldDef, MethodDef, ModelDef, ModelType, SpecId, Type, TypeReference,
+};
 use anyhow::anyhow;
 use indexmap::IndexMap;
 use openapiv3::{
