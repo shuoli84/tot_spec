@@ -137,15 +137,16 @@ impl Vm {
     fn convert_value(
         &self,
         value: Value,
-        ty: Type,
+        target_type: Type,
         from_spec: Option<SpecId>,
     ) -> anyhow::Result<Value> {
-        Ok(match ty {
+        Ok(match target_type {
+            // todo: verify that convert to bool codegen
             Type::Bool => Value::Bool(bool_for_value(&Some(value))),
             Type::I8 | Type::I16 | Type::I32 | Type::I64 => match value {
                 Value::Number(number) => {
                     if let Some(i64_value) = number.as_i64() {
-                        match ty {
+                        match target_type {
                             Type::I8 => {
                                 if i64_value > i8::MAX as i64 {
                                     bail!("overflow");
@@ -173,7 +174,7 @@ impl Vm {
                             }
                         }
                     } else if let Some(u64_value) = number.as_u64() {
-                        match ty {
+                        match target_type {
                             Type::I8 => {
                                 if u64_value > i8::MAX as u64 {
                                     bail!("overflow");
@@ -189,7 +190,7 @@ impl Vm {
                                 }
                             }
                             Type::I32 => {
-                                if u64_value > u32::MAX as u64 {
+                                if u64_value > i32::MAX as u64 {
                                     bail!("overflow");
                                 } else {
                                     Value::Number(number)
@@ -200,24 +201,48 @@ impl Vm {
                                 unreachable!()
                             }
                         }
+                    } else if let Some(f64_value) = number.as_f64() {
+                        match target_type {
+                            Type::I8 => Value::Number(Number::from(f64_value as i8)),
+                            Type::I16 => Value::Number(Number::from(f64_value as i16)),
+                            Type::I32 => Value::Number(Number::from(f64_value as i32)),
+                            Type::I64 => Value::Number(Number::from(f64_value as i64)),
+                            _ => {
+                                unreachable!()
+                            }
+                        }
                     } else {
                         bail!("not able to convert")
                     }
                 }
                 _ => {
-                    bail!("not able to convert value from {value} to {ty:?}");
+                    bail!("not able to convert value from {value} to {target_type:?}");
                 }
             },
-            Type::F64 => {
-                todo!()
-            }
+            Type::F64 => match value {
+                Value::Number(number) => {
+                    let val = if let Some(val) = number.as_i64() {
+                        val as f64
+                    } else if let Some(val) = number.as_u64() {
+                        val as f64
+                    } else if let Some(val) = number.as_f64() {
+                        val
+                    } else {
+                        bail!("value is not number")
+                    };
+
+                    Value::Number(
+                        Number::from_f64(val).ok_or_else(|| anyhow!("f64 value out of range"))?,
+                    )
+                }
+                _ => {
+                    bail!("not able to convert {value:?} to f64");
+                }
+            },
             Type::Decimal => {
                 todo!()
             }
             Type::BigInt => {
-                todo!()
-            }
-            Type::Bytes => {
                 todo!()
             }
             Type::String => {
@@ -228,6 +253,9 @@ impl Vm {
                 } else {
                     bail!("cant' convert from {value:?} to string");
                 }
+            }
+            Type::Bytes => {
+                todo!()
             }
             Type::List { .. } => {
                 todo!()
@@ -496,6 +524,21 @@ mod tests {
         .unwrap();
         let result = vm.into_value();
         assert_eq!(result.unwrap().as_i64().unwrap(), 4);
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_to_number_f64() {
+        let mut vm = test_vm();
+        vm.eval(
+            r#"{
+            let i: i64 = 4;
+            i as f64
+        };"#,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value();
+        assert_eq!(result.unwrap().as_f64().unwrap(), 4.0);
     }
 
     #[tokio::test]
