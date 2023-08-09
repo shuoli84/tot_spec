@@ -51,3 +51,10 @@ async fn test_json_to_new_type(j: serde_json::Value) -> anyhow::Result<spec::New
         serde_json::from_value(s)?
     })
 }
+
+async fn test_convert_struct_to_json(i: spec::TestStruct) -> anyhow::Result<serde_json::Value> {
+    Ok({
+        let s = i.clone();
+        serde_json::to_value(&s)?
+    })
+}

@@ -250,7 +250,12 @@ impl Codegen {
                 ModelOrType::ModelType(source_model_type, spec_id),
                 ModelOrType::Type(target_type),
             ) => {
-                todo!()
+                // todo: support more type conversions, e.g: new_type around i64
+                if !matches!(target_type, Type::Json) {
+                    bail!("Only support convert from UDT to json");
+                }
+
+                return Ok(format!("serde_json::to_value(&{source_var_name})?"));
             }
             (ModelOrType::Type(source_type), ModelOrType::ModelType(..)) => {
                 match source_type {
@@ -558,7 +563,8 @@ mod tests {
                 | "base::FirstResponse"
                 | "base::SecondRequest"
                 | "base::SecondResponse"
-                | "spec::NewTypeStruct" => path.to_string(),
+                | "spec::NewTypeStruct"
+                | "spec::TestStruct" => path.to_string(),
                 _ => {
                     bail!("type {path} not supported")
                 }
@@ -603,21 +609,17 @@ mod tests {
 
     #[test]
     fn test_codegen() {
-        for (tot_file, rs_file) in [
-            (
-                "src/codegen/fixtures/simple.tot",
-                "src/codegen/fixtures/simple.rs",
-            ),
-            (
-                "src/codegen/fixtures/type_conversion.tot",
-                "src/codegen/fixtures/type_conversion.rs",
-            ),
-        ] {
+        let folder = "src/codegen/fixtures";
+        for case_name in ["simple", "type_conversion"] {
+            println!("* testing {case_name}");
+            let tot_file = format!("{folder}/{case_name}.tot");
+            let rs_file = format!("{folder}/{case_name}.rs");
+
             let code = std::fs::read_to_string(tot_file).unwrap();
             let mut codegen = Codegen::new(
                 Box::new(TestBehavior::default()),
                 Arc::new(TypeRepository::new(
-                    Context::new_from_folder(&PathBuf::from("src/codegen/fixtures")).unwrap(),
+                    Context::new_from_folder(&PathBuf::from(folder)).unwrap(),
                 )),
             );
             let ast = AstNode::parse_file(&code).unwrap();
