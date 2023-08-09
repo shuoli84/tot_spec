@@ -27,3 +27,9 @@ models:
         - name: self_i8_field
           type: i8
           required: false
+
+  - name: NewTypeStruct
+    desc: Test new type
+    type:
+      name: new_type
+      inner_type: json

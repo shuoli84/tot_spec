@@ -136,7 +136,7 @@ impl Vm {
     fn convert_value(
         &self,
         value: Value,
-        target_type: Type,
+        target_type: &Type,
         from_spec: Option<SpecId>,
     ) -> anyhow::Result<Value> {
         Ok(match target_type {
@@ -284,7 +284,7 @@ impl Vm {
         model_or_type: ModelOrType<'static>,
     ) -> anyhow::Result<Value> {
         Ok(match model_or_type {
-            ModelOrType::Type(ty) => self.convert_value(value, ty, None)?,
+            ModelOrType::Type(ty) => self.convert_value(value, &ty, None)?,
             ModelOrType::ModelType(model_type, spec_id) => {
                 self.convert_value_to_model(value, &model_type.clone(), spec_id)?
             }
@@ -298,12 +298,17 @@ impl Vm {
         model_def: &ModelDef,
         spec_id: SpecId,
     ) -> anyhow::Result<Value> {
-        let Value::Object(obj)  = value else {
-            bail!("only object supported");
-        };
-
         match &model_def.type_ {
-            ModelType::Struct(st) => return self.convert_json_map_to_struct(obj, st, spec_id),
+            ModelType::Struct(st) => {
+                let Value::Object(obj)  = value else {
+                    bail!("only object supported");
+                };
+
+                return self.convert_json_map_to_struct(obj, st, spec_id);
+            }
+            ModelType::NewType { inner_type } => {
+                self.convert_value(value, inner_type, Some(spec_id))
+            }
             _ => {
                 bail!("not supported")
             }
@@ -353,8 +358,7 @@ impl Vm {
                 }
                 Some(value) => {
                     let field_ty = field.type_.inner();
-                    let field_value =
-                        self.convert_value(value.clone(), field_ty.clone(), Some(spec_id))?;
+                    let field_value = self.convert_value(value.clone(), field_ty, Some(spec_id))?;
                     result.insert(field_name.to_string(), field_value);
                 }
             }
@@ -682,6 +686,28 @@ mod tests {
             result,
             serde_json::json!({
                 "common_i8_field": 12
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn test_execute_convert_json_to_new_type() {
+        let mut vm = test_vm();
+        vm.eval(
+            r##"{
+            let i: json = json("{
+                \"foo\":  \"bar\" 
+            }");
+            i as spec::NewTypeStruct
+        };"##,
+        )
+        .await
+        .unwrap();
+        let result = vm.into_value().unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!({
+                "foo": "bar"
             })
         );
     }

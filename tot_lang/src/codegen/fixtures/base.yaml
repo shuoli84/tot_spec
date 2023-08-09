@@ -42,3 +42,4 @@ models:
         - name: foo
           type: string
           required: true
+
