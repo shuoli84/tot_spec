@@ -42,7 +42,7 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
                 let param_name = format!("_{idx}");
                 operations.push(Op::Declare {
                     name: param_name.clone(),
-                    ty: Type::Json,
+                    type_path: "json".into(),
                 });
 
                 param_references.push(param_name.clone());

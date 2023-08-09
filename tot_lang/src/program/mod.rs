@@ -4,6 +4,7 @@ use crate::program::expression::convert_expression;
 use crate::program::statement::convert_statement;
 use anyhow::{anyhow, bail};
 use serde_json::{Number, Value};
+use std::borrow::Cow;
 use tot_spec::Type;
 
 mod block;
@@ -16,7 +17,7 @@ mod statement_declare_and_store;
 pub enum Op {
     Declare {
         name: String,
-        ty: Type,
+        type_path: Cow<'static, str>,
     },
     Store {
         name: String,
@@ -85,7 +86,7 @@ mod tests {
             vec![
                 Op::Declare {
                     name: "i".into(),
-                    ty: Type::I32,
+                    type_path: "i32".into(),
                 },
                 Op::Load(ReferenceOrValue::Value(Value::Number(Number::from(1)))),
                 Op::Store { name: "i".into() }

@@ -9,11 +9,10 @@ pub fn convert_declare_and_bind(
     let ident = ident.as_ident().unwrap().to_string();
 
     let type_path = path.as_path().unwrap();
-    let ty = Type::try_parse(type_path)?;
 
     operations.push(Op::Declare {
         name: ident.clone(),
-        ty: ty,
+        type_path: type_path.to_string().into(),
     });
 
     convert_expression(expr, operations)?;
