@@ -5,6 +5,7 @@ use anyhow::anyhow;
 use indexmap::IndexMap;
 use path_absolutize::path_dedot::ParseDot;
 use path_absolutize::Absolutize;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -16,6 +17,8 @@ pub struct Context {
 
     /// map from relative path to spec_id
     path_to_spec: IndexMap<PathBuf, SpecId>,
+    /// map from type_path_prefix to spec id
+    type_path_to_spec: HashMap<String, SpecId>,
 
     /// loaded folder tree, it can be used to iter all folder and spec files
     folder_tree: FolderTree,
@@ -46,6 +49,7 @@ impl Context {
 
         let mut specs = IndexMap::new();
         let mut path_to_spec = IndexMap::new();
+        let mut type_path_to_spec = HashMap::new();
 
         let mut spec_folder = FolderTree::new();
 
@@ -78,15 +82,18 @@ impl Context {
             let relative_path = spec.strip_prefix(folder).unwrap();
             spec_folder.insert(relative_path);
 
-            specs.insert(
-                spec_id,
-                SpecInfo::new(relative_path.to_owned(), Definition::load_from_yaml(&spec)?),
-            );
-            path_to_spec.insert(relative_path.to_owned(), spec_id);
+            let spec_info =
+                SpecInfo::new(relative_path.to_owned(), Definition::load_from_yaml(&spec)?);
+
+            path_to_spec.insert(spec_info.relative_path().to_path_buf(), spec_id);
+            type_path_to_spec.insert(spec_info.type_path_prefix().to_string(), spec_id);
+
+            specs.insert(spec_id, spec_info);
         }
         let context = Self {
             specs,
             path_to_spec,
+            type_path_to_spec,
             folder_tree: spec_folder,
             root_folder: folder.clone(),
             style,
@@ -169,6 +176,11 @@ impl Context {
         let path = path.as_ref();
         let path = self.to_relative_path(path)?;
         Ok(self.path_to_spec.get(&path).cloned())
+    }
+
+    /// get the spec_id for type_path_prefix
+    pub fn spec_for_type_path_prefix(&self, type_path_prefix: &str) -> Option<SpecId> {
+        self.type_path_to_spec.get(type_path_prefix).cloned()
     }
 
     /// get the path for spec_id

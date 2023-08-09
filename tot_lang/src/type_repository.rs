@@ -23,22 +23,23 @@ impl TypeRepository {
     /// This resolves type reference to ModelType
     pub fn type_for_path(&self, type_path: &str) -> anyhow::Result<ModelOrType> {
         assert!(!type_path.is_empty());
-        let mut components = type_path.split("::").collect::<Vec<_>>();
-        let type_name = components.pop().unwrap();
 
-        if components.is_empty() {
+        let (type_path_prefix, type_name) = match type_path.rsplit_once("::") {
+            None => (None, type_path),
+            Some((type_path_prefix, type_name)) => (Some(type_path_prefix), type_name),
+        };
+
+        let Some(type_path_prefix) = type_path_prefix else {
             // type is built in
             return Ok(ModelOrType::Type(Type::try_parse(type_name)?));
-        }
-
-        // get spec path from type_path
-        // e.g: a::b::c => a/b/c.yaml (todo: remove the yaml part in future)
-        let spec_path = components.join("/") + ".yaml";
+        };
 
         let spec_id = self
             .context
-            .spec_for_path(&spec_path)?
-            .ok_or_else(|| anyhow!("not able to get spec_id for path {spec_path:?}"))?;
+            .spec_for_type_path_prefix(type_path_prefix)
+            .ok_or_else(|| {
+                anyhow!("not able to get spec_id for type_path_prefix {type_path_prefix}")
+            })?;
         let def = self.context.get_definition(spec_id)?;
         let model = def
             .get_model(type_name)
