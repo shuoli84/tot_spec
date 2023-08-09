@@ -610,7 +610,7 @@ mod tests {
     #[test]
     fn test_codegen() {
         let folder = "src/codegen/fixtures";
-        for case_name in ["simple", "type_conversion"] {
+        for case_name in ["simple", "type_conversion", "assign_to_field"] {
             println!("* testing {case_name}");
             let tot_file = format!("{folder}/{case_name}.tot");
             let rs_file = format!("{folder}/{case_name}.rs");

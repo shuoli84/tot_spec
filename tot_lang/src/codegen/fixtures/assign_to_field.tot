@@ -1,0 +1,6 @@
+// test assign to field
+fn test_assign_to_field(i: json) -> json {
+    let v: spec::TestStruct = i as spec::TestStruct;
+    v.foo = "bar bar";
+    v as json
+}
