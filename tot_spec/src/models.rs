@@ -78,9 +78,9 @@ pub struct MethodDef {
     /// description of the method
     pub desc: Option<String>,
     /// request type
-    pub request: serde_helper::StringOrStruct<TypeReference>,
+    pub request: StringOrStruct<TypeReference>,
     /// response type
-    pub response: serde_helper::StringOrStruct<TypeReference>,
+    pub response: StringOrStruct<TypeReference>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -117,7 +117,7 @@ pub enum ModelType {
     Virtual(StructDef),
     #[serde(rename = "new_type")]
     NewType {
-        inner_type: Box<serde_helper::StringOrStruct<Type>>,
+        inner_type: Box<StringOrStruct<Type>>,
     },
     #[serde(rename = "const")]
     Const {

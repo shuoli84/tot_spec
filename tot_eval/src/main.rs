@@ -105,11 +105,15 @@ impl VmBehavior for RuntimeBehavior {
         params: &[Value],
     ) -> anyhow::Result<Value> {
         match method {
-            "json" => {
-                let param = &params[0];
-                let str_val = param.as_str().unwrap();
-                return Ok(serde_json::from_str::<Value>(str_val)?);
-            }
+            "json" => match params.first() {
+                None => Ok(Value::Object(Default::default())),
+                Some(param) => {
+                    let str_val = param
+                        .as_str()
+                        .ok_or_else(|| anyhow!("the first param should be str"))?;
+                    Ok(serde_json::from_str::<Value>(str_val)?)
+                }
+            },
             "_type_info" => {
                 if params.is_empty() {
                     println!("try: type_info(\"i32\") or type_info(\"type::path\")");
@@ -126,17 +130,21 @@ impl VmBehavior for RuntimeBehavior {
             }
             "_specs" => {
                 let context = self.type_repository.context();
-                for (spec_id, _def) in context.iter_specs() {
-                    let spec_path = context.path_for_spec(spec_id).unwrap();
-                    println!("{spec_id:?}: {spec_path:?}");
+                for (spec_id, spec) in context.iter_specs() {
+                    println!(
+                        "{:?}: {} {:?}",
+                        spec_id,
+                        spec.type_path_prefix(),
+                        spec.relative_path()
+                    );
                 }
                 Ok(Value::Null)
             }
             "_types" => {
                 let context = self.type_repository.context();
-                for (spec_id, def) in context.iter_specs() {
-                    println!("spec: {spec_id:?}");
-                    for model in &def.models {
+                for (spec_id, spec) in context.iter_specs() {
+                    println!("spec: {spec_id:?} {}", spec.type_path_prefix());
+                    for model in &spec.definition().models {
                         println!("  {}", model.name);
                     }
                 }
@@ -144,9 +152,9 @@ impl VmBehavior for RuntimeBehavior {
             }
             "_methods" => {
                 let context = self.type_repository.context();
-                for (spec_id, def) in context.iter_specs() {
-                    println!("spec: {spec_id:?}");
-                    for method in &def.methods {
+                for (spec_id, spec) in context.iter_specs() {
+                    println!("spec: {spec_id:?} type_path: {}", spec.type_path_prefix());
+                    for method in &spec.definition().methods {
                         println!(
                             "  {}({:?}) -> {:?}",
                             method.name, method.request, method.response

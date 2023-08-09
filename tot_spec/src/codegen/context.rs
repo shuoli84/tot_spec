@@ -201,10 +201,8 @@ impl Context {
     }
 
     /// get an iterator for all specs
-    pub fn iter_specs(&self) -> impl Iterator<Item = (SpecId, &Definition)> {
-        self.specs
-            .iter()
-            .map(|(spec_id, spec)| (*spec_id, spec.definition()))
+    pub fn iter_specs(&self) -> impl Iterator<Item = (SpecId, &SpecInfo)> {
+        self.specs.iter().map(|(spec_id, spec)| (*spec_id, spec))
     }
 
     /// get the path for namespace
