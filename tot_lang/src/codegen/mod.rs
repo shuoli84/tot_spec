@@ -107,7 +107,6 @@ impl Codegen {
             bail!("ast node is not path");
         };
 
-        // let model_type = self.type_repository.type_for_path(path)?;
         self.behavior.codegen_for_type(path)
     }
 
