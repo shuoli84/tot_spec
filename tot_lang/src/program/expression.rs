@@ -46,7 +46,10 @@ pub fn convert_expression(exp: &AstNode, operations: &mut Vec<Op>) -> anyhow::Re
                 });
 
                 param_references.push(param_name.clone());
-                operations.push(Op::Store { name: param_name });
+                operations.push(Op::Store {
+                    name: param_name,
+                    path: vec![],
+                });
             }
 
             operations.push(Op::Call {

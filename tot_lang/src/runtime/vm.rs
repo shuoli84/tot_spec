@@ -1,5 +1,6 @@
 use super::frame::Frame;
 use crate::program::{Op, Program, ReferenceOrValue};
+use crate::runtime::frame::PathComponent;
 use crate::type_repository::{ModelOrType, TypeRepository};
 use crate::VmBehavior;
 use anyhow::{anyhow, bail};
@@ -51,12 +52,16 @@ impl Vm {
                     // store a null value, so the store op will modify the one for current scope
                     self.frame.store(name.to_string(), Value::Null);
                 }
-                Op::Store { name } => self.frame.store(
-                    name.to_string(),
+                Op::Store { name, path } => self.frame.assign_by_path(
+                    &name,
+                    &path
+                        .iter()
+                        .map(|p| PathComponent::Field(p.as_str()))
+                        .collect::<Vec<_>>(),
                     self.register
                         .take()
                         .ok_or_else(|| anyhow!("register has no value"))?,
-                ),
+                )?,
                 Op::Load(ReferenceOrValue::Value(value)) => {
                     self.register = Some(value.clone());
                 }
@@ -736,5 +741,25 @@ mod tests {
                 "foo": "bar bar"
             })
         );
+    }
+
+    #[ignore]
+    #[tokio::test]
+    async fn test_execute_assign_to_field_wrong_type() {
+        let mut vm = test_vm();
+        assert!(vm
+            .eval(
+                r##"{
+            let i: json = json("{
+                \"foo\":  \"bar\" 
+            }");
+            let j: spec::NewTypeStruct = i as spec::NewTypeStruct;
+            // this assignment should trigger an type error
+            j.foo = true;
+            j
+        };"##,
+            )
+            .await
+            .is_err());
     }
 }

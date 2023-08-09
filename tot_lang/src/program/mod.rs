@@ -20,6 +20,7 @@ pub enum Op {
     },
     Store {
         name: String,
+        path: Vec<String>,
     },
     /// Load the value to register
     Load(ReferenceOrValue),
@@ -98,7 +99,10 @@ mod tests {
                     type_path: "i32".into(),
                 },
                 Op::Load(ReferenceOrValue::Value(Value::Number(Number::from(1)))),
-                Op::Store { name: "i".into() }
+                Op::Store {
+                    name: "i".into(),
+                    path: vec![]
+                }
             ]
         )
     }
@@ -148,5 +152,23 @@ mod tests {
         let mut operations = vec![];
         assert!(convert_statement(&ast, &mut operations).is_ok());
         dbg!(operations);
+    }
+
+    #[test]
+    fn test_program_store_to_field() {
+        let ast = AstNode::parse_statement(r#"foo.bar = true;"#).unwrap();
+
+        let mut operations = vec![];
+        assert!(convert_statement(&ast, &mut operations).is_ok());
+        assert_eq!(
+            operations,
+            vec![
+                Op::Load(ReferenceOrValue::Value(Value::Bool(true))),
+                Op::Store {
+                    name: "foo".into(),
+                    path: vec!["bar".to_string()]
+                },
+            ]
+        );
     }
 }

@@ -52,7 +52,7 @@ impl Frame {
     }
 
     /// assign value to subfield of name
-    pub fn assign_to_field(
+    pub fn assign_by_path(
         &mut self,
         name: &str,
         path: &[PathComponent],

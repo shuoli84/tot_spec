@@ -16,7 +16,10 @@ pub fn convert_declare_and_bind(
     });
 
     convert_expression(expr, operations)?;
-    operations.push(Op::Store { name: ident });
+    operations.push(Op::Store {
+        name: ident,
+        path: vec![],
+    });
 
     Ok(())
 }
