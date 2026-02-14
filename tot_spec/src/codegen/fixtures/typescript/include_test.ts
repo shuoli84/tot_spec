@@ -29,7 +29,7 @@ export class TestBase {
         return new TestBase({
             id: json.id,
             id2: json.id_2,
-            common: Common.fromJSON(json.common),
+            common: base.Common.fromJSON(json.common),
         });
     }
 }

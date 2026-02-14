@@ -6,6 +6,10 @@ meta:
   api:
     desc: default api's description
 
+includes:
+  - path: base.yaml
+    namespace: base
+
 models:
 - name: SimpleStruct
   type:
@@ -59,6 +63,19 @@ models:
       type:
         name: list
         item_type: SimpleStruct
+
+    - name: base_id
+      type: base.BaseId
+      required: true
+
+    - name: page_info
+      type: base.PageInfo
+      required: false
+
+    - name: related_items
+      type:
+        name: list
+        item_type: base.BaseId
 
 - name: KeyValue
   type:

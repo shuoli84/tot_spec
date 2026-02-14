@@ -1,0 +1,20 @@
+meta:
+  java_jackson:
+    package: com.tot_spec.example.base
+
+models:
+  - name: BaseId
+    type:
+      name: new_type
+      inner_type: i64
+
+  - name: PageInfo
+    type:
+      name: struct
+      fields:
+        - name: page
+          type: i32
+          required: true
+        - name: page_size
+          type: i32
+          required: true

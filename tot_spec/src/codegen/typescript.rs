@@ -291,13 +291,24 @@ impl TypeScript {
         }
     }
 
+    fn get_type_reference(&self, tref: &TypeReference) -> String {
+        match &tref.namespace {
+            Some(namespace) => format!(
+                "{}.{}",
+                to_snake_case(namespace),
+                to_pascal_case(&tref.target)
+            ),
+            None => to_pascal_case(&tref.target),
+        }
+    }
+
     fn convert_from_json(&self, json_name: &str, field: &FieldDef, spec_path: &Path) -> String {
         let ts_type = self.ts_type_for_field(field);
         let is_optional = ts_type.ends_with(" | undefined");
 
         // Check if this is a nested struct (Reference type)
         if let Type::Reference(tref) = &*field.type_ {
-            let target_type = to_pascal_case(&tref.target);
+            let target_type = self.get_type_reference(tref);
             if self.should_call_from_json(tref, spec_path) {
                 if is_optional {
                     return format!(
@@ -313,7 +324,7 @@ impl TypeScript {
         // Check if this is an array of references
         if let Type::List { item_type } = &*field.type_ {
             if let Type::Reference(tref) = &**item_type.as_ref() {
-                let target_type = to_pascal_case(&tref.target);
+                let target_type = self.get_type_reference(tref);
                 if self.should_call_from_json(tref, spec_path) {
                     if is_optional {
                         return format!(
