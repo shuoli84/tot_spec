@@ -165,7 +165,12 @@ impl TypeScript {
 
             let field_name = self.ts_field_name(field);
             let field_type = self.ts_type_for_field(field);
-            writeln!(result, "    {}: {};", field_name, field_type)?;
+            let definite_assignment = if field.required { "!" } else { "" };
+            writeln!(
+                result,
+                "    {}{}: {};",
+                field_name, definite_assignment, field_type
+            )?;
         }
 
         // Constructor

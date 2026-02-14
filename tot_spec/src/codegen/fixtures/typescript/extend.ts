@@ -5,8 +5,8 @@ export interface Base {
 
 
 export class Child {
-    id: string;
-    name: string;
+    id!: string;
+    name!: string;
 
     constructor(data: Partial<Child>) {
         Object.assign(this, data);

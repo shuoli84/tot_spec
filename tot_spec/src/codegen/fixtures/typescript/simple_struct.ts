@@ -2,9 +2,9 @@
 // Example of simple struct definition
 export class SimpleStruct {
     /// bool value
-    boolValue: boolean;
+    boolValue!: boolean;
     /// i8 value
-    i8Value: number;
+    i8Value!: number;
     i16Value: number | undefined;
     i32Value: number | undefined;
     i64Value: bigint | undefined;
@@ -14,7 +14,7 @@ export class SimpleStruct {
     /// nested self
     children: SimpleStruct[] | undefined;
     /// this field is required
-    requiredStrValue: string;
+    requiredStrValue!: string;
 
     constructor(data: Partial<SimpleStruct>) {
         Object.assign(this, data);
