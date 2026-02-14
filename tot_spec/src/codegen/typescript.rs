@@ -1,6 +1,8 @@
 use crate::{
-    codegen::utils::multiline_prefix_with, models::Definition, ConstType, ConstValueDef, FieldDef,
-    StringOrInteger, StructDef, Type, TypeReference, VariantDef,
+    codegen::utils::{multiline_prefix_with, to_pascal_case},
+    models::Definition,
+    ConstType, ConstValueDef, FieldDef, StringOrInteger, StructDef, Type, TypeReference,
+    VariantDef,
 };
 use convert_case::Casing;
 use serde::{Deserialize, Serialize};
@@ -597,10 +599,6 @@ impl super::Codegen for TypeScript {
 
         Ok(())
     }
-}
-
-fn to_pascal_case(name: &str) -> String {
-    name.to_case(convert_case::Case::Pascal)
 }
 
 fn to_camel_case_reserved(name: &str) -> String {

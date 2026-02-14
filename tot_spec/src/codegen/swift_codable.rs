@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::codegen::context::Context;
 use crate::{FieldDef, Type, TypeReference};
 
-use super::utils::{indent, multiline_prefix_with};
+use super::utils::{indent, multiline_prefix_with, to_pascal_case};
 
 pub struct SwiftCodable {
     context: Context,
@@ -57,7 +57,7 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
 
     // Generate imports for includes
     for include in def.includes.iter() {
-        writeln!(result, "import {}", to_upper_camel(&include.namespace))?;
+        writeln!(result, "import {}", to_pascal_case(&include.namespace))?;
     }
 
     writeln!(result)?;
@@ -320,7 +320,7 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
             format!("[String:{}]", swift_type(value_type, package_name))
         }
         Type::Reference(TypeReference { namespace, target }) => match namespace {
-            Some(ns) => format!("{}.{}", to_upper_camel(ns), target),
+            Some(ns) => format!("{}.{}", to_pascal_case(ns), target),
             None => format!("{}.{}", package_name, target),
         },
         Type::Json => "Any".to_string(),
@@ -394,20 +394,4 @@ mod tests {
             pretty_assertions::assert_eq!(rendered.as_str().trim(), expected.trim());
         }
     }
-}
-
-fn to_upper_camel(name: &str) -> String {
-    let mut result = String::new();
-    let mut capitalize_next = true;
-    for c in name.chars() {
-        if c == '_' || c == '-' {
-            capitalize_next = true;
-        } else if capitalize_next {
-            result.push(c.to_ascii_uppercase());
-            capitalize_next = false;
-        } else {
-            result.push(c);
-        }
-    }
-    result
 }

@@ -1,4 +1,5 @@
 use anyhow::Context;
+use convert_case::Casing;
 
 /// indent content with level
 pub fn indent(content: impl AsRef<str>, level: usize) -> String {
@@ -72,6 +73,14 @@ pub fn ensure_emtpy_lines(val: &mut String, count: usize) {
             writeln!(val).expect("write to string only fail oom");
         }
     }
+}
+
+pub fn to_pascal_case(name: &str) -> String {
+    name.to_case(convert_case::Case::Pascal)
+}
+
+pub fn to_snake_case(name: &str) -> String {
+    name.to_case(convert_case::Case::Snake)
 }
 
 #[cfg(test)]
