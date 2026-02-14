@@ -17,7 +17,7 @@ impl super::Codegen for SwiftCodable {
         Ok(Self { context })
     }
 
-    fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
+    fn generate_for_folder(&self, _folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
         std::fs::create_dir_all(output).unwrap();
 
         for (spec_path, _) in self.context.iter_specs() {
