@@ -1,66 +1,41 @@
 use std::borrow::Cow;
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::codegen::utils::folder_tree::FolderTree;
-use crate::{Definition, FieldDef, Type, TypeReference};
+use crate::codegen::context::Context;
+use crate::{FieldDef, Type, TypeReference};
 
 use super::utils::{indent, multiline_prefix_with};
 
-#[derive(Default)]
-pub struct SwiftCodable {}
+pub struct SwiftCodable {
+    context: Context,
+}
 
 impl super::Codegen for SwiftCodable {
-    fn load_from_folder(_folder: &PathBuf) -> anyhow::Result<Self> {
-        Ok(Self::default())
+    fn load_from_folder(folder: &PathBuf) -> anyhow::Result<Self> {
+        let context = Context::new_from_folder(folder)?;
+        Ok(Self { context })
     }
 
     fn generate_for_folder(&self, folder: &PathBuf, output: &PathBuf) -> anyhow::Result<()> {
-        use walkdir::WalkDir;
-
         std::fs::create_dir_all(output).unwrap();
-        let mut spec_folder = FolderTree::new();
 
-        for entry in WalkDir::new(folder) {
-            let entry = entry.unwrap();
-            let spec = entry.path();
+        for (spec_path, _) in self.context.iter_specs() {
+            let relative_path = spec_path
+                .strip_prefix(folder)
+                .unwrap_or_else(|_| Path::new("."));
 
-            if !spec.is_file() {
-                continue;
-            }
-            if !spec
-                .extension()
-                .map(|ext| ext == "yaml")
-                .unwrap_or_default()
-            {
-                continue;
-            }
+            let mut out_path = output.to_owned();
+            out_path.push(relative_path);
+            out_path.set_extension("swift");
 
-            let relative_path = spec.strip_prefix(folder).unwrap();
-            spec_folder.insert(relative_path);
+            let parent_folder = out_path.parent().unwrap();
+            std::fs::create_dir_all(parent_folder).unwrap();
 
-            // now we get a file ends with yaml, build the output path
-            // todo: how to map spec to output path is also codegen dependant, maybe move into core?
-            let output = {
-                let mut output = output.clone();
-                output.push(relative_path);
-                output.set_extension("swift");
-                output
-            };
+            let code = render(&spec_path, &self.context)?;
 
-            {
-                println!("generating spec={spec:?} output={output:?}");
-                let spec_content = std::fs::read_to_string(spec).unwrap();
-                let def = serde_yaml::from_str::<Definition>(&spec_content).unwrap();
-
-                let parent_folder = output.parent().unwrap();
-                std::fs::create_dir_all(parent_folder).unwrap();
-
-                let code = render(&def)?;
-
-                std::fs::write(&output, code).unwrap();
-                println!("write output to {:?}", output);
-            }
+            std::fs::write(&out_path, code).unwrap();
+            println!("write output to {:?}", out_path);
         }
 
         Ok(())
@@ -68,7 +43,8 @@ impl super::Codegen for SwiftCodable {
 }
 
 /// render the definition to a swift file
-fn render(def: &Definition) -> anyhow::Result<String> {
+fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
+    let def = context.get_definition(spec_path)?;
     let meta = def.get_meta("swift_codable");
 
     let package_name = meta
@@ -79,7 +55,13 @@ fn render(def: &Definition) -> anyhow::Result<String> {
     let mut result = "".to_string();
     writeln!(result, "import Foundation")?;
 
-    writeln!(result, "")?;
+    // Generate imports for includes
+    for include in def.includes.iter() {
+        writeln!(result, "import {}", to_upper_camel(&include.namespace))?;
+    }
+
+    writeln!(result)?;
+
     writeln!(result, "public enum ModelError: Error {{")?;
     writeln!(result, "    case Error")?;
     writeln!(result, "}}")?;
@@ -337,15 +319,13 @@ fn swift_type(ty: &Type, package_name: &str) -> String {
         Type::Map { value_type } => {
             format!("[String:{}]", swift_type(value_type, package_name))
         }
-        Type::Reference(TypeReference { namespace, target }) => {
-            if namespace.is_some() {
-                unimplemented!()
-            }
-            format!("{}.{}", package_name, target)
-        }
-        Type::Json => todo!(),
-        Type::Decimal => todo!(),
-        Type::BigInt => todo!(),
+        Type::Reference(TypeReference { namespace, target }) => match namespace {
+            Some(ns) => format!("{}.{}", to_upper_camel(ns), target),
+            None => format!("{}.{}", package_name, target),
+        },
+        Type::Json => "Any".to_string(),
+        Type::Decimal => "Decimal".to_string(),
+        Type::BigInt => "Int64".to_string(),
     }
 }
 
@@ -387,25 +367,47 @@ fn generate_memberwise_init(fields: &[FieldDef], package_name: &str) -> anyhow::
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Definition;
 
     #[test]
     fn test_swift_codable() {
         let specs = &[
             (
+                "const_i8.yaml",
                 include_str!("fixtures/specs/const_i8.yaml"),
                 include_str!("fixtures/swift_codable/const_i8.swift"),
             ),
             (
+                "const_string.yaml",
                 include_str!("fixtures/specs/const_string.yaml"),
                 include_str!("fixtures/swift_codable/const_string.swift"),
             ),
         ];
 
-        for (spec, expected) in specs.iter() {
-            let def = serde_yaml::from_str::<Definition>(&spec).unwrap();
-            let rendered = render(&def).unwrap();
+        let context =
+            Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
+
+        for (spec_name, spec, expected) in specs.iter() {
+            let _def = serde_yaml::from_str::<Definition>(&spec).unwrap();
+            let rendered = render(&Path::new(spec_name), &context).unwrap();
 
             pretty_assertions::assert_eq!(rendered.as_str().trim(), expected.trim());
         }
     }
+}
+
+fn to_upper_camel(name: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize_next = true;
+    for c in name.chars() {
+        if c == '_' || c == '-' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.push(c.to_ascii_uppercase());
+            capitalize_next = false;
+        } else {
+            result.push(c);
+        }
+    }
+    result
 }
