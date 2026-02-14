@@ -21,16 +21,13 @@ impl super::Codegen for SwiftCodable {
         std::fs::create_dir_all(output).unwrap();
 
         for (spec_path, _) in self.context.iter_specs() {
-            let relative_path = spec_path
-                .strip_prefix(folder)
-                .unwrap_or_else(|_| Path::new("."));
+            // Use the spec file name (without extension) as output file name
+            let file_stem = spec_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("output");
 
-            let mut out_path = output.to_owned();
-            out_path.push(relative_path);
-            out_path.set_extension("swift");
-
-            let parent_folder = out_path.parent().unwrap();
-            std::fs::create_dir_all(parent_folder).unwrap();
+            let out_path = output.join(format!("{}.swift", file_stem));
 
             let code = render(&spec_path, &self.context)?;
 
