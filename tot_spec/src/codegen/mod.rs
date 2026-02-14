@@ -7,6 +7,7 @@ pub mod rs_serde;
 pub mod style;
 pub mod swagger;
 pub mod swift_codable;
+pub mod typescript;
 pub mod utils;
 
 pub trait Codegen {

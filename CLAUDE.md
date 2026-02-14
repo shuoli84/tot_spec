@@ -8,12 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build all workspace crates
 cargo build
 
-# Run all tests
-cargo test
+# Run all tests (IMPORTANT: use --workspace due to default-members config)
+cargo test --workspace
 
 # Run tests for specific crate
 cargo test -p tot_spec
+cargo test -p tot_spec_util
 cargo test -p codegen
+
+# Update test fixtures (instead of asserting, writes expected output)
+cargo test --workspace --features test_update_spec
 
 # Run the codegen binary
 cargo run -- -i <spec_folder> -c <generator> -o <output_path>

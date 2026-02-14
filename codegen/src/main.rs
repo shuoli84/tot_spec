@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tot_spec::codegen::swagger::Swagger;
 use tot_spec::codegen::{
     java_jackson::JavaJackson, py_dataclass::PyDataclass, rs_serde::RsSerde,
-    swift_codable::SwiftCodable, Codegen,
+    swift_codable::SwiftCodable, typescript::TypeScript, Codegen,
 };
 
 #[derive(Parser, Debug)]
@@ -46,6 +46,7 @@ fn main() -> anyhow::Result<()> {
         "swift_codable" => Box::new(SwiftCodable::load_from_folder(&input)?),
         "py_dataclass" => Box::new(PyDataclass::load_from_folder(&input)?),
         "swagger" => Box::new(Swagger::load_from_folder(&input)?),
+        "typescript" => Box::new(TypeScript::load_from_folder(&input)?),
         _ => anyhow::bail!("unknown codegen name"),
     };
 
