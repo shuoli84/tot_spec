@@ -1,5 +1,4 @@
 
 // Const def for string
-export type
-Reason = "ok" | "error";
+export type Reason = "ok" | "error";
 

@@ -1,18 +1,15 @@
 
 // struct for decimal field
-export class
-TestDecimal {
+export class TestDecimal {
     value: string | undefined;
 
     constructor(data: Partial<TestDecimal>) {
         Object.assign(this, data);
     }
 
-    toJSON(): {
-        value: this.value,
-    } {
+    toJSON() {
         return {
-            value,
+            value: this.value,
         };
     }
 

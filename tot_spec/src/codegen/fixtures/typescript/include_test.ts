@@ -2,8 +2,7 @@ import { * as base } from "../include_base.yaml.ts";
 import { * as base_dup } from "../include_base.yaml.ts";
 
 
-export class
-TestBase {
+export class TestBase {
     /// use base's BaseId as the id
     id: base.Id;
     /// use base_dup's BaseId as the id_2, this is just demo
@@ -14,15 +13,11 @@ TestBase {
         Object.assign(this, data);
     }
 
-    toJSON(): {
-        id: this.id.toJSON(),
-        id_2: this.id2.toJSON(),
-        common: this.common.toJSON(),
-    } {
+    toJSON() {
         return {
-            id,
-            id_2,
-            common,
+            id: this.id.toJSON(),
+            id_2: this.id2.toJSON(),
+            common: this.common.toJSON(),
         };
     }
 

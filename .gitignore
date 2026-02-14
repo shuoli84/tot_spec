@@ -7,3 +7,4 @@ SpecModel.xcodeproj/
 .idea/
 .claude/
 .smart_crafter/
+node_modules/

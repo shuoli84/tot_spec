@@ -1,18 +1,16 @@
 
-export type
-Number =
+export type Number =
         // Variant Int64
     { __type: "Int64", payload: bigint }
-    |
+
     |     // Variant Float
     { __type: "Float", payload: number }
-    |
+
     | { __type: "RealNumber", payload: RealNumber }
 ;
 
 
-export class
-RealNumber {
+export class RealNumber {
     part0: number | undefined;
     part1: number | undefined;
 
@@ -20,13 +18,10 @@ RealNumber {
         Object.assign(this, data);
     }
 
-    toJSON(): {
-        part_0: this.part0,
-        part_1: this.part1,
-    } {
+    toJSON() {
         return {
-            part_0,
-            part_1,
+            part_0: this.part0,
+            part_1: this.part1,
         };
     }
 

@@ -1,18 +1,15 @@
 
 // struct for bigint field
-export class
-TestBigInt {
+export class TestBigInt {
     value: bigint | undefined;
 
     constructor(data: Partial<TestBigInt>) {
         Object.assign(this, data);
     }
 
-    toJSON(): {
-        value: this.value,
-    } {
+    toJSON() {
         return {
-            value,
+            value: this.value,
         };
     }
 

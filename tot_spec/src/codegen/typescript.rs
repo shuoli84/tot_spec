@@ -140,8 +140,12 @@ impl TypeScript {
 
         // Generate TypeScript class
         let pascal_name = to_pascal_case(model_name);
-        writeln!(result, "{}", self.export_keyword("class"))?;
-        writeln!(result, "{} {{", pascal_name)?;
+        writeln!(
+            result,
+            "{} {} {{",
+            self.export_keyword("class"),
+            pascal_name
+        )?;
 
         // Fields (camelCase)
         for field in &fields {
@@ -171,16 +175,12 @@ impl TypeScript {
 
         // toJSON method
         writeln!(result)?;
-        writeln!(result, "    toJSON(): {{")?;
+        writeln!(result, "    toJSON() {{")?;
+        writeln!(result, "        return {{")?;
         for (json_name, ts_type, field) in &json_fields {
             let field_name = self.ts_field_name(field);
             let converted = self.convert_to_json(&field_name, ts_type, field);
-            writeln!(result, "        {}: {},", json_name, converted)?;
-        }
-        writeln!(result, "    }} {{")?;
-        writeln!(result, "        return {{")?;
-        for (json_name, _, _) in &json_fields {
-            writeln!(result, "            {},", json_name)?;
+            writeln!(result, "            {}: {},", json_name, converted)?;
         }
         writeln!(result, "        }};")?;
         writeln!(result, "    }}")?;
@@ -285,8 +285,12 @@ impl TypeScript {
     ) -> anyhow::Result<String> {
         let mut result = String::new();
 
-        writeln!(result, "{}", self.export_keyword("type"))?;
-        writeln!(result, "{} =", to_pascal_case(&model.name))?;
+        writeln!(
+            result,
+            "{} {} =",
+            self.export_keyword("type"),
+            to_pascal_case(&model.name)
+        )?;
 
         for (idx, variant) in variants.iter().enumerate() {
             if idx == 0 {
@@ -321,7 +325,7 @@ impl TypeScript {
             }
 
             if idx < variants.len() - 1 {
-                writeln!(result, "    |")?;
+                writeln!(result)?;
             }
         }
 
@@ -333,8 +337,13 @@ impl TypeScript {
     fn render_virtual(&self, model_name: &str, struct_def: &StructDef) -> String {
         let mut result = String::new();
 
-        writeln!(result, "{}", self.export_keyword("interface")).unwrap();
-        writeln!(result, "{} {{", to_pascal_case(model_name)).unwrap();
+        writeln!(
+            result,
+            "{} {} {{",
+            self.export_keyword("interface"),
+            to_pascal_case(model_name)
+        )
+        .unwrap();
 
         for field in &struct_def.fields {
             if let Some(desc) = &field.desc {
@@ -355,8 +364,14 @@ impl TypeScript {
         let mut result = String::new();
 
         let inner_ts = self.ts_type(inner_type);
-        writeln!(result, "{}", self.export_keyword("type")).unwrap();
-        writeln!(result, "{} = {};", to_pascal_case(model_name), inner_ts).unwrap();
+        writeln!(
+            result,
+            "{} {} = {};",
+            self.export_keyword("type"),
+            to_pascal_case(model_name),
+            inner_ts
+        )
+        .unwrap();
 
         result
     }
@@ -369,8 +384,13 @@ impl TypeScript {
     ) -> String {
         let mut result = String::new();
 
-        writeln!(result, "{}", self.export_keyword("type")).unwrap();
-        write!(result, "{} = ", to_pascal_case(model_name)).unwrap();
+        write!(
+            result,
+            "{} {} = ",
+            self.export_keyword("type"),
+            to_pascal_case(model_name)
+        )
+        .unwrap();
 
         for (idx, value) in values.iter().enumerate() {
             if idx > 0 {

@@ -1,7 +1,6 @@
 
 // Example of simple struct definition
-export class
-SimpleStruct {
+export class SimpleStruct {
     /// bool value
     boolValue: boolean;
     /// i8 value
@@ -21,29 +20,18 @@ SimpleStruct {
         Object.assign(this, data);
     }
 
-    toJSON(): {
-        bool_value: this.boolValue,
-        i8_value: this.i8Value,
-        i16_value: this.i16Value,
-        i32_value: this.i32Value,
-        i64_value: this.i64Value,
-        string_value: this.stringValue,
-        bytes_value: this.bytesValue,
-        string_to_string: this.stringToString,
-        children: this.children?.map((e) => e.toJSON()),
-        required_str_value: this.requiredStrValue,
-    } {
+    toJSON() {
         return {
-            bool_value,
-            i8_value,
-            i16_value,
-            i32_value,
-            i64_value,
-            string_value,
-            bytes_value,
-            string_to_string,
-            children,
-            required_str_value,
+            bool_value: this.boolValue,
+            i8_value: this.i8Value,
+            i16_value: this.i16Value,
+            i32_value: this.i32Value,
+            i64_value: this.i64Value,
+            string_value: this.stringValue,
+            bytes_value: this.bytesValue,
+            string_to_string: this.stringToString,
+            children: this.children?.map((e) => e.toJSON()),
+            required_str_value: this.requiredStrValue,
         };
     }
 

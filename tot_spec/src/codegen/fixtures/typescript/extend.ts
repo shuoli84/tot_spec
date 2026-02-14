@@ -1,12 +1,10 @@
 
-export interface
-Base {
+export interface Base {
     id: string;
 }
 
 
-export class
-Child {
+export class Child {
     id: string;
     name: string;
 
@@ -14,13 +12,10 @@ Child {
         Object.assign(this, data);
     }
 
-    toJSON(): {
-        id: this.id,
-        name: this.name,
-    } {
+    toJSON() {
         return {
-            id,
-            name,
+            id: this.id,
+            name: this.name,
         };
     }
 
