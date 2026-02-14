@@ -1,0 +1,209 @@
+---
+name: tot-spec
+description: "Language-agnostic model definition and RPC code generator from YAML specifications. Use for generating type-safe data structures in multiple languages (Rust, Python, TypeScript, Java, Swift) from a single source of truth, defining RPC service interfaces with request/response types, creating cross-language type definitions for microservices, working with existing .yaml spec files in the project, or creating new model definitions, enum types, or service methods."
+---
+
+# tot-spec
+
+Generate type-safe data structures and RPC service interfaces from YAML specifications. Ensures consistency across Rust, Python, TypeScript, Java, and Swift codebases.
+
+## Installation
+
+```bash
+cargo install tot-spec --git https://github.com/your-org/tot_spec
+# or from local
+cargo install --path .
+```
+
+## Quick Start
+
+```bash
+# Generate code for a specific language
+tot-spec -i <spec_folder> -c <generator> -o <output_path>
+
+# Available generators: rs_serde, java_jackson, swift_codable, py_dataclass, typescript, swagger
+```
+
+## Spec File Structure
+
+```yaml
+meta:
+  rs_serde:
+    package: my_crate
+  java_jackson:
+    package: com.example.myapp
+
+models:
+  - name: User
+    type: struct
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: age
+        type: i32
+
+methods:
+  - name: GetUser
+    desc: "Get user by ID"
+    request: GetUserRequest
+    response: GetUserResponse
+```
+
+## Model Types
+
+### Struct
+
+Standard data structure with fields.
+
+```yaml
+- name: CreateUserRequest
+  type: struct
+  fields:
+    - name: username
+      type: string
+      required: true
+    - name: email
+      type: string
+```
+
+### Enum
+
+Tagged union/sum type with variants.
+
+```yaml
+- name: PaymentMethod
+  type: enum
+  variants:
+    - name: CreditCard
+      payload_type: string
+    - name: PayPal
+```
+
+### New Type
+
+Wrapper type for domain modeling.
+
+```yaml
+- name: UserId
+  type:
+    name: new_type
+    inner_type: string
+  attributes:
+    rs_extra_derive: Hash, PartialEq
+```
+
+### Virtual
+
+Shared fields mapped to traits/interfaces.
+
+```yaml
+- name: BaseRequest
+  type:
+    name: virtual
+    fields:
+      - name: request_id
+        type: string
+
+- name: CreateUserRequest
+  type:
+    name: struct
+    extend: BaseRequest
+    fields:
+      - name: username
+        type: string
+```
+
+### Const
+
+Enum-like constant definitions.
+
+```yaml
+- name: StatusCode
+  type:
+    name: const
+    value_type: i32
+    values:
+      - name: Ok
+        value: 0
+      - name: Error
+        value: 1
+```
+
+## Supported Types
+
+**Primitives**: `bool`, `i8`, `i16`, `i32`, `i64`, `f64`, `string`, `bytes`
+
+**Special**: `decimal`, `bigint`, `json`
+
+**Containers**: `list[T]`, `map[string]` (key is always string)
+
+**References**: `TypeName` or `namespace.TypeName`
+
+## RPC Methods
+
+Define service methods with typed requests and responses.
+
+```yaml
+methods:
+  - name: CreateUser
+    desc: "Create a new user account"
+    request: CreateUserRequest
+    response: CreateUserResponse
+```
+
+## Field Attributes
+
+Language-specific customization via `attributes`:
+
+```yaml
+fields:
+  - name: custom_map
+    type: map[string]
+    attributes:
+      rs_type: std::collections::BTreeMap<String, String>
+      rs_extra_derive: Hash, PartialEq
+```
+
+## Includes
+
+Compose specs with namespace prefixes.
+
+```yaml
+includes:
+  - path: common_types.yaml
+    namespace: common
+
+models:
+  - name: MyModel
+    type: struct
+    fields:
+      - name: data
+        type: common.DataModel
+```
+
+## Language Examples
+
+See [examples/](references/examples.md) for generated code in each language.
+
+**Rust (rs_serde)**: serde structs with `#[derive(Serialize, Deserialize)]`
+
+**Python (py_dataclass)**: `@dataclass` with `to_dict`/`from_dict`
+
+**TypeScript**: interface definitions
+
+**Swift (swift_codable)**: `Codable` structs
+
+**Java (java_jackson)**: Jackson POJOs
+
+## Resources
+
+### references/
+
+- **examples.md** - Generated code samples for each language with usage examples
+- **patterns.md** - Common patterns: pagination, error handling, CRUD operations
+
+### scripts/
+
+- **validate_spec.py** - Validate YAML spec syntax before generation
+- **update_fixtures.sh** - Update test fixtures for CI/CD
