@@ -215,6 +215,7 @@ See [examples/](references/examples.md) for generated code in each language.
 
 - **examples.md** - Generated code samples for each language with usage examples
 - **patterns.md** - Common patterns: pagination, error handling, CRUD operations
+- **rpc.md** - RPC service definitions with JSON-RPC models
 
 ### scripts/
 
