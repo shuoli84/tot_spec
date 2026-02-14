@@ -106,7 +106,7 @@ impl TypeScript {
     }
 
     fn ts_field_name(&self, field: &FieldDef) -> String {
-        field.name.clone()
+        to_camel_case_reserved(&field.name)
     }
 
     fn render_struct(
@@ -128,9 +128,22 @@ impl TypeScript {
         }
         fields.extend(struct_def.fields.clone());
 
-        writeln!(result, "{}", self.export_keyword("interface"))?;
-        writeln!(result, "{} {{", to_pascal_case(model_name))?;
+        // Generate JSON type fields (snake_case)
+        let json_fields: Vec<(String, String, &FieldDef)> = fields
+            .iter()
+            .map(|f| {
+                let json_name = to_snake_case(&f.name);
+                let ts_type = self.ts_type_for_field(f);
+                (json_name, ts_type, f)
+            })
+            .collect();
 
+        // Generate TypeScript class
+        let pascal_name = to_pascal_case(model_name);
+        writeln!(result, "{}", self.export_keyword("class"))?;
+        writeln!(result, "{} {{", pascal_name)?;
+
+        // Fields (camelCase)
         for field in &fields {
             if let Some(desc) = &field.desc {
                 let desc_to_use = if let Some(ts_desc) = field.attribute("ts_description") {
@@ -150,9 +163,119 @@ impl TypeScript {
             writeln!(result, "    {}: {};", field_name, field_type)?;
         }
 
+        // Constructor
+        writeln!(result)?;
+        writeln!(result, "    constructor(data: Partial<{}>) {{", pascal_name)?;
+        writeln!(result, "        Object.assign(this, data);")?;
+        writeln!(result, "    }}")?;
+
+        // toJSON method
+        writeln!(result)?;
+        writeln!(result, "    toJSON(): {{")?;
+        for (json_name, ts_type, field) in &json_fields {
+            let field_name = self.ts_field_name(field);
+            let converted = self.convert_to_json(&field_name, ts_type, field);
+            writeln!(result, "        {}: {},", json_name, converted)?;
+        }
+        writeln!(result, "    }} {{")?;
+        writeln!(result, "        return {{")?;
+        for (json_name, _, _) in &json_fields {
+            writeln!(result, "            {},", json_name)?;
+        }
+        writeln!(result, "        }};")?;
+        writeln!(result, "    }}")?;
+
+        // fromJSON static method
+        writeln!(result)?;
+        let json_type_name = format!("{}JSON", pascal_name);
+        writeln!(result, "    static fromJSON(json: {{")?;
+        for (json_name, ts_type, _) in &json_fields {
+            writeln!(result, "        {}: {},", json_name, ts_type)?;
+        }
+        writeln!(result, "    }}): {} {{", pascal_name)?;
+        writeln!(result, "        return new {}({{", pascal_name)?;
+        for (json_name, _, field) in &json_fields {
+            let field_name = self.ts_field_name(field);
+            let converted = self.convert_from_json(json_name, field);
+            writeln!(result, "            {}: {},", field_name, converted)?;
+        }
+        writeln!(result, "        }});")?;
+        writeln!(result, "    }}")?;
+
+        writeln!(result, "}}")?;
+
+        // Export JSON type
+        writeln!(result)?;
+        writeln!(result, "export type {} = {{", json_type_name)?;
+        for (json_name, ts_type, _) in &json_fields {
+            writeln!(result, "    {}: {};", json_name, ts_type)?;
+        }
         writeln!(result, "}}")?;
 
         Ok(result)
+    }
+
+    fn convert_to_json(&self, field_name: &str, ts_type: &str, field: &FieldDef) -> String {
+        // Check if it's an optional type
+        let is_optional = ts_type.ends_with(" | undefined");
+
+        // Check if this is a nested struct (Reference type)
+        if let Type::Reference(_) = &*field.type_ {
+            if is_optional {
+                return format!("this.{}?.toJSON()", field_name);
+            }
+            return format!("this.{}.toJSON()", field_name);
+        }
+
+        // Check if this is an array of references
+        if let Type::List { item_type } = &*field.type_ {
+            if let Type::Reference(_) = &**item_type.as_ref() {
+                if is_optional {
+                    return format!("this.{}?.map((e) => e.toJSON())", field_name);
+                }
+                return format!("this.{}.map((e) => e.toJSON())", field_name);
+            }
+        }
+
+        // For primitive types, arrays, Record, just return the field
+        format!("this.{}", field_name)
+    }
+
+    fn convert_from_json(&self, json_name: &str, field: &FieldDef) -> String {
+        let ts_type = self.ts_type_for_field(field);
+        let is_optional = ts_type.ends_with(" | undefined");
+
+        // Check if this is a nested struct (Reference type)
+        if let Type::Reference(tref) = &*field.type_ {
+            let target_type = to_pascal_case(&tref.target);
+            if is_optional {
+                return format!(
+                    "json.{} ? {}.fromJSON(json.{}) : undefined",
+                    json_name, target_type, json_name
+                );
+            }
+            return format!("{}.fromJSON(json.{})", target_type, json_name);
+        }
+
+        // Check if this is an array of references
+        if let Type::List { item_type } = &*field.type_ {
+            if let Type::Reference(tref) = &**item_type.as_ref() {
+                let target_type = to_pascal_case(&tref.target);
+                if is_optional {
+                    return format!(
+                        "json.{}?.map((e: any) => {}.fromJSON(e))",
+                        json_name, target_type
+                    );
+                }
+                return format!(
+                    "json.{}.map((e: any) => {}.fromJSON(e))",
+                    json_name, target_type
+                );
+            }
+        }
+
+        // For primitive types, arrays, Record, just return the field
+        format!("json.{}", json_name)
     }
 
     fn render_enum(
@@ -389,8 +512,92 @@ fn to_pascal_case(name: &str) -> String {
     name.to_case(convert_case::Case::Pascal)
 }
 
+fn to_camel_case_reserved(name: &str) -> String {
+    let camel = name.to_case(convert_case::Case::Camel);
+
+    const RESERVED: &[&str] = &[
+        "break",
+        "case",
+        "catch",
+        "class",
+        "const",
+        "continue",
+        "debugger",
+        "default",
+        "delete",
+        "do",
+        "else",
+        "enum",
+        "export",
+        "extends",
+        "false",
+        "finally",
+        "for",
+        "function",
+        "if",
+        "import",
+        "in",
+        "instanceof",
+        "new",
+        "null",
+        "return",
+        "super",
+        "switch",
+        "this",
+        "throw",
+        "true",
+        "try",
+        "typeof",
+        "var",
+        "void",
+        "while",
+        "with",
+        "as",
+        "implements",
+        "interface",
+        "let",
+        "package",
+        "private",
+        "protected",
+        "public",
+        "static",
+        "yield",
+        "any",
+        "boolean",
+        "constructor",
+        "declare",
+        "get",
+        "module",
+        "require",
+        "number",
+        "set",
+        "string",
+        "symbol",
+        "type",
+        "from",
+        "of",
+    ];
+
+    if RESERVED.contains(&camel.as_str()) {
+        format!("{}_", camel)
+    } else {
+        camel
+    }
+}
+
 fn to_snake_case(name: &str) -> String {
-    name.to_case(convert_case::Case::Snake)
+    let mut result = String::new();
+    for c in name.chars() {
+        if c.is_uppercase() {
+            if !result.is_empty() {
+                result.push('_');
+            }
+            result.push(c.to_ascii_lowercase());
+        } else {
+            result.push(c);
+        }
+    }
+    result
 }
 
 fn indent(s: String, level: usize) -> String {
