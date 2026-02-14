@@ -7,7 +7,7 @@ TestBase {
     /// use base's BaseId as the id
     id: base.Id;
     /// use base_dup's BaseId as the id_2, this is just demo
-    id2: base_dup.Id;
+    id_2: base_dup.Id;
     common: base.Common;
 }
 

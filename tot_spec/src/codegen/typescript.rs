@@ -106,12 +106,7 @@ impl TypeScript {
     }
 
     fn ts_field_name(&self, field: &FieldDef) -> String {
-        // Check for ts_rename attribute override
-        if let Some(rename) = field.attribute("ts_rename") {
-            return rename.to_string();
-        }
-
-        to_camel_case_reserved(&field.name)
+        field.name.clone()
     }
 
     fn render_struct(
@@ -133,11 +128,7 @@ impl TypeScript {
         }
         fields.extend(struct_def.fields.clone());
 
-        writeln!(
-            result,
-            "{}",
-            self.export_keyword("interface")
-        )?;
+        writeln!(result, "{}", self.export_keyword("interface"))?;
         writeln!(result, "{} {{", to_pascal_case(model_name))?;
 
         for field in &fields {
@@ -147,7 +138,11 @@ impl TypeScript {
                 } else {
                     desc
                 };
-                writeln!(result, "{}", indent(multiline_prefix_with(desc_to_use, "/// "), 1))?;
+                writeln!(
+                    result,
+                    "{}",
+                    indent(multiline_prefix_with(desc_to_use, "/// "), 1)
+                )?;
             }
 
             let field_name = self.ts_field_name(field);
@@ -167,11 +162,7 @@ impl TypeScript {
     ) -> anyhow::Result<String> {
         let mut result = String::new();
 
-        writeln!(
-            result,
-            "{}",
-            self.export_keyword("type")
-        )?;
+        writeln!(result, "{}", self.export_keyword("type"))?;
         writeln!(result, "{} =", to_pascal_case(&model.name))?;
 
         for (idx, variant) in variants.iter().enumerate() {
@@ -219,22 +210,12 @@ impl TypeScript {
     fn render_virtual(&self, model_name: &str, struct_def: &StructDef) -> String {
         let mut result = String::new();
 
-        writeln!(
-            result,
-            "{}",
-            self.export_keyword("interface")
-        )
-        .unwrap();
+        writeln!(result, "{}", self.export_keyword("interface")).unwrap();
         writeln!(result, "{} {{", to_pascal_case(model_name)).unwrap();
 
         for field in &struct_def.fields {
             if let Some(desc) = &field.desc {
-                writeln!(
-                    result,
-                    "{}",
-                    indent(multiline_prefix_with(desc, "/// "), 1)
-                )
-                .unwrap();
+                writeln!(result, "{}", indent(multiline_prefix_with(desc, "/// "), 1)).unwrap();
             }
 
             let field_name = self.ts_field_name(field);
@@ -251,12 +232,7 @@ impl TypeScript {
         let mut result = String::new();
 
         let inner_ts = self.ts_type(inner_type);
-        writeln!(
-            result,
-            "{}",
-            self.export_keyword("type")
-        )
-        .unwrap();
+        writeln!(result, "{}", self.export_keyword("type")).unwrap();
         writeln!(result, "{} = {};", to_pascal_case(model_name), inner_ts).unwrap();
 
         result
@@ -270,12 +246,7 @@ impl TypeScript {
     ) -> String {
         let mut result = String::new();
 
-        writeln!(
-            result,
-            "{}",
-            self.export_keyword("type")
-        )
-        .unwrap();
+        writeln!(result, "{}", self.export_keyword("type")).unwrap();
         write!(result, "{} = ", to_pascal_case(model_name)).unwrap();
 
         for (idx, value) in values.iter().enumerate() {
@@ -299,7 +270,9 @@ impl TypeScript {
 
         // Generate import statements
         for include in def.includes.iter() {
-            let include_path = self.context.get_include_path(&include.namespace, spec_path)?;
+            let include_path = self
+                .context
+                .get_include_path(&include.namespace, spec_path)?;
             let relative_path = pathdiff::diff_paths(&include_path, spec_path).unwrap();
 
             // Convert path to TypeScript import path
@@ -359,7 +332,11 @@ impl TypeScript {
                     writeln!(result, "{}", self.render_new_type(&model.name, inner_type))?;
                 }
                 crate::ModelType::Const { value_type, values } => {
-                    writeln!(result, "{}", self.render_const(&model.name, value_type, values))?;
+                    writeln!(
+                        result,
+                        "{}",
+                        self.render_const(&model.name, value_type, values)
+                    )?;
                 }
             }
         }
@@ -412,27 +389,6 @@ fn to_pascal_case(name: &str) -> String {
     name.to_case(convert_case::Case::Pascal)
 }
 
-fn to_camel_case_reserved(name: &str) -> String {
-    let camel = name.to_case(convert_case::Case::Camel);
-
-    // TypeScript reserved words that need escaping
-    const RESERVED: &[&str] = &[
-        "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete",
-        "do", "else", "enum", "export", "extends", "false", "finally", "for", "function",
-        "if", "import", "in", "instanceof", "new", "null", "return", "super", "switch", "this",
-        "throw", "true", "try", "typeof", "var", "void", "while", "with", "as", "implements",
-        "interface", "let", "package", "private", "protected", "public", "static", "yield",
-        "any", "boolean", "constructor", "declare", "get", "module", "require", "number", "set",
-        "string", "symbol", "type", "from", "of",
-    ];
-
-    if RESERVED.contains(&camel.as_str()) {
-        format!("{}_", camel)
-    } else {
-        camel
-    }
-}
-
 fn to_snake_case(name: &str) -> String {
     name.to_case(convert_case::Case::Snake)
 }
@@ -463,7 +419,8 @@ mod tests {
             let spec = spec.strip_prefix("src/codegen/fixtures/specs/").unwrap();
 
             let codegen =
-                TypeScript::load_from_folder(&PathBuf::from("src/codegen/fixtures/specs/")).unwrap();
+                TypeScript::load_from_folder(&PathBuf::from("src/codegen/fixtures/specs/"))
+                    .unwrap();
 
             let rendered = codegen.render(spec).unwrap();
 

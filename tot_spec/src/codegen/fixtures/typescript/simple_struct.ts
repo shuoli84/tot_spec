@@ -3,18 +3,18 @@
 export interface
 SimpleStruct {
     /// bool value
-    boolValue: boolean;
+    bool_value: boolean;
     /// i8 value
-    i8Value: number;
-    i16Value: number | undefined;
-    i32Value: number | undefined;
-    i64Value: bigint | undefined;
-    stringValue: string | undefined;
-    bytesValue: Uint8Array | undefined;
-    stringToString: Record<string, string> | undefined;
+    i8_value: number;
+    i16_value: number | undefined;
+    i32_value: number | undefined;
+    i64_value: bigint | undefined;
+    string_value: string | undefined;
+    bytes_value: Uint8Array | undefined;
+    string_to_string: Record<string, string> | undefined;
     /// nested self
     children: SimpleStruct[] | undefined;
     /// this field is required
-    requiredStrValue: string;
+    required_str_value: string;
 }
 

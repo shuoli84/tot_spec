@@ -13,7 +13,7 @@ Number =
 
 export interface
 RealNumber {
-    part0: number | undefined;
-    part1: number | undefined;
+    part_0: number | undefined;
+    part_1: number | undefined;
 }
 
