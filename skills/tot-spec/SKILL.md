@@ -10,7 +10,7 @@ Generate type-safe data structures and RPC service interfaces from YAML specific
 ## Installation
 
 ```bash
-cargo install tot-spec --git https://github.com/your-org/tot_spec
+cargo install --bin tot_spec --git https://github.com/shuoli84/tot_spec.git --locked
 # or from local
 cargo install --path .
 ```
@@ -19,7 +19,7 @@ cargo install --path .
 
 ```bash
 # Generate code for a specific language
-tot-spec -i <spec_folder> -c <generator> -o <output_path>
+tot_spec -i <spec_folder> -c <generator> -o <output_path>
 
 # Available generators: rs_serde, java_jackson, swift_codable, py_dataclass, typescript, swagger
 ```
