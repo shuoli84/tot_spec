@@ -18,7 +18,7 @@ export class RealNumber {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             part_0: this.part0,
             part_1: this.part1,

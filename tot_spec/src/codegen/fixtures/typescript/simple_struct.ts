@@ -20,7 +20,7 @@ export class SimpleStruct {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             bool_value: this.boolValue,
             i8_value: this.i8Value,

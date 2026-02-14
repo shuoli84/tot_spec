@@ -13,10 +13,10 @@ export class TestBase {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
-            id: this.id.toJSON(),
-            id_2: this.id2.toJSON(),
+            id: this.id,
+            id_2: this.id2,
             common: this.common.toJSON(),
         };
     }
@@ -27,8 +27,8 @@ export class TestBase {
         common: base.Common,
     }): TestBase {
         return new TestBase({
-            id: Id.fromJSON(json.id),
-            id2: Id.fromJSON(json.id_2),
+            id: json.id,
+            id2: json.id_2,
             common: Common.fromJSON(json.common),
         });
     }

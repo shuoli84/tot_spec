@@ -18,7 +18,7 @@ export class SimpleStruct {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             bool_value: this.boolValue,
             i8_value: this.i8Value,
@@ -30,8 +30,8 @@ export class SimpleStruct {
             string_value: this.stringValue,
             bytes_value: this.bytesValue,
             string_to_string: this.stringToString,
-            key_values: this.keyValues?.toJSON(),
-            children_container: this.childrenContainer?.toJSON(),
+            key_values: this.keyValues,
+            children_container: this.childrenContainer,
             children: this.children?.map((e) => e.toJSON()),
         };
     }
@@ -62,8 +62,8 @@ export class SimpleStruct {
             stringValue: json.string_value,
             bytesValue: json.bytes_value,
             stringToString: json.string_to_string,
-            keyValues: json.key_values ? KeyValue.fromJSON(json.key_values) : undefined,
-            childrenContainer: json.children_container ? Container.fromJSON(json.children_container) : undefined,
+            keyValues: json.key_values,
+            childrenContainer: json.children_container,
             children: json.children?.map((e: any) => SimpleStruct.fromJSON(e)),
         });
     }
@@ -100,7 +100,7 @@ export class RealNumber {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             real: this.real,
             imagine: this.imagine,
@@ -146,10 +146,10 @@ export class AddRequest {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             request_id: this.requestId,
-            numbers: this.numbers?.map((e) => e.toJSON()),
+            numbers: this.numbers,
         };
     }
 
@@ -159,7 +159,7 @@ export class AddRequest {
     }): AddRequest {
         return new AddRequest({
             requestId: json.request_id,
-            numbers: json.numbers?.map((e: any) => Number.fromJSON(e)),
+            numbers: json.numbers,
         });
     }
 }
@@ -177,9 +177,9 @@ export class AddResponse {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
-            result: this.result.toJSON(),
+            result: this.result,
         };
     }
 
@@ -187,7 +187,7 @@ export class AddResponse {
         result: Number,
     }): AddResponse {
         return new AddResponse({
-            result: Number.fromJSON(json.result),
+            result: json.result,
         });
     }
 }
@@ -204,7 +204,7 @@ export class ResetRequest {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             request_id: this.requestId,
         };
@@ -230,7 +230,7 @@ export class ResetResponse {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
         };
     }
@@ -257,7 +257,7 @@ export class Request {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             value: this.value,
         };
@@ -285,7 +285,7 @@ export class Response {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             value: this.value,
         };

@@ -114,6 +114,7 @@ impl TypeScript {
         model_name: &str,
         struct_def: &StructDef,
         def: &Definition,
+        spec_path: &Path,
     ) -> anyhow::Result<String> {
         let mut result = String::new();
 
@@ -175,11 +176,11 @@ impl TypeScript {
 
         // toJSON method
         writeln!(result)?;
-        writeln!(result, "    toJSON() {{")?;
+        writeln!(result, "    toJSON(): any {{")?;
         writeln!(result, "        return {{")?;
         for (json_name, ts_type, field) in &json_fields {
             let field_name = self.ts_field_name(field);
-            let converted = self.convert_to_json(&field_name, ts_type, field);
+            let converted = self.convert_to_json(&field_name, ts_type, field, spec_path);
             writeln!(result, "            {}: {},", json_name, converted)?;
         }
         writeln!(result, "        }};")?;
@@ -196,7 +197,7 @@ impl TypeScript {
         writeln!(result, "        return new {}({{", pascal_name)?;
         for (json_name, _, field) in &json_fields {
             let field_name = self.ts_field_name(field);
-            let converted = self.convert_from_json(json_name, field);
+            let converted = self.convert_from_json(json_name, field, spec_path);
             writeln!(result, "            {}: {},", field_name, converted)?;
         }
         writeln!(result, "        }});")?;
@@ -215,25 +216,36 @@ impl TypeScript {
         Ok(result)
     }
 
-    fn convert_to_json(&self, field_name: &str, ts_type: &str, field: &FieldDef) -> String {
+    fn convert_to_json(
+        &self,
+        field_name: &str,
+        ts_type: &str,
+        field: &FieldDef,
+        spec_path: &Path,
+    ) -> String {
         // Check if it's an optional type
         let is_optional = ts_type.ends_with(" | undefined");
 
         // Check if this is a nested struct (Reference type)
-        if let Type::Reference(_) = &*field.type_ {
-            if is_optional {
-                return format!("this.{}?.toJSON()", field_name);
+        if let Type::Reference(tref) = &*field.type_ {
+            if self.should_call_to_json(tref, spec_path) {
+                if is_optional {
+                    return format!("this.{}?.toJSON()", field_name);
+                }
+                return format!("this.{}.toJSON()", field_name);
             }
-            return format!("this.{}.toJSON()", field_name);
+            return format!("this.{}", field_name);
         }
 
         // Check if this is an array of references
         if let Type::List { item_type } = &*field.type_ {
-            if let Type::Reference(_) = &**item_type.as_ref() {
-                if is_optional {
-                    return format!("this.{}?.map((e) => e.toJSON())", field_name);
+            if let Type::Reference(tref) = &**item_type.as_ref() {
+                if self.should_call_to_json(tref, spec_path) {
+                    if is_optional {
+                        return format!("this.{}?.map((e) => e.toJSON())", field_name);
+                    }
+                    return format!("this.{}.map((e) => e.toJSON())", field_name);
                 }
-                return format!("this.{}.map((e) => e.toJSON())", field_name);
             }
         }
 
@@ -241,36 +253,79 @@ impl TypeScript {
         format!("this.{}", field_name)
     }
 
-    fn convert_from_json(&self, json_name: &str, field: &FieldDef) -> String {
+    fn should_call_to_json(&self, type_ref: &TypeReference, spec_path: &Path) -> bool {
+        if let Ok(model) = self
+            .context
+            .get_model_def_for_reference(type_ref, spec_path)
+        {
+            match &model.type_ {
+                crate::ModelType::Struct(_) => true,
+                crate::ModelType::Enum { .. } => false,
+                crate::ModelType::NewType { inner_type } => {
+                    let inner = &***inner_type;
+                    matches!(inner, Type::Reference(_))
+                }
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
+
+    fn should_call_from_json(&self, type_ref: &TypeReference, spec_path: &Path) -> bool {
+        if let Ok(model) = self
+            .context
+            .get_model_def_for_reference(type_ref, spec_path)
+        {
+            match &model.type_ {
+                crate::ModelType::Struct(_) => true,
+                crate::ModelType::Enum { .. } => false,
+                crate::ModelType::NewType { inner_type } => {
+                    let inner = &***inner_type;
+                    matches!(inner, Type::Reference(_))
+                }
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
+
+    fn convert_from_json(&self, json_name: &str, field: &FieldDef, spec_path: &Path) -> String {
         let ts_type = self.ts_type_for_field(field);
         let is_optional = ts_type.ends_with(" | undefined");
 
         // Check if this is a nested struct (Reference type)
         if let Type::Reference(tref) = &*field.type_ {
             let target_type = to_pascal_case(&tref.target);
-            if is_optional {
-                return format!(
-                    "json.{} ? {}.fromJSON(json.{}) : undefined",
-                    json_name, target_type, json_name
-                );
+            if self.should_call_from_json(tref, spec_path) {
+                if is_optional {
+                    return format!(
+                        "json.{} ? {}.fromJSON(json.{}) : undefined",
+                        json_name, target_type, json_name
+                    );
+                }
+                return format!("{}.fromJSON(json.{})", target_type, json_name);
             }
-            return format!("{}.fromJSON(json.{})", target_type, json_name);
+            return format!("json.{}", json_name);
         }
 
         // Check if this is an array of references
         if let Type::List { item_type } = &*field.type_ {
             if let Type::Reference(tref) = &**item_type.as_ref() {
                 let target_type = to_pascal_case(&tref.target);
-                if is_optional {
+                if self.should_call_from_json(tref, spec_path) {
+                    if is_optional {
+                        return format!(
+                            "json.{}?.map((e: any) => {}.fromJSON(e))",
+                            json_name, target_type
+                        );
+                    }
                     return format!(
-                        "json.{}?.map((e: any) => {}.fromJSON(e))",
+                        "json.{}.map((e: any) => {}.fromJSON(e))",
                         json_name, target_type
                     );
                 }
-                return format!(
-                    "json.{}.map((e: any) => {}.fromJSON(e))",
-                    json_name, target_type
-                );
             }
         }
 
@@ -465,7 +520,7 @@ impl TypeScript {
                     writeln!(
                         result,
                         "{}",
-                        self.render_struct(&model.name, struct_def, def)?
+                        self.render_struct(&model.name, struct_def, def, spec_path)?
                     )?;
                 }
                 crate::ModelType::Virtual(struct_def) => {

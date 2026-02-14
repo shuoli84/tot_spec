@@ -12,7 +12,7 @@ export class Child {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             id: this.id,
             name: this.name,

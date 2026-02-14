@@ -7,7 +7,7 @@ export class TestDecimal {
         Object.assign(this, data);
     }
 
-    toJSON() {
+    toJSON(): any {
         return {
             value: this.value,
         };
