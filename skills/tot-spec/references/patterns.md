@@ -7,37 +7,41 @@ Reusable patterns and conventions for defining models and RPC services.
 ### Standard Pagination Request
 
 ```yaml
-- name: ListUsersRequest
-  type: struct
-  fields:
-    - name: page
-      type: i32
-    - name: page_size
-      type: i32
-    - name: order_by
-      type: string
-    - name: filter
-      type: json
+models:
+  - name: ListUsersRequest
+    type:
+      name: struct
+      fields:
+        - name: page
+          type: i32
+        - name: page_size
+          type: i32
+        - name: order_by
+          type: string
+        - name: filter
+          type: json
 ```
 
 ### Standard Pagination Response
 
 ```yaml
-- name: ListUsersResponse
-  type: struct
-  fields:
-    - name: items
-      type: list[User]
-      required: true
-    - name: total
-      type: i64
-      required: true
-    - name: page
-      type: i32
-      required: true
-    - name: page_size
-      type: i32
-      required: true
+models:
+  - name: ListUsersResponse
+    type:
+      name: struct
+      fields:
+        - name: items
+          type: list[User]
+          required: true
+        - name: total
+          type: i64
+          required: true
+        - name: page
+          type: i32
+          required: true
+        - name: page_size
+          type: i32
+          required: true
 
 methods:
   - name: ListUsers
@@ -51,17 +55,19 @@ methods:
 ### Error Response Type
 
 ```yaml
-- name: ErrorResponse
-  type: struct
-  fields:
-    - name: code
-      type: i32
-      required: true
-    - name: message
-      type: string
-      required: true
-    - name: details
-      type: json
+models:
+  - name: ErrorResponse
+    type:
+      name: struct
+      fields:
+        - name: code
+          type: i32
+          required: true
+        - name: message
+          type: string
+          required: true
+        - name: details
+          type: json
 
 methods:
   - name: GetUser
@@ -72,19 +78,20 @@ methods:
 ### Status Code Constants
 
 ```yaml
-- name: StatusCode
-  type:
-    name: const
-    value_type: i32
-    values:
-      - name: Ok
-        value: 0
-      - name: InvalidArgument
-        value: 3
-      - name: NotFound
-        value: 5
-      - name: InternalError
-        value: 13
+models:
+  - name: StatusCode
+    type:
+      name: const
+      value_type: i32
+      values:
+        - name: Ok
+          value: 0
+        - name: InvalidArgument
+          value: 3
+        - name: NotFound
+          value: 5
+        - name: InternalError
+          value: 13
 ```
 
 ## CRUD Operations
@@ -94,79 +101,88 @@ methods:
 ```yaml
 models:
   - name: User
-    type: struct
-    fields:
-      - name: id
-        type: string
-      - name: name
-        type: string
-      - name: email
-        type: string
-      - name: created_at
-        type: i64
+    type:
+      name: struct
+      fields:
+        - name: id
+          type: string
+        - name: name
+          type: string
+        - name: email
+          type: string
+        - name: created_at
+          type: i64
 
   - name: CreateUserRequest
-    type: struct
-    fields:
-      - name: name
-        type: string
-        required: true
-      - name: email
-        type: string
-        required: true
+    type:
+      name: struct
+      fields:
+        - name: name
+          type: string
+          required: true
+        - name: email
+          type: string
+          required: true
 
   - name: CreateUserResponse
-    type: struct
-    fields:
-      - name: user
-        type: User
-        required: true
+    type:
+      name: struct
+      fields:
+        - name: user
+          type: User
+          required: true
 
   - name: GetUserRequest
-    type: struct
-    fields:
-      - name: user_id
-        type: string
-        required: true
+    type:
+      name: struct
+      fields:
+        - name: user_id
+          type: string
+          required: true
 
   - name: GetUserResponse
-    type: struct
-    fields:
-      - name: user
-        type: User
-        required: true
+    type:
+      name: struct
+      fields:
+        - name: user
+          type: User
+          required: true
 
   - name: UpdateUserRequest
-    type: struct
-    fields:
-      - name: user_id
-        type: string
-        required: true
-      - name: name
-        type: string
-      - name: email
-        type: string
+    type:
+      name: struct
+      fields:
+        - name: user_id
+          type: string
+          required: true
+        - name: name
+          type: string
+        - name: email
+          type: string
 
   - name: UpdateUserResponse
-    type: struct
-    fields:
-      - name: user
-        type: User
-        required: true
+    type:
+      name: struct
+      fields:
+        - name: user
+          type: User
+          required: true
 
   - name: DeleteUserRequest
-    type: struct
-    fields:
-      - name: user_id
-        type: string
-        required: true
+    type:
+      name: struct
+      fields:
+        - name: user_id
+          type: string
+          required: true
 
   - name: DeleteUserResponse
-    type: struct
-    fields:
-      - name: deleted
-        type: bool
-        required: true
+    type:
+      name: struct
+      fields:
+        - name: deleted
+          type: bool
+          required: true
 
 methods:
   - name: CreateUser
@@ -195,34 +211,36 @@ methods:
 ### Define Base Fields
 
 ```yaml
-- name: BaseRequest
-  type:
-    name: virtual
-    fields:
-      - name: request_id
-        type: string
-      - name: timestamp
-        type: i64
+models:
+  - name: BaseRequest
+    type:
+      name: virtual
+      fields:
+        - name: request_id
+          type: string
+        - name: timestamp
+          type: i64
 ```
 
 ### Extend in Requests
 
 ```yaml
-- name: CreateUserRequest
-  type:
-    name: struct
-    extend: BaseRequest
-    fields:
-      - name: username
-        type: string
+models:
+  - name: CreateUserRequest
+    type:
+      name: struct
+      extend: BaseRequest
+      fields:
+        - name: username
+          type: string
 
-- name: DeleteUserRequest
-  type:
-    name: struct
-    extend: BaseRequest
-    fields:
-      - name: user_id
-        type: string
+  - name: DeleteUserRequest
+    type:
+      name: struct
+      extend: BaseRequest
+      fields:
+        - name: user_id
+          type: string
 ```
 
 ## Domain-Specific Types (New Type)
@@ -230,58 +248,62 @@ methods:
 ### Type-Safe IDs
 
 ```yaml
-- name: UserId
-  type:
-    name: new_type
-    inner_type: string
-  attributes:
-    rs_extra_derive: Hash, PartialEq
+models:
+  - name: UserId
+    type:
+      name: new_type
+      inner_type: string
+    attributes:
+      rs_extra_derive: Hash, PartialEq
 
-- name: Email
-  type:
-    name: new_type
-    inner_type: string
+  - name: Email
+    type:
+      name: new_type
+      inner_type: string
 
-- name: CreateUserRequest
-  type: struct
-  fields:
-    - name: user_id
-      type: UserId
-      required: true
-    - name: email
-      type: Email
-      required: true
+  - name: CreateUserRequest
+    type:
+      name: struct
+      fields:
+        - name: user_id
+          type: UserId
+          required: true
+        - name: email
+          type: Email
+          required: true
 ```
 
 ### Monetary Values
 
 ```yaml
-- name: Amount
-  type:
-    name: new_type
-    inner_type: decimal
+models:
+  - name: Amount
+    type:
+      name: new_type
+      inner_type: decimal
 
-- name: Currency
-  type:
-    name: const
-    value_type: string
-    values:
-      - name: Usd
-        value: "USD"
-      - name: Eur
-        value: "EUR"
-      - name: Gbp
-        value: "GBP"
+  - name: Currency
+    type:
+      name: const
+      value_type: string
+      values:
+        - name: Usd
+          value: "USD"
+        - name: Eur
+          value: "EUR"
+        - name: Gbp
+          value: "GBP"
 
-- name: Money
-  type: struct
-  fields:
-    - name: amount
-      type: Amount
-      required: true
-    - name: currency
-      type: Currency
-      required: true
+  - name: Money
+    type:
+      name: struct
+      fields:
+        - name: amount
+          type: Amount
+          required: true
+        - name: currency
+          type: Currency
+          required: true
 ```
 
 ## Event Messages
@@ -289,31 +311,34 @@ methods:
 ### Event Envelope
 
 ```yaml
-- name: Event
-  type: struct
-  fields:
-    - name: id
-      type: string
-      required: true
-    - name: type
-      type: string
-      required: true
-    - name: timestamp
-      type: i64
-      required: true
-    - name: data
-      type: json
-      required: true
+models:
+  - name: Event
+    type:
+      name: struct
+      fields:
+        - name: id
+          type: string
+          required: true
+        - name: type
+          type: string
+          required: true
+        - name: timestamp
+          type: i64
+          required: true
+        - name: data
+          type: json
+          required: true
 
-- name: UserCreatedEvent
-  type: struct
-  fields:
-    - name: user_id
-      type: string
-      required: true
-    - name: username
-      type: string
-      required: true
+  - name: UserCreatedEvent
+    type:
+      name: struct
+      fields:
+        - name: user_id
+          type: string
+          required: true
+        - name: username
+          type: string
+          required: true
 
 methods:
   - name: PublishUserCreated
@@ -327,22 +352,25 @@ methods:
 ### Bulk Request/Response
 
 ```yaml
-- name: BulkCreateUsersRequest
-  type: struct
-  fields:
-    - name: users
-      type: list[CreateUserRequest]
-      required: true
+models:
+  - name: BulkCreateUsersRequest
+    type:
+      name: struct
+      fields:
+        - name: users
+          type: list[CreateUserRequest]
+          required: true
 
-- name: BulkCreateUsersResponse
-  type: struct
-  fields:
-    - name: users
-      type: list[User]
-      required: true
-    - name: failed
-      type: i32
-      required: true
+  - name: BulkCreateUsersResponse
+    type:
+      name: struct
+      fields:
+        - name: users
+          type: list[User]
+          required: true
+        - name: failed
+          type: i32
+          required: true
 
 methods:
   - name: BulkCreateUsers
@@ -356,49 +384,52 @@ methods:
 ### Auth Request Pattern
 
 ```yaml
-- name: AuthRequest
-  type:
-    name: virtual
-    fields:
-      - name: api_key
-        type: string
-      - name: auth_token
-        type: string
+models:
+  - name: AuthRequest
+    type:
+      name: virtual
+      fields:
+        - name: api_key
+          type: string
+        - name: auth_token
+          type: string
 
-- name: GetUserRequest
-  type:
-    name: struct
-    extend: AuthRequest
-    fields:
-      - name: user_id
-        type: string
+  - name: GetUserRequest
+    type:
+      name: struct
+      extend: AuthRequest
+      fields:
+        - name: user_id
+          type: string
 ```
 
 ### Token Types
 
 ```yaml
-- name: AccessToken
-  type:
-    name: new_type
-    inner_type: string
+models:
+  - name: AccessToken
+    type:
+      name: new_type
+      inner_type: string
 
-- name: RefreshToken
-  type:
-    name: new_type
-    inner_type: string
+  - name: RefreshToken
+    type:
+      name: new_type
+      inner_type: string
 
-- name: AuthTokens
-  type: struct
-  fields:
-    - name: access_token
-      type: AccessToken
-      required: true
-    - name: refresh_token
-      type: RefreshToken
-      required: true
-    - name: expires_in
-      type: i64
-      required: true
+  - name: AuthTokens
+    type:
+      name: struct
+      fields:
+        - name: access_token
+          type: AccessToken
+          required: true
+        - name: refresh_token
+          type: RefreshToken
+          required: true
+        - name: expires_in
+          type: i64
+          required: true
 ```
 
 ## Filtering and Sorting
@@ -406,35 +437,38 @@ methods:
 ### Generic Filter
 
 ```yaml
-- name: Filter
-  type: struct
-  fields:
-    - name: field
-      type: string
-      required: true
-    - name: operator
-      type: string
-      required: true
-    - name: value
-      type: string
+models:
+  - name: Filter
+    type:
+      name: struct
+      fields:
+        - name: field
+          type: string
+          required: true
+        - name: operator
+          type: string
+          required: true
+        - name: value
+          type: string
 
-- name: SortOrder
-  type:
-    name: const
-    value_type: string
-    values:
-      - name: Asc
-        value: "asc"
-      - name: Desc
-        value: "desc"
+  - name: SortOrder
+    type:
+      name: const
+      value_type: string
+      values:
+        - name: Asc
+          value: "asc"
+        - name: Desc
+          value: "desc"
 
-- name: Sort
-  type: struct
-  fields:
-    - name: field
-      type: string
-      required: true
-    - name: order
-      type: SortOrder
-      required: true
+  - name: Sort
+    type:
+      name: struct
+      fields:
+        - name: field
+          type: string
+          required: true
+        - name: order
+          type: SortOrder
+          required: true
 ```

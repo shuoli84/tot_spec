@@ -317,14 +317,16 @@ request.setEmail("alice@example.com");
 ### Input YAML
 
 ```yaml
-- name: PaymentMethod
-  type: enum
-  variants:
-    - name: CreditCard
-      payload_type: string
-    - name: PayPal
-    - name: BankTransfer
-      payload_type: string
+models:
+  - name: PaymentMethod
+    type:
+      name: enum
+      variants:
+        - name: CreditCard
+          payload_type: string
+        - name: PayPal
+        - name: BankTransfer
+          payload_type: string
 ```
 
 ### Rust Generated

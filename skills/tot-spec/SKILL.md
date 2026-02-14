@@ -35,13 +35,14 @@ meta:
 
 models:
   - name: User
-    type: struct
-    fields:
-      - name: id
-        type: string
-        required: true
-      - name: age
-        type: i32
+    type:
+      name: struct
+      fields:
+        - name: id
+          type: string
+          required: true
+        - name: age
+          type: i32
 
 methods:
   - name: GetUser
@@ -57,14 +58,16 @@ methods:
 Standard data structure with fields.
 
 ```yaml
-- name: CreateUserRequest
-  type: struct
-  fields:
-    - name: username
-      type: string
-      required: true
-    - name: email
-      type: string
+models:
+  - name: CreateUserRequest
+    type:
+      name: struct
+      fields:
+        - name: username
+          type: string
+          required: true
+        - name: email
+          type: string
 ```
 
 ### Enum
@@ -72,12 +75,14 @@ Standard data structure with fields.
 Tagged union/sum type with variants.
 
 ```yaml
-- name: PaymentMethod
-  type: enum
-  variants:
-    - name: CreditCard
-      payload_type: string
-    - name: PayPal
+models:
+  - name: PaymentMethod
+    type:
+      name: enum
+      variants:
+        - name: CreditCard
+          payload_type: string
+        - name: PayPal
 ```
 
 ### New Type
@@ -85,12 +90,13 @@ Tagged union/sum type with variants.
 Wrapper type for domain modeling.
 
 ```yaml
-- name: UserId
-  type:
-    name: new_type
-    inner_type: string
-  attributes:
-    rs_extra_derive: Hash, PartialEq
+models:
+  - name: UserId
+    type:
+      name: new_type
+      inner_type: string
+    attributes:
+      rs_extra_derive: Hash, PartialEq
 ```
 
 ### Virtual
@@ -98,20 +104,21 @@ Wrapper type for domain modeling.
 Shared fields mapped to traits/interfaces.
 
 ```yaml
-- name: BaseRequest
-  type:
-    name: virtual
-    fields:
-      - name: request_id
-        type: string
+models:
+  - name: BaseRequest
+    type:
+      name: virtual
+      fields:
+        - name: request_id
+          type: string
 
-- name: CreateUserRequest
-  type:
-    name: struct
-    extend: BaseRequest
-    fields:
-      - name: username
-        type: string
+  - name: CreateUserRequest
+    type:
+      name: struct
+      extend: BaseRequest
+      fields:
+        - name: username
+          type: string
 ```
 
 ### Const
@@ -119,15 +126,16 @@ Shared fields mapped to traits/interfaces.
 Enum-like constant definitions.
 
 ```yaml
-- name: StatusCode
-  type:
-    name: const
-    value_type: i32
-    values:
-      - name: Ok
-        value: 0
-      - name: Error
-        value: 1
+models:
+  - name: StatusCode
+    type:
+      name: const
+      value_type: i32
+      values:
+        - name: Ok
+          value: 0
+        - name: Error
+          value: 1
 ```
 
 ## Supported Types
@@ -157,12 +165,16 @@ methods:
 Language-specific customization via `attributes`:
 
 ```yaml
-fields:
-  - name: custom_map
-    type: map[string]
-    attributes:
-      rs_type: std::collections::BTreeMap<String, String>
-      rs_extra_derive: Hash, PartialEq
+models:
+  - name: MyModel
+    type:
+      name: struct
+      fields:
+        - name: custom_map
+          type: map[string]
+          attributes:
+            rs_type: std::collections::BTreeMap<String, String>
+            rs_extra_derive: Hash, PartialEq
 ```
 
 ## Includes
@@ -176,10 +188,11 @@ includes:
 
 models:
   - name: MyModel
-    type: struct
-    fields:
-      - name: data
-        type: common.DataModel
+    type:
+      name: struct
+      fields:
+        - name: data
+          type: common.DataModel
 ```
 
 ## Language Examples
