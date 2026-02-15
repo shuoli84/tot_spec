@@ -1,6 +1,6 @@
 [package]
 name = "tot_spec_util"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 description = "Util crate for tot_spec codegen"
 license = "MIT OR Apache-2.0"

@@ -72,3 +72,13 @@ attributes:
   rs_type: std::collections::BTreeMap<String, String>
   rs_extra_derive: Hash, PartialEq
 ```
+
+### Codegen Principles
+
+- **Use spec-defined names**: Generated JSON serialization/deserialization must use the field names exactly as defined in the spec, not converted to any naming convention (e.g., snake_case). This ensures consistency across all target languages.
+
+- **Language conventions for field names**: For each target language's code definition, field names follow that language's naming convention (e.g., TypeScript/Rust uses camelCase, Python uses snake_case). When this differs from the spec-defined name, generate appropriate conversion methods:
+  - **TypeScript**: Use `toJSON()` and `fromJSON()` methods to convert between language convention and spec-defined JSON keys
+  - **Rust**: Use `#[serde(rename = "...")]` attribute to map to spec-defined JSON keys
+  - **Python**: Use field aliases in dataclass
+  - **Java/Swift**: Use Jackson/JSONCoding annotations
