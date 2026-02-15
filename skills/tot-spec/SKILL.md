@@ -1,7 +1,13 @@
 ---
 name: tot-spec
-description: "Language-agnostic model definition and RPC code generator from YAML specifications. Use for generating type-safe data structures in multiple languages (Rust, Python, TypeScript, Java, Swift) from a single source of truth, defining RPC service interfaces with request/response types, creating cross-language type definitions for microservices, working with existing .yaml spec files in the project, or creating new model definitions, enum types, or service methods."
+description: "Language-agnostic model definition and RPC code generator from YAML specifications. Use for generating type-safe data (Rust, Python, TypeScript, Java, Swift) from a single source of truth, defining RPC service interfaces with request/response types, creating cross-language type definitions for microservices, working with existing .yaml spec files in the project, or creating new model definitions, enum types, or service methods."
 ---
+
+> ⚠️ **IMPORTANT**: 常见错误提醒
+>
+> - 命令名是 `tot_spec` (下划线), **不是** `tot-spec` (连字符)
+> - `-o` 参数必须是**文件夹路径**, **不是**文件名
+> - **禁止手动修改 codegen 生成的代码**, 使用 [Field Attributes](#field-attributes) 调整
 
 # tot-spec
 
@@ -19,7 +25,7 @@ cargo install --locked --force --path .
 
 ```bash
 # Generate code for a specific language
-tot_spec -i <spec_folder> -c <generator> -o <output_path>
+tot_spec -i <spec_folder> -c <generator> -o <output_FOLDER>
 
 # Available generators: rs_serde, java_jackson, swift_codable, py_dataclass, typescript, swagger
 ```
@@ -162,6 +168,8 @@ methods:
 
 ## Field Attributes
 
+> ⚠️ **NEVER manually edit generated code!** Use attributes in the spec to customize codegen output.
+
 Language-specific customization via `attributes`:
 
 ```yaml
@@ -176,6 +184,25 @@ models:
             rs_type: std::collections::BTreeMap<String, String>
             rs_extra_derive: Hash, PartialEq
 ```
+
+### Rust Attributes
+
+| Attribute         | Description                                                         |
+| ----------------- | ------------------------------------------------------------------- |
+| `rs_type`         | Override the generated Rust type                                    |
+| `rs_extra_derive` | Add extra derive macros (e.g., `Hash, PartialEq`)                   |
+| `rs_rename`       | Rename field in serialization (use with `#[serde(rename = "...")]`) |
+
+### Python Attributes
+
+| Attribute   | Description                        |
+| ----------- | ---------------------------------- |
+| `py_type`   | Override the generated Python type |
+| `py_rename` | Rename field in serialization      |
+
+### Other Languages
+
+Similar attributes exist for Java (`java_*`), Swift (`swift_*`), TypeScript (`ts_*`).
 
 ## Includes
 
