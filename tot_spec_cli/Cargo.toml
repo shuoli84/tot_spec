@@ -1,5 +1,5 @@
 [package]
-name = "codegen"
+name = "tot_spec_cli"
 version = "0.1.4"
 edition = "2021"
 repository = "https://github.com/shuoli84/tot_spec"

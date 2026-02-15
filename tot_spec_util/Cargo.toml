@@ -4,7 +4,6 @@ version = "0.1.4"
 edition = "2021"
 description = "Util crate for tot_spec codegen"
 license = "MIT OR Apache-2.0"
-categories = ["codegen"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

@@ -4,11 +4,11 @@ resolver = "2"
 members = [
     "tot_spec",
     "tot_spec_util",
-    "codegen"
+    "tot_spec_cli"
 ]
 
 default-members = [
-    "codegen"
+    "tot_spec_cli"
 ]
 
 # Config for 'cargo dist'

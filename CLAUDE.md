@@ -14,7 +14,7 @@ cargo test --workspace
 # Run tests for specific crate
 cargo test -p tot_spec
 cargo test -p tot_spec_util
-cargo test -p codegen
+cargo test -p tot_spec_cli
 
 # Update test fixtures (instead of asserting, writes expected output)
 cargo test --workspace --features test_update_spec
@@ -30,7 +30,7 @@ cargo run -- -i examples/spec -o output/
 
 **tot_spec** is a language-agnostic model definition utility that generates code from YAML specifications. It uses a Cargo workspace with three crates:
 
-- **codegen/**: CLI binary entry point, contains language-specific code generators
+- **tot_spec_cli/**: CLI binary entry point, contains language-specific code generators
 - **tot_spec/**: Core library with spec parsing, model definitions, and type resolution
 - **tot_spec_util/**: Utility crate for special types (big integers, decimals)
 
@@ -41,7 +41,7 @@ cargo run -- -i examples/spec -o output/
 - `Type`: Supported types (primitives, list, map, ref, json)
 - `FieldDef`: Field with type, description, and attributes
 
-### Code Generators (codegen/src/)
+### Code Generators (tot_spec/src/codegen/)
 
 Each generator implements the `Codegen` trait. Available generators:
 - `rs_serde`: Rust serde structs/enums
