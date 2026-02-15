@@ -183,32 +183,47 @@ impl TypeScript {
 
         // toJSON method
         writeln!(result)?;
-        writeln!(result, "    toJSON(): any {{")?;
-        writeln!(result, "        return {{")?;
-        for (json_name, ts_type, field) in &json_fields {
-            let field_name = self.ts_field_name(field);
-            let converted = self.convert_to_json(&field_name, ts_type, field, spec_path);
-            writeln!(result, "            {}: {},", json_name, converted)?;
+        if json_fields.is_empty() {
+            writeln!(result, "    toJSON(): {{ _json: never }} {{")?;
+            writeln!(result, "        return {{ _json: undefined }};")?;
+            writeln!(result, "    }}")?;
+        } else {
+            writeln!(result, "    toJSON(): any {{")?;
+            writeln!(result, "        return {{")?;
+            for (json_name, ts_type, field) in &json_fields {
+                let field_name = self.ts_field_name(field);
+                let converted = self.convert_to_json(&field_name, ts_type, field, spec_path);
+                writeln!(result, "            {}: {},", json_name, converted)?;
+            }
+            writeln!(result, "        }};")?;
+            writeln!(result, "    }}")?;
         }
-        writeln!(result, "        }};")?;
-        writeln!(result, "    }}")?;
 
         // fromJSON static method
         writeln!(result)?;
         let json_type_name = format!("{}JSON", pascal_name);
-        writeln!(result, "    static fromJSON(json: {{")?;
-        for (json_name, ts_type, _) in &json_fields {
-            writeln!(result, "        {}: {},", json_name, ts_type)?;
+        if json_fields.is_empty() {
+            writeln!(
+                result,
+                "    static fromJSON(_json: any): {} {{",
+                pascal_name
+            )?;
+            writeln!(result, "        return new {}({{}});", pascal_name)?;
+        } else {
+            writeln!(result, "    static fromJSON(json: {{")?;
+            for (json_name, ts_type, _) in &json_fields {
+                writeln!(result, "        {}: {},", json_name, ts_type)?;
+            }
+            writeln!(result, "    }}): {} {{", pascal_name)?;
+            writeln!(result, "        return new {}({{", pascal_name)?;
+            for (json_name, _, field) in &json_fields {
+                let field_name = self.ts_field_name(field);
+                let converted = self.convert_from_json(json_name, field, spec_path);
+                writeln!(result, "            {}: {},", field_name, converted)?;
+            }
+            writeln!(result, "        }});")?;
+            writeln!(result, "    }}")?;
         }
-        writeln!(result, "    }}): {} {{", pascal_name)?;
-        writeln!(result, "        return new {}({{", pascal_name)?;
-        for (json_name, _, field) in &json_fields {
-            let field_name = self.ts_field_name(field);
-            let converted = self.convert_from_json(json_name, field, spec_path);
-            writeln!(result, "            {}: {},", field_name, converted)?;
-        }
-        writeln!(result, "        }});")?;
-        writeln!(result, "    }}")?;
 
         writeln!(result, "}}")?;
 
@@ -769,6 +784,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/bigint.yaml",
                 "src/codegen/fixtures/typescript/bigint.ts",
+            ),
+            (
+                "src/codegen/fixtures/specs/empty_struct.yaml",
+                "src/codegen/fixtures/typescript/empty_struct.ts",
             ),
         ] {
             test_def(PathBuf::from(spec).as_path(), expected);

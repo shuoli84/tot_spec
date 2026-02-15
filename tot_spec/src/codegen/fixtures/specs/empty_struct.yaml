@@ -1,0 +1,10 @@
+meta:
+  typescript:
+    package: test.empty_struct
+
+models:
+- name: EmptyStruct
+  desc: Empty struct with no fields
+  type:
+    name: struct
+    fields: []

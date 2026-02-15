@@ -83,6 +83,9 @@ components:
           nullable: true
           description: Decimal
           type: string
+    empty_struct_EmptyStruct:
+      description: Empty struct with no fields
+      type: object
     enum_Number:
       title: enum_Number
       oneOf:
