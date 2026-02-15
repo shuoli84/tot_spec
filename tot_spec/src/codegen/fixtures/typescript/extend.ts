@@ -19,10 +19,7 @@ export class Child {
         };
     }
 
-    static fromJSON(json: {
-        id: string,
-        name: string,
-    }): Child {
+    static fromJSON(json: any): Child {
         return new Child({
             id: json.id,
             name: json.name,

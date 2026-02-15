@@ -13,9 +13,7 @@ export class TestDecimal {
         };
     }
 
-    static fromJSON(json: {
-        value: string | undefined,
-    }): TestDecimal {
+    static fromJSON(json: any): TestDecimal {
         return new TestDecimal({
             value: json.value,
         });

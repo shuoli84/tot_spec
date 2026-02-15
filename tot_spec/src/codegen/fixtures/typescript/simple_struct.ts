@@ -35,18 +35,7 @@ export class SimpleStruct {
         };
     }
 
-    static fromJSON(json: {
-        bool_value: boolean,
-        i8_value: number,
-        i16_value: number | undefined,
-        i32_value: number | undefined,
-        i64_value: bigint | undefined,
-        string_value: string | undefined,
-        bytes_value: Uint8Array | undefined,
-        string_to_string: Record<string, string> | undefined,
-        children: SimpleStruct[] | undefined,
-        required_str_value: string,
-    }): SimpleStruct {
+    static fromJSON(json: any): SimpleStruct {
         return new SimpleStruct({
             boolValue: json.bool_value,
             i8Value: json.i8_value,

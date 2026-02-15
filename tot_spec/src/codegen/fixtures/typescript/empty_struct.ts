@@ -6,14 +6,14 @@ export class EmptyStruct {
         Object.assign(this, data);
     }
 
-    toJSON(): { _json: never } {
-        return { _json: undefined };
+    toJSON(): any {
+        return {};
     }
 
     static fromJSON(_json: any): EmptyStruct {
         return new EmptyStruct({});
+    }
 }
 
-export type EmptyStructJSON = {
-}
+export type EmptyStructJSON = any;
 

@@ -13,9 +13,7 @@ export class TestBigInt {
         };
     }
 
-    static fromJSON(json: {
-        value: bigint | undefined,
-    }): TestBigInt {
+    static fromJSON(json: any): TestBigInt {
         return new TestBigInt({
             value: json.value,
         });

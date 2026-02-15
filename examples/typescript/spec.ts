@@ -1,6 +1,8 @@
+import * as base from "./base";
+
 
 export class SimpleStruct {
-    boolValue: boolean;
+    boolValue!: boolean;
     i8Value: number | undefined;
     i16Value: number | undefined;
     i32Value: number | undefined;
@@ -13,6 +15,9 @@ export class SimpleStruct {
     keyValues: KeyValue | undefined;
     childrenContainer: Container | undefined;
     children: SimpleStruct[] | undefined;
+    baseId!: base.BaseId;
+    pageInfo: base.PageInfo | undefined;
+    relatedItems: base.BaseId[] | undefined;
 
     constructor(data: Partial<SimpleStruct>) {
         Object.assign(this, data);
@@ -33,24 +38,13 @@ export class SimpleStruct {
             key_values: this.keyValues,
             children_container: this.childrenContainer,
             children: this.children?.map((e) => e.toJSON()),
+            base_id: this.baseId,
+            page_info: this.pageInfo?.toJSON(),
+            related_items: this.relatedItems,
         };
     }
 
-    static fromJSON(json: {
-        bool_value: boolean,
-        i8_value: number | undefined,
-        i16_value: number | undefined,
-        i32_value: number | undefined,
-        i64_value: bigint | undefined,
-        decimal_value: string | undefined,
-        bigint_value: bigint | undefined,
-        string_value: string | undefined,
-        bytes_value: Uint8Array | undefined,
-        string_to_string: Record<string, string> | undefined,
-        key_values: KeyValue | undefined,
-        children_container: Container | undefined,
-        children: SimpleStruct[] | undefined,
-    }): SimpleStruct {
+    static fromJSON(json: any): SimpleStruct {
         return new SimpleStruct({
             boolValue: json.bool_value,
             i8Value: json.i8_value,
@@ -65,6 +59,9 @@ export class SimpleStruct {
             keyValues: json.key_values,
             childrenContainer: json.children_container,
             children: json.children?.map((e: any) => SimpleStruct.fromJSON(e)),
+            baseId: json.base_id,
+            pageInfo: json.page_info ? base.PageInfo.fromJSON(json.page_info) : undefined,
+            relatedItems: json.related_items,
         });
     }
 }
@@ -83,6 +80,9 @@ export type SimpleStructJSON = {
     key_values: KeyValue | undefined;
     children_container: Container | undefined;
     children: SimpleStruct[] | undefined;
+    base_id: base.BaseId;
+    page_info: base.PageInfo | undefined;
+    related_items: base.BaseId[] | undefined;
 }
 
 
@@ -107,10 +107,7 @@ export class RealNumber {
         };
     }
 
-    static fromJSON(json: {
-        real: number | undefined,
-        imagine: number | undefined,
-    }): RealNumber {
+    static fromJSON(json: any): RealNumber {
         return new RealNumber({
             real: json.real,
             imagine: json.imagine,
@@ -153,10 +150,7 @@ export class AddRequest {
         };
     }
 
-    static fromJSON(json: {
-        request_id: string | undefined,
-        numbers: Number[] | undefined,
-    }): AddRequest {
+    static fromJSON(json: any): AddRequest {
         return new AddRequest({
             requestId: json.request_id,
             numbers: json.numbers,
@@ -171,7 +165,7 @@ export type AddRequestJSON = {
 
 
 export class AddResponse {
-    result: Number;
+    result!: Number;
 
     constructor(data: Partial<AddResponse>) {
         Object.assign(this, data);
@@ -183,9 +177,7 @@ export class AddResponse {
         };
     }
 
-    static fromJSON(json: {
-        result: Number,
-    }): AddResponse {
+    static fromJSON(json: any): AddResponse {
         return new AddResponse({
             result: json.result,
         });
@@ -210,9 +202,7 @@ export class ResetRequest {
         };
     }
 
-    static fromJSON(json: {
-        request_id: string | undefined,
-    }): ResetRequest {
+    static fromJSON(json: any): ResetRequest {
         return new ResetRequest({
             requestId: json.request_id,
         });
@@ -231,19 +221,15 @@ export class ResetResponse {
     }
 
     toJSON(): any {
-        return {
-        };
+        return {};
     }
 
-    static fromJSON(json: {
-    }): ResetResponse {
-        return new ResetResponse({
-        });
+    static fromJSON(_json: any): ResetResponse {
+        return new ResetResponse({});
     }
 }
 
-export type ResetResponseJSON = {
-}
+export type ResetResponseJSON = any;
 
 
 export type ConstInteger = 1 | 2;
@@ -251,7 +237,7 @@ export type ConstInteger = 1 | 2;
 
 // used as swagger's spec_ad_method request
 export class Request {
-    value: bigint;
+    value!: bigint;
 
     constructor(data: Partial<Request>) {
         Object.assign(this, data);
@@ -263,9 +249,7 @@ export class Request {
         };
     }
 
-    static fromJSON(json: {
-        value: bigint,
-    }): Request {
+    static fromJSON(json: any): Request {
         return new Request({
             value: json.value,
         });
@@ -279,7 +263,7 @@ export type RequestJSON = {
 
 // used as swagger's spec_ad_method response
 export class Response {
-    value: bigint;
+    value!: bigint;
 
     constructor(data: Partial<Response>) {
         Object.assign(this, data);
@@ -291,9 +275,7 @@ export class Response {
         };
     }
 
-    static fromJSON(json: {
-        value: bigint,
-    }): Response {
+    static fromJSON(json: any): Response {
         return new Response({
             value: json.value,
         });

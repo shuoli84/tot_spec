@@ -1,5 +1,5 @@
-import { * as base } from "../include_base.yaml.ts";
-import { * as base_dup } from "../include_base.yaml.ts";
+import * as base from "./include_base";
+import * as base_dup from "./include_base";
 
 
 export class TestBase {
@@ -21,11 +21,7 @@ export class TestBase {
         };
     }
 
-    static fromJSON(json: {
-        id: base.Id,
-        id_2: base_dup.Id,
-        common: base.Common,
-    }): TestBase {
+    static fromJSON(json: any): TestBase {
         return new TestBase({
             id: json.id,
             id2: json.id_2,

@@ -25,10 +25,7 @@ export class RealNumber {
         };
     }
 
-    static fromJSON(json: {
-        part_0: number | undefined,
-        part_1: number | undefined,
-    }): RealNumber {
+    static fromJSON(json: any): RealNumber {
         return new RealNumber({
             part0: json.part_0,
             part1: json.part_1,

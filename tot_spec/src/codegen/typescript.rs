@@ -184,8 +184,8 @@ impl TypeScript {
         // toJSON method
         writeln!(result)?;
         if json_fields.is_empty() {
-            writeln!(result, "    toJSON(): {{ _json: never }} {{")?;
-            writeln!(result, "        return {{ _json: undefined }};")?;
+            writeln!(result, "    toJSON(): any {{")?;
+            writeln!(result, "        return {{}};")?;
             writeln!(result, "    }}")?;
         } else {
             writeln!(result, "    toJSON(): any {{")?;
@@ -209,12 +209,9 @@ impl TypeScript {
                 pascal_name
             )?;
             writeln!(result, "        return new {}({{}});", pascal_name)?;
+            writeln!(result, "    }}")?;
         } else {
-            writeln!(result, "    static fromJSON(json: {{")?;
-            for (json_name, ts_type, _) in &json_fields {
-                writeln!(result, "        {}: {},", json_name, ts_type)?;
-            }
-            writeln!(result, "    }}): {} {{", pascal_name)?;
+            writeln!(result, "    static fromJSON(json: any): {} {{", pascal_name)?;
             writeln!(result, "        return new {}({{", pascal_name)?;
             for (json_name, _, field) in &json_fields {
                 let field_name = self.ts_field_name(field);
@@ -229,11 +226,15 @@ impl TypeScript {
 
         // Export JSON type
         writeln!(result)?;
-        writeln!(result, "export type {} = {{", json_type_name)?;
-        for (json_name, ts_type, _) in &json_fields {
-            writeln!(result, "    {}: {};", json_name, ts_type)?;
+        if json_fields.is_empty() {
+            writeln!(result, "export type {} = any;", json_type_name)?;
+        } else {
+            writeln!(result, "export type {} = {{", json_type_name)?;
+            for (json_name, ts_type, _) in &json_fields {
+                writeln!(result, "    {}: {};", json_name, ts_type)?;
+            }
+            writeln!(result, "}}")?;
         }
-        writeln!(result, "}}")?;
 
         Ok(result)
     }
@@ -504,9 +505,21 @@ impl TypeScript {
             let include_path = self
                 .context
                 .get_include_path(&include.namespace, spec_path)?;
-            let relative_path = pathdiff::diff_paths(&include_path, spec_path).unwrap();
 
-            // Convert path to TypeScript import path
+            // Get the parent directory of the yaml file
+            let include_dir = include_path.parent().unwrap_or(std::path::Path::new("."));
+
+            // Convert yaml filename to ts filename (without extension for import)
+            let include_filename = include_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+
+            let ts_path = include_dir.join(include_filename);
+            let spec_dir = spec_path.parent().unwrap_or(std::path::Path::new("."));
+            let relative_path = pathdiff::diff_paths(&ts_path, spec_dir).unwrap();
+
+            // Convert path to TypeScript import path (without extension)
             let mut import_path = String::new();
             for component in relative_path.components() {
                 match component {
@@ -520,13 +533,15 @@ impl TypeScript {
                     _ => {}
                 }
             }
-            // Remove trailing slash and add .ts extension
+            // Remove trailing slash and add ./ prefix for relative paths
             import_path = import_path.trim_end_matches('/').to_string();
-            import_path.push_str(".ts");
+            if !import_path.starts_with('.') && !import_path.starts_with('/') {
+                import_path = format!("./{}", import_path);
+            }
 
             writeln!(
                 result,
-                "import {{ * as {} }} from \"{}\";",
+                "import * as {} from \"{}\";",
                 to_snake_case(&include.namespace),
                 import_path.replace('\\', "/")
             )
