@@ -15,5 +15,5 @@ export class EmptyStruct {
     }
 }
 
-export type EmptyStructJSON = any;
+export type EmptyStructJSON = {};
 

@@ -42,5 +42,5 @@ export class Response {
     }
 }
 
-export type ResponseJSON = any;
+export type ResponseJSON = {};
 

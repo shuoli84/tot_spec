@@ -42,5 +42,5 @@ export class TestResponse {
     }
 }
 
-export type TestResponseJSON = any;
+export type TestResponseJSON = {};
 

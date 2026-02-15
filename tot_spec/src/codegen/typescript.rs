@@ -227,7 +227,7 @@ impl TypeScript {
         // Export JSON type
         writeln!(result)?;
         if json_fields.is_empty() {
-            writeln!(result, "export type {} = any;", json_type_name)?;
+            writeln!(result, "export type {} = {{}};", json_type_name)?;
         } else {
             writeln!(result, "export type {} = {{", json_type_name)?;
             for (json_name, ts_type, _) in &json_fields {

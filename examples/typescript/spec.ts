@@ -229,7 +229,7 @@ export class ResetResponse {
     }
 }
 
-export type ResetResponseJSON = any;
+export type ResetResponseJSON = {};
 
 
 export type ConstInteger = 1 | 2;
