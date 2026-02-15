@@ -105,13 +105,13 @@ impl Swagger {
         let config_value =
             serde_yaml::from_str::<serde_json::Map<String, serde_json::Value>>(&config_content)?;
         let Some(codegen_value) = config_value.get("codegen") else {
-            return Ok(None)
+            return Ok(None);
         };
 
         assert!(codegen_value.is_object());
 
         let Some(swagger_value) = codegen_value.as_object().unwrap().get("swagger") else {
-            return Ok(None)
+            return Ok(None);
         };
 
         let swagger_config = serde_json::from_value::<CodegenConfig>(swagger_value.to_owned())?;
@@ -363,7 +363,7 @@ impl Swagger {
                         },
                     })
                 }
-                ModelType::Enum { ref variants } => {
+                ModelType::Enum { ref variants, .. } => {
                     let mut variant_schemas = vec![];
                     for variant in variants.iter() {
                         // todo: enum variant embeded should converge to a separate model def

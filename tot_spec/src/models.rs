@@ -108,7 +108,13 @@ impl ModelDef {
 #[serde(tag = "name")]
 pub enum ModelType {
     #[serde(rename = "enum")]
-    Enum { variants: Vec<VariantDef> },
+    Enum {
+        variants: Vec<VariantDef>,
+        #[serde(default)]
+        tag_name: Option<String>,
+        #[serde(default)]
+        payload_name: Option<String>,
+    },
     #[serde(rename = "struct")]
     Struct(StructDef),
     #[serde(rename = "virtual")]

@@ -19,51 +19,54 @@ cd examples/swift_package && swift test
 
 # generate java jackson
 cargo run -- -i "examples/spec" -c "java_jackson" -o "examples/java_jackson/example_app/src/main/java/"
+
+# generate swagger
+cargo run -- -i "examples/spec" -c "swagger" -o "examples/"
 ```
 
 ## Nested struct
 
 ```yaml
 models:
-- name: SimpleStruct
-  type:
-    name: struct
-    fields:
-    # basic types including bool, i8, i64, f64 and string
-    - name: bool_value
-      type: bool
-      required: true
-    - name: i8_value
-      type: i8
-      required: true
-    - name: i64_value
-      type: i64
-    - name: string_value
-      type: string
-    - name: bytes_value
-      type: bytes
+  - name: SimpleStruct
+    type:
+      name: struct
+      fields:
+        # basic types including bool, i8, i64, f64 and string
+        - name: bool_value
+          type: bool
+          required: true
+        - name: i8_value
+          type: i8
+          required: true
+        - name: i64_value
+          type: i64
+        - name: string_value
+          type: string
+        - name: bytes_value
+          type: bytes
 
-    # also container types including Map and List
-    # now map keytype is restricted to string only
-    - name: string_to_string
-      type: map[string]
-      attributes:
-        # use rs_type attibute to mark underlying type as BTreeMap
-        rs_type: std::collections::BTreeMap::<std::string::String, std::string::String>
+        # also container types including Map and List
+        # now map keytype is restricted to string only
+        - name: string_to_string
+          type: map[string]
+          attributes:
+            # use rs_type attibute to mark underlying type as BTreeMap
+            rs_type: std::collections::BTreeMap::<std::string::String, std::string::String>
 
-    - name: key_values
-      # reference other types defined in spec
-      type: KeyValue
+        - name: key_values
+          # reference other types defined in spec
+          type: KeyValue
 
-    # container list
-    - name: children
-      type: 
-        name: list
-        item_type: SimpleStruct
+        # container list
+        - name: children
+          type:
+            name: list
+            item_type: SimpleStruct
 
-    # same list as above, string version
-    - name: children_2
-      type: list[SimpleStruct]
+        # same list as above, string version
+        - name: children_2
+          type: list[SimpleStruct]
 ```
 
 ## New type
@@ -94,18 +97,18 @@ Use virtual type to define common part cross models.
   type:
     name: virtual
     fields:
-    - name: request_id
-      type: string
+      - name: request_id
+        type: string
 
 - name: AddRequest
   type:
     name: struct
     extend: Base
     fields:
-    - name: numbers
-      type:
-        name: list
-        item_type: i64
+      - name: numbers
+        type:
+          name: list
+          item_type: i64
 
 - name: ResetRequest
   type:

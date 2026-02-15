@@ -1,12 +1,12 @@
 
 export type Number =
         // Variant Int64
-    { type: "Int64", payload: bigint }
+    { kind: "Int64", data: bigint }
 
     |     // Variant Float
-    { type: "Float", payload: number }
+    { kind: "Float", data: number }
 
-    | { type: "RealNumber", payload: RealNumber }
+    | { kind: "RealNumber", data: RealNumber }
 ;
 
 

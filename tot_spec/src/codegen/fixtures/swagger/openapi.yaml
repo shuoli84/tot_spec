@@ -109,6 +109,29 @@ components:
           description: F64
           type: number
           format: double
+    enum_custom_tag_Number:
+      title: enum_custom_tag_Number
+      oneOf:
+      - description: I64
+        type: integer
+        format: int64
+      - description: F64
+        type: number
+        format: double
+      - $ref: '#/components/schemas/enum_custom_tag_RealNumber'
+    enum_custom_tag_RealNumber:
+      type: object
+      properties:
+        part_0:
+          nullable: true
+          description: F64
+          type: number
+          format: double
+        part_1:
+          nullable: true
+          description: F64
+          type: number
+          format: double
     enum_variant_type_Number:
       title: enum_variant_type_Number
       oneOf:

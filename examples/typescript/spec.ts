@@ -122,11 +122,11 @@ export type RealNumberJSON = {
 
 
 export type Number =
-    { __type: "I64", payload: bigint }
+    { type: "I64", payload: bigint }
 
-    | { __type: "F64", payload: number }
+    | { type: "F64", payload: number }
 
-    | { __type: "RealNumber", payload: RealNumber }
+    | { type: "RealNumber", payload: RealNumber }
 ;
 
 

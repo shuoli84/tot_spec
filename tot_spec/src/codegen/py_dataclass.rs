@@ -117,7 +117,15 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
         match &model.type_ {
             // python has no built in enum, so we generate base class
             // and each variants as a separate class
-            crate::ModelType::Enum { variants } => {
+            crate::ModelType::Enum {
+                variants,
+                tag_name,
+                payload_name,
+            } => {
+                let tag_name = tag_name.clone().unwrap_or_else(|| "type".to_string());
+                let payload_name = payload_name
+                    .clone()
+                    .unwrap_or_else(|| "payload".to_string());
                 let enum_name = &model.name;
                 writeln!(result, "class {enum_name}(abc.ABC):")?;
                 writeln!(result, "    pass")?;
@@ -137,7 +145,7 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                     writeln!(code_block, "")?;
                     writeln!(code_block, "@staticmethod")?;
                     writeln!(code_block, "def from_dict(d):")?;
-                    writeln!(code_block, "    {type_var_name} = d[\"type\"]")?;
+                    writeln!(code_block, "    type_ = d[\"{}\"]", tag_name)?;
 
                     for (variant_idx, variant) in variants.iter().enumerate() {
                         let variant_name = &variant.name;
@@ -145,17 +153,21 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                         let variant_cls_name = format!("{enum_name}_{variant_name}");
 
                         if variant_idx == 0 {
-                            writeln!(code_block, "    if {type_var_name} == \"{type_tag}\":")?;
+                            writeln!(code_block, "    if type_ == \"{}\":", type_tag)?;
                         } else {
-                            writeln!(code_block, "    elif {type_var_name} == \"{type_tag}\":")?;
+                            writeln!(code_block, "    elif type_ == \"{}\":", type_tag)?;
                         }
 
                         if let Some(payload_type) = &variant.payload_type {
-                            writeln!(code_block, "        payload = d[\"payload\"]")?;
+                            writeln!(
+                                code_block,
+                                "        {} = d[\"{}\"]",
+                                payload_name, payload_name
+                            )?;
 
                             let payload_from_dict = from_dict_for_one_field(
                                 payload_type,
-                                "payload",
+                                &payload_name,
                                 "payload_tmp",
                                 def,
                                 context,
@@ -163,17 +175,18 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                             writeln!(code_block, "{}", indent(&payload_from_dict, 2))?;
                             writeln!(
                                 code_block,
-                                "        return {variant_cls_name}(payload=payload_tmp)"
+                                "        return {}({}=payload_tmp)",
+                                variant_cls_name, payload_name
                             )?;
                         } else {
-                            writeln!(code_block, "        {variant_cls_name}()")?;
+                            writeln!(code_block, "        return {}()", variant_cls_name)?;
                         }
                     }
 
                     writeln!(code_block, "    else:")?;
                     writeln!(
                         code_block,
-                        "        raise ValueError(f\"invalid type: {{{type_var_name}}}\")"
+                        "        raise ValueError(f\"invalid type: {{type_}}\")"
                     )?;
 
                     code_block
@@ -193,7 +206,12 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                         "class {model_name}_{variant_name}({model_name}):",
                     )?;
                     if let Some(payload_type) = &variant.payload_type {
-                        writeln!(variant_code, "    payload: {}", py_type(&payload_type))?;
+                        writeln!(
+                            variant_code,
+                            "    {}: {}",
+                            payload_name,
+                            py_type(&payload_type)
+                        )?;
                     } else {
                         writeln!(variant_code, "    pass")?;
                     }
@@ -202,24 +220,28 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                     {
                         writeln!(variant_code, "")?;
                         writeln!(variant_code, "    def to_dict(self):")?;
-                        writeln!(variant_code, "        {type_var_name} = \"{variant_name}\"")?;
+                        writeln!(variant_code, "        type_ = \"{}\"", variant_name)?;
 
                         if let Some(payload_type) = &variant.payload_type {
                             let payload_to_dict = to_dict_for_one_field(
                                 &payload_type,
-                                "self.payload",
+                                &format!("self.{}", payload_name),
                                 "payload_tmp",
                                 def,
                                 context,
                             )?;
                             writeln!(variant_code, "{}", indent(&payload_to_dict, 2))?;
                             writeln!(variant_code, "        return {{")?;
-                            writeln!(variant_code, "            \"type\": {type_var_name},")?;
-                            writeln!(variant_code, "            \"payload\": payload_tmp,")?;
+                            writeln!(variant_code, "            \"{}\": type_,", tag_name)?;
+                            writeln!(
+                                variant_code,
+                                "            \"{}\": payload_tmp,",
+                                payload_name
+                            )?;
                             writeln!(variant_code, "        }}")?;
                         } else {
                             writeln!(variant_code, "        return {{")?;
-                            writeln!(variant_code, "            \"type\": {type_var_name},")?;
+                            writeln!(variant_code, "            \"{}\": type_,", tag_name)?;
                             writeln!(variant_code, "        }}")?;
                         }
                     }
@@ -685,6 +707,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/new_type.yaml",
                 "src/codegen/fixtures/py_dataclass/new_type.py",
+            ),
+            (
+                "src/codegen/fixtures/specs/enum_custom_tag.yaml",
+                "src/codegen/fixtures/py_dataclass/enum_custom_tag.py",
             ),
         ];
 

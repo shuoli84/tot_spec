@@ -1,9 +1,9 @@
 
 export type Number =
         // Variant Int64
-    { __type: "Int64", payload: bigint }
+    { type: "Int64", payload: bigint }
 
     |     // Variant Float
-    { __type: "Float", payload: number }
+    { type: "Float", payload: number }
 ;
 

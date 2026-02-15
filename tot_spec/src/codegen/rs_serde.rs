@@ -185,8 +185,17 @@ impl RsSerde {
             }
 
             match &model.type_ {
-                crate::ModelType::Enum { variants } => {
-                    let code = self.render_enum(model, &derived, variants, def)?;
+                crate::ModelType::Enum {
+                    variants,
+                    tag_name,
+                    payload_name,
+                } => {
+                    let tag_name = tag_name.clone().unwrap_or_else(|| "type".to_string());
+                    let payload_name = payload_name
+                        .clone()
+                        .unwrap_or_else(|| "payload".to_string());
+                    let code =
+                        self.render_enum(model, &derived, variants, def, &tag_name, &payload_name)?;
                     writeln!(model_code, "{}", code.trim())?;
                 }
                 crate::ModelType::Struct(struct_def) => {
@@ -367,6 +376,8 @@ impl RsSerde {
         derived: &[&str],
         variants: &[VariantDef],
         def: &Definition,
+        tag_name: &str,
+        payload_name: &str,
     ) -> anyhow::Result<String> {
         let model_name = &model.name;
 
@@ -378,7 +389,8 @@ impl RsSerde {
                 writeln!(model_code, "{}", self.render_derived(&derived))?;
                 writeln!(
                     model_code,
-                    "#[serde(tag = \"type\", content = \"payload\")]"
+                    "#[serde(tag = \"{}\", content = \"{}\")]",
+                    tag_name, payload_name
                 )?;
                 writeln!(model_code, "pub enum {} {{", &model.name)?;
 
@@ -432,7 +444,8 @@ impl RsSerde {
                 writeln!(model_code, "{}", self.render_derived(&derived))?;
                 writeln!(
                     model_code,
-                    "#[serde(tag = \"type\", content = \"payload\")]"
+                    "#[serde(tag = \"{}\", content = \"{}\")]",
+                    tag_name, payload_name
                 )?;
                 writeln!(model_code, "pub enum {} {{", &model.name)?;
 
@@ -771,6 +784,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/enum_variant_fields.yaml",
                 "src/codegen/fixtures/rs_serde/enum_variant_fields.rs",
+            ),
+            (
+                "src/codegen/fixtures/specs/enum_custom_tag.yaml",
+                "src/codegen/fixtures/rs_serde/enum_custom_tag.rs",
             ),
             (
                 "src/codegen/fixtures/specs/new_type.yaml",

@@ -1,6 +1,6 @@
 
 export type Number =
-    { __type: "Real"
+    { type: "Real"
         real: bigint;
         imagine: bigint;
     }
@@ -9,7 +9,7 @@ export type Number =
 
 // Number2 with variant with fields
 export type Number2 =
-    { __type: "Real"
+    { type: "Real"
         real: bigint;
         imagine: bigint;
     }

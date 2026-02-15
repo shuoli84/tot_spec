@@ -66,7 +66,15 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
             writeln!(result, "{}", multiline_prefix_with(desc, "// "))?;
         }
         match &model.type_ {
-            crate::ModelType::Enum { variants } => {
+            crate::ModelType::Enum {
+                variants,
+                tag_name,
+                payload_name,
+            } => {
+                let tag_name = tag_name.clone().unwrap_or_else(|| "type".to_string());
+                let payload_name = payload_name
+                    .clone()
+                    .unwrap_or_else(|| "payload".to_string());
                 writeln!(result, "public enum {}: Codable {{", model.name)?;
 
                 for variant in variants {
@@ -84,7 +92,7 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
 
                 writeln!(result, "\n    // coding keys")?;
                 writeln!(result, "    enum CodingKeys: String, CodingKey {{")?;
-                writeln!(result, "        case type, payload")?;
+                writeln!(result, "        case {}, {}", tag_name, payload_name)?;
                 writeln!(result, "    }}")?;
 
                 // decoder
@@ -98,10 +106,11 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                     )?;
                     writeln!(
                         code_block,
-                        "    let type = try container.decode(String.self, forKey: CodingKeys.type)"
+                        "    let {} = try container.decode(String.self, forKey: .{})",
+                        tag_name, tag_name
                     )?;
 
-                    writeln!(code_block, "    switch type {{")?;
+                    writeln!(code_block, "    switch {} {{", tag_name)?;
 
                     let mut case_blocks = vec![];
 
@@ -113,8 +122,8 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                         writeln!(case_block, "case \"{variant_name}\":")?;
                         if let Some(payload_type) = &variant.payload_type {
                             let payload_type = swift_type(&payload_type, &package_name);
-                            writeln!(case_block, "    let payload = try container.decode({payload_type}.self, forKey:.payload)")?;
-                            writeln!(case_block, "    self = .{variant_name}(payload)")?;
+                            writeln!(case_block, "    let {} = try container.decode({payload_type}.self, forKey:.{})", payload_name, payload_name)?;
+                            writeln!(case_block, "    self = .{variant_name}({})", payload_name)?;
                         } else {
                             writeln!(case_block, "    self = .{variant_name}")?;
                         }
@@ -163,21 +172,24 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                             let mut case_code = "".to_string();
 
                             if variant.payload_type.is_some() {
-                                writeln!(case_code, "case let .{name}(payload):")?;
+                                writeln!(case_code, "case let .{name}({}):", payload_name)?;
 
                                 writeln!(
                                     case_code,
-                                    "    try container.encode(\"{name}\", forKey: .type)"
+                                    "    try container.encode(\"{name}\", forKey: .{})",
+                                    tag_name
                                 )?;
                                 writeln!(
                                     case_code,
-                                    "    try container.encode(payload, forKey: .payload)"
+                                    "    try container.encode({}, forKey: .{})",
+                                    payload_name, payload_name
                                 )?;
                             } else {
                                 writeln!(case_code, "case .{name}:")?;
                                 writeln!(
                                     case_code,
-                                    "    try container.encode(\"{name}\", forKey: .type)"
+                                    "    try container.encode(\"{name}\", forKey: .{})",
+                                    tag_name
                                 )?;
                             }
 

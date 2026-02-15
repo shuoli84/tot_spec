@@ -164,11 +164,20 @@ pub fn render_model(
 
             writeln!(result, "}}")?;
         }
-        crate::ModelType::Enum { variants } => {
+        crate::ModelType::Enum {
+            variants,
+            tag_name,
+            payload_name,
+        } => {
+            let tag_name = tag_name.clone().unwrap_or_else(|| "type".to_string());
+            let payload_name = payload_name
+                .clone()
+                .unwrap_or_else(|| "payload".to_string());
             // Data annotation makes the class a pojo
             writeln!(
                 result,
-                "@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME, property = \"type\")"
+                "@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME, property = \"{}\")",
+                tag_name
             )?;
             {
                 writeln!(result, "@com.fasterxml.jackson.annotation.JsonSubTypes({{")?;
@@ -201,8 +210,9 @@ pub fn render_model(
                     Some(payload_type) => {
                         writeln!(
                             result,
-                            "        private {} payload;",
+                            "        private {} {};",
                             java_type(payload_type, def, spec_path, context)?,
+                            payload_name
                         )?;
                     }
                     None => todo!(),
@@ -428,6 +438,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/new_type.yaml",
                 "src/codegen/fixtures/java_jackson/new_type",
+            ),
+            (
+                "src/codegen/fixtures/specs/enum_custom_tag.yaml",
+                "src/codegen/fixtures/java_jackson/enum_custom_tag",
             ),
             (
                 "src/codegen/fixtures/specs/const_string.yaml",

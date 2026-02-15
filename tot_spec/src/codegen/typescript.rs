@@ -371,6 +371,8 @@ impl TypeScript {
         &self,
         model: &crate::ModelDef,
         variants: &[VariantDef],
+        tag_name: &str,
+        payload_name: &str,
     ) -> anyhow::Result<String> {
         let mut result = String::new();
 
@@ -393,11 +395,11 @@ impl TypeScript {
                 write!(result, "    ")?;
             }
 
-            write!(result, "{{ __type: \"{}\"", variant.name)?;
+            write!(result, "{{ {}: \"{}\"", tag_name, variant.name)?;
 
             if let Some(payload_type) = &variant.payload_type {
                 let payload_ts = self.ts_type(payload_type);
-                writeln!(result, ", payload: {} }}", payload_ts)?;
+                writeln!(result, ", {}: {} }}", payload_name, payload_ts)?;
             } else if let Some(fields) = &variant.payload_fields {
                 writeln!(result)?;
                 for field in fields {
@@ -561,8 +563,20 @@ impl TypeScript {
             }
 
             match &model.type_ {
-                crate::ModelType::Enum { variants } => {
-                    writeln!(result, "{}", self.render_enum(model, variants)?)?;
+                crate::ModelType::Enum {
+                    variants,
+                    tag_name,
+                    payload_name,
+                } => {
+                    let tag_name = tag_name.clone().unwrap_or_else(|| "type".to_string());
+                    let payload_name = payload_name
+                        .clone()
+                        .unwrap_or_else(|| "payload".to_string());
+                    writeln!(
+                        result,
+                        "{}",
+                        self.render_enum(model, variants, &tag_name, &payload_name)?
+                    )?;
                 }
                 crate::ModelType::Struct(struct_def) => {
                     writeln!(
@@ -803,6 +817,10 @@ mod tests {
             (
                 "src/codegen/fixtures/specs/empty_struct.yaml",
                 "src/codegen/fixtures/typescript/empty_struct.ts",
+            ),
+            (
+                "src/codegen/fixtures/specs/enum_custom_tag.yaml",
+                "src/codegen/fixtures/typescript/enum_custom_tag.ts",
             ),
         ] {
             test_def(PathBuf::from(spec).as_path(), expected);

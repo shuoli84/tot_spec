@@ -1,0 +1,31 @@
+meta:
+  java_jackson:
+    package: com.tot_spec.test.enum_custom_tag
+
+models:
+  - name: Number
+    type:
+      name: enum
+      tag_name: "kind"
+      payload_name: "data"
+      variants:
+        - name: Int64
+          desc: Variant Int64
+          payload_type: i64
+      
+        - name: Float
+          desc: Variant Float
+          payload_type: f64
+
+        - name: RealNumber
+          payload_type: RealNumber
+
+  - name: RealNumber
+    type:
+      name: struct
+      fields:
+        - name: part_0
+          type: f64
+
+        - name: part_1
+          type: f64
