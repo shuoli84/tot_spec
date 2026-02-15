@@ -1,10 +1,18 @@
 /// Const def for i8
 /// Second line of comment
 #[derive(
-    Debug, serde::Serialize, serde::Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Copy, Clone,
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Copy,
 )]
 pub struct Code(pub i8);
-
 impl Code {
     pub fn from_value(val: i8) -> Option<Self> {
         match val {
@@ -17,7 +25,6 @@ impl Code {
         self.0
     }
 }
-
 impl Code {
     /// Everything is ok
     pub const OK: Code = Code(0);

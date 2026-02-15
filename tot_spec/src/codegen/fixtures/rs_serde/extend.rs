@@ -4,7 +4,7 @@ pub trait Base {
     fn set_id(&mut self, value: std::string::String) -> std::string::String;
 }
 /// Child
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Child {
     pub id: std::string::String,
     pub name: std::string::String,

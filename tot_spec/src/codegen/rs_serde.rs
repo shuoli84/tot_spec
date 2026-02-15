@@ -178,7 +178,7 @@ impl RsSerde {
                 )
             )?;
 
-            let mut derived = vec!["Debug", "serde::Serialize", "serde::Deserialize"];
+            let mut derived = vec!["Debug", "Clone", "serde::Serialize", "serde::Deserialize"];
 
             if let Some(extra_derived) = model.attribute("rs_extra_derive") {
                 derived.extend(extra_derived.split(",").map(|d| d.trim()));

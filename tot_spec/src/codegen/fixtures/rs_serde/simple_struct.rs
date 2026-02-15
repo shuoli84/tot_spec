@@ -1,5 +1,5 @@
 /// Example of simple struct definition
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SimpleStruct {
     /// bool value
     pub bool_value: bool,

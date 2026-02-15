@@ -1,9 +1,17 @@
 /// Const def for string
 #[derive(
-    Debug, serde::Serialize, serde::Deserialize, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord,
+    Debug,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
 )]
 pub struct Reason(pub &'static str);
-
 impl Reason {
     pub fn from_value(val: &str) -> Option<Self> {
         match val {
@@ -16,7 +24,6 @@ impl Reason {
         self.0
     }
 }
-
 impl Reason {
     /// Everything is ok
     pub const OK: Reason = Reason("ok");
