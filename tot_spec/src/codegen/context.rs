@@ -116,13 +116,13 @@ impl Context {
         let config_value =
             serde_yaml::from_str::<serde_json::Map<String, serde_json::Value>>(&config_content)?;
         let Some(codegen_value) = config_value.get("codegen") else {
-            return Ok(None)
+            return Ok(None);
         };
 
         assert!(codegen_value.is_object());
 
         let Some(config_value) = codegen_value.as_object().unwrap().get(key_name) else {
-            return Ok(None)
+            return Ok(None);
         };
 
         let config = serde_json::from_value::<T>(config_value.to_owned())?;
@@ -134,7 +134,9 @@ impl Context {
     /// panic if path not loaded
     pub fn get_definition(&self, path: impl AsRef<Path>) -> anyhow::Result<&Definition> {
         let path = self.to_relative_path(path.as_ref());
-        Ok(self.definitions.get(&path).unwrap())
+        self.definitions
+            .get(&path)
+            .ok_or_else(|| anyhow!("failed to load {path:?}"))
     }
 
     /// get model def of the type_ref

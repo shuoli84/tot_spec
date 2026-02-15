@@ -371,31 +371,41 @@ fn generate_memberwise_init(fields: &[FieldDef], package_name: &str) -> anyhow::
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Definition;
+
+    fn test_def(spec: &str, code_path: &str) {
+        let context =
+            Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
+        let rendered = render(PathBuf::from(spec).as_path(), &context).unwrap();
+
+        #[cfg(not(feature = "test_update_spec"))]
+        {
+            let code = std::fs::read_to_string(code_path).unwrap();
+            pretty_assertions::assert_eq!(code.trim(), rendered.as_str().trim());
+        }
+
+        #[cfg(feature = "test_update_spec")]
+        {
+            std::fs::write(code_path, rendered).unwrap();
+        }
+    }
 
     #[test]
     fn test_swift_codable() {
-        let specs = &[
+        for (spec, expected) in [
             (
                 "const_i8.yaml",
-                include_str!("fixtures/specs/const_i8.yaml"),
-                include_str!("fixtures/swift_codable/const_i8.swift"),
+                "src/codegen/fixtures/swift_codable/const_i8.swift",
             ),
             (
                 "const_string.yaml",
-                include_str!("fixtures/specs/const_string.yaml"),
-                include_str!("fixtures/swift_codable/const_string.swift"),
+                "src/codegen/fixtures/swift_codable/const_string.swift",
             ),
-        ];
-
-        let context =
-            Context::new_from_folder(&PathBuf::from("src/codegen/fixtures/specs")).unwrap();
-
-        for (spec_name, spec, expected) in specs.iter() {
-            let _def = serde_yaml::from_str::<Definition>(&spec).unwrap();
-            let rendered = render(&Path::new(spec_name), &context).unwrap();
-
-            pretty_assertions::assert_eq!(rendered.as_str().trim(), expected.trim());
+            (
+                "enum_custom_tag.yaml",
+                "src/codegen/fixtures/swift_codable/enum_custom_tag.swift",
+            ),
+        ] {
+            test_def(spec, expected);
         }
     }
 }
