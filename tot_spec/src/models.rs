@@ -28,7 +28,7 @@ impl Definition {
     }
 
     /// get the attached key value for codegen
-    pub fn get_meta(&self, codegen: &str) -> std::borrow::Cow<BTreeMap<String, String>> {
+    pub fn get_meta(&self, codegen: &str) -> std::borrow::Cow<'_, BTreeMap<String, String>> {
         match self.meta.get(codegen) {
             Some(key_value) => std::borrow::Cow::Borrowed(key_value),
             None => std::borrow::Cow::Owned(Default::default()),
@@ -364,6 +364,7 @@ mod serde_helper {
     use serde::{de::Visitor, Deserialize, Deserializer};
     use std::{fmt, marker::PhantomData, ops::Deref};
 
+    #[allow(dead_code)]
     #[derive(Debug)]
     pub struct Void {}
 

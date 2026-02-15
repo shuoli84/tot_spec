@@ -680,7 +680,7 @@ fn rs_const_literal(val: &StringOrInteger) -> String {
     }
 }
 
-fn to_identifier(name: &str) -> (Cow<str>, bool) {
+fn to_identifier(name: &str) -> (Cow<'_, str>, bool) {
     let name_snake_case = Case::Snake.convert(name);
 
     let result: Cow<str> = match name_snake_case.as_ref() {
