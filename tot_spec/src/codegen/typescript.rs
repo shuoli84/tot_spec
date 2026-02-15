@@ -131,11 +131,11 @@ impl TypeScript {
         }
         fields.extend(struct_def.fields.clone());
 
-        // Generate JSON type fields (snake_case)
+        // Generate JSON type fields
         let json_fields: Vec<(String, String, &FieldDef)> = fields
             .iter()
             .map(|f| {
-                let json_name = to_snake_case(&f.name);
+                let json_name = f.name.clone();
                 let ts_type = self.ts_type_for_field(f);
                 (json_name, ts_type, f)
             })
