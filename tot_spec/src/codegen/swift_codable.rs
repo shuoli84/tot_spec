@@ -52,11 +52,6 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
     let mut result = "".to_string();
     writeln!(result, "import Foundation")?;
 
-    // Generate imports for includes
-    for include in def.includes.iter() {
-        writeln!(result, "import {}", to_pascal_case(&include.namespace))?;
-    }
-
     writeln!(result)?;
 
     writeln!(result, "public enum ModelError: Error {{")?;
