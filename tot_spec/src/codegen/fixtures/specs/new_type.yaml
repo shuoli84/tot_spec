@@ -5,9 +5,19 @@ meta:
 models:
   - name: Id
     desc: NewType to i64, and derive Ord macros
-    type: 
+    type:
       name: new_type
       inner_type: i64
     attributes:
       rs_extra_derive: PartialEq, Eq, PartialOrd, Ord
       java_extra_annotation: lombok.EqualsAndHashCode
+
+  - name: DictNewType
+    type:
+      name: new_type
+      inner_type:
+        name: map
+        key_type:
+          name: string
+        value_type:
+          name: bytes

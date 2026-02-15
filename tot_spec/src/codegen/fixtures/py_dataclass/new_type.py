@@ -19,3 +19,23 @@ class Id:
         value_tmp = int(d)
         return Id(value_tmp)
 
+
+@dataclass
+class DictNewType:
+    value: typing.Dict[str, bytes]
+
+    def to_dict(self):
+        result = {}
+        for key, item in self.value.items():
+            item_tmp = list(item)
+            result[key] = item_tmp
+
+        return result
+
+    def from_dict(d):
+        value_tmp = {}
+        for key, item in d.items():
+            item_tmp = bytes(item)
+            value_tmp[key] = item_tmp
+
+        return DictNewType(value_tmp)

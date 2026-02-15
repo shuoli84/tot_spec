@@ -314,7 +314,7 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                         context,
                     )?;
                     writeln!(&mut result, "    def to_dict(self):")?;
-                    writeln!(&mut result, "        {to_dict}")?;
+                    writeln!(&mut result, "{}", indent(to_dict, 2))?;
                     writeln!(&mut result, "        return result")?;
                     writeln!(&mut result, "")?;
                 }
@@ -324,7 +324,7 @@ fn render(spec_path: &Path, context: &Context) -> anyhow::Result<String> {
                     let from_dict =
                         from_dict_for_one_field(&inner_type, "d", "value_tmp", def, context)?;
                     writeln!(result, "    def from_dict(d):")?;
-                    writeln!(result, "        {from_dict}")?;
+                    writeln!(result, "{}", indent(from_dict, 2))?;
                     writeln!(result, "        return {model_name}(value_tmp)")?;
                     writeln!(&mut result, "")?;
                 }

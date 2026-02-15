@@ -201,6 +201,10 @@ components:
       description: I64
       type: integer
       format: int64
+    new_type_DictNewType:
+      description: 'Map { value_type: Bytes }'
+      type: object
+      additionalProperties: true
     rs_keyword_TestRustKeyword:
       type: object
       properties:
