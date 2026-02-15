@@ -10,9 +10,9 @@ Generate type-safe data structures and RPC service interfaces from YAML specific
 ## Installation
 
 ```bash
-cargo install --bin tot_spec --git https://github.com/shuoli84/tot_spec.git --locked
+cargo install --locked --force tot_spec_cli
 # or from local
-cargo install --path .
+cargo install --locked --force --path .
 ```
 
 ## Quick Start
